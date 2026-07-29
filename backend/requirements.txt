@@ -1,7 +1,33 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+# ──── Lightweight CPU PyTorch (Prevents 2.5GB CUDA bloat) ────
+torch
+
+# ──── Core Web & Framework ────
 fastapi
-uvicorn
+uvicorn[standard]
+python-multipart
+pydantic
+pydantic[email]
+email-validator
 sqlalchemy
 psycopg2-binary
 python-dotenv
 python-jose
 passlib[bcrypt]
+
+# ──── PDF & Document Processing ────
+PyMuPDF
+
+# ──── AI Agents & Vector RAG ────
+langchain-groq
+langchain-core
+langgraph
+chromadb
+sentence-transformers
+
+# ──── MCP Tools & Integrations ────
+mcp
+google-api-python-client
+google-auth-oauthlib
+google-auth-httplib2

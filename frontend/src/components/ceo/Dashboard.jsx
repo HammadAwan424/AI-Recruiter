@@ -12,6 +12,7 @@ import CreateUserTab from "./CreateUserTab";
 import Hiring from "./Hiring";
 import Settings from "./Settings";
 import HiredEmployeesTab from "./HiredEmployeesTab";
+import OfferManagementTab from "./OfferManagementTab"; // ← Offer Management Tab
 
 import {
   FaTachometerAlt,
@@ -21,6 +22,7 @@ import {
   FaFileAlt,
   FaDollarSign,
   FaSignOutAlt,
+  FaFileContract,
 } from "react-icons/fa";
 import { LuSettings2 } from "react-icons/lu";
 import { HiOutlineUserGroup } from "react-icons/hi2";
@@ -78,6 +80,7 @@ export default function Dashboard() {
     { name: "Recruitment", icon: <FaBriefcase size={20} /> },
     { name: "Interviews", icon: <FaCalendarCheck size={20} /> },
     { name: "Hiring", icon: <MdOutlineTouchApp size={20} /> },
+    { name: "Offer Letters", icon: <FaFileContract size={20} /> },
     { name: "Employees", icon: <HiOutlineUserGroup size={20} /> },
     { name: "Create Employee", icon: <HiOutlineUserGroup size={20} /> },
     { name: "Attendance", icon: <FaUserAlt size={20} /> },
@@ -91,6 +94,7 @@ export default function Dashboard() {
     Recruitment: <RecruitmentTab jobPosts={jobPosts} />,
     Interviews: <InterviewsTab />,
     Hiring: <Hiring jobPosts={jobPosts} />,
+    "Offer Letters": <OfferManagementTab />,
     Employees: <HiredEmployeesTab />,
     "Create Employee": <CreateUserTab />,
     Attendance: <Attendance />,
