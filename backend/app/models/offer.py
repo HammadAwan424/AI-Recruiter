@@ -20,7 +20,7 @@ class OfferTemplate(Base, BaseModelMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     title: Mapped[str] = mapped_column(String, nullable=False, index=True)
-    department: Mapped[Optional[str]] = mapped_column(String, nullable=True, index=True)
+    department: Mapped[str] = mapped_column(String, default="GLOBAL", index=True)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())

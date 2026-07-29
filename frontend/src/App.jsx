@@ -9,7 +9,9 @@ import Signup from "./components/pages/Signup";
 import SuperAdminDashboard from "./components/superAdmin/SuperAdminDashboard";
 import EmployeeDashboard from "./components/employee/EmployeeDashboard";
 import CeoDashboard from "./components/ceo/Dashboard";
-import JobPortal from "./components/pages/JobPortal"; // ← naya
+import JobPortal from "./components/pages/JobPortal";
+import CandidateOfferSignPage from "./components/pages/CandidateOfferSignPage";
+import CandidateSelfSchedulePage from "./components/pages/CandidateSelfSchedulePage";
 
 // ──── Protected Route ────
 function ProtectedRoute({ children, allowedRole }) {
@@ -29,7 +31,10 @@ function App() {
         {/* Public Routes */}
         <Route path="/" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
-        <Route path="/jobs" element={<JobPortal />} /> {/* ← naya */}
+        <Route path="/jobs" element={<JobPortal />} />
+        <Route path="/offer/sign/:token" element={<CandidateOfferSignPage />} />
+        <Route path="/interview/schedule/:token" element={<CandidateSelfSchedulePage />} />
+
         {/* Super Admin Routes */}
         <Route
           path="/admin/dashboard"

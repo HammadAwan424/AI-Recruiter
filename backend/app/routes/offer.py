@@ -47,7 +47,7 @@ def create_offer_template(
 
     template = OfferTemplate(
         title=payload.title,
-        department=payload.department,
+        department=payload.department or "GLOBAL",
         content=payload.content
     )
     db.add(template)
