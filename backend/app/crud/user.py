@@ -1,21 +1,29 @@
 from sqlalchemy.orm import Session
 from app.models.user import User
+from app.models.company import Company
 from app.utils.security import hash_password
 import secrets
 import string
 
 
-# CEO create karna (mat chhuo)
+# CEO create karna (Refactored to create/find Company and set company_id)
 def create_ceo(db: Session, data):
-
     hashed = hash_password(data.password)
+
+    # Find or create Company record
+    company = db.query(Company).filter(Company.name == data.company_name).first()
+    if not company:
+        company = Company(name=data.company_name)
+        db.add(company)
+        db.commit()
+        db.refresh(company)
 
     new_user = User(
         full_name=data.full_name,
         email=data.email,
         password=hashed,
         role="ceo",
-        company_name=data.company_name,
+        company_id=company.id,
         status="pending"
     )
 
@@ -26,22 +34,19 @@ def create_ceo(db: Session, data):
     return new_user
 
 
-# email se user find karna (mat chhuo)
+# email se user find karna
 def get_user_by_email(db: Session, email: str):
-
     return db.query(User).filter(User.email == email).first()
 
 
-# Auto password generate karna (mat chhuo)
+# Auto password generate karna
 def generate_password(length: int = 10) -> str:
     characters = string.ascii_letters + string.digits
     return ''.join(secrets.choice(characters) for _ in range(length))
 
 
-# Employee create karna ──── fix hua ────
+# Employee create karna (Refactored to link to CEO's company_id)
 def create_employee(db: Session, data, ceo_id: int):
-
-    # ── CEO dhundo taake uski company mile ──
     ceo = db.query(User).filter(User.id == ceo_id).first()
 
     if not data.password or data.password.strip() == "":
@@ -60,7 +65,7 @@ def create_employee(db: Session, data, ceo_id: int):
         joining_date=data.joining_date,
         role="employee",
         status="active",
-        company_name=ceo.company_name if ceo else None  # ← CEO ki company ab save hogi
+        company_id=ceo.company_id if ceo else None
     )
 
     db.add(new_employee)
@@ -70,10 +75,9 @@ def create_employee(db: Session, data, ceo_id: int):
     return new_employee, plain_password
 
 
-# CEO ke saare employees lana (mat chhuo)
-def get_employees_by_company(db: Session, company_name: str):
-
+# CEO ke saare employees lana (Refactored to query by company_id)
+def get_employees_by_company(db: Session, company_id: int):
     return db.query(User).filter(
         User.role == "employee",
-        User.company_name == company_name
+        User.company_id == company_id
     ).all()

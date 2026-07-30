@@ -38,8 +38,30 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id: int = payload.get("user_id")
         role: str = payload.get("role")
+        company_id: int = payload.get("company_id")
         if user_id is None:
             raise credentials_exception
-        return {"user_id": user_id, "role": role}
+        return {"user_id": user_id, "role": role, "company_id": company_id}
     except JWTError:
         raise credentials_exception
+
+
+def require_roles(allowed_roles: list[str]):
+    """
+    Role-Based Access Control (RBAC) dependency factory.
+    Restricts access to users possessing any role specified in allowed_roles.
+    Usage:
+        @router.get("/endpoint", dependencies=[Depends(require_roles(["ceo", "superadmin"]))])
+        # OR inside endpoint signature:
+        user: dict = Depends(require_roles(["ceo", "admin"]))
+    """
+    def role_checker(current_user: dict = Depends(get_current_user)):
+        user_role = current_user.get("role")
+        if user_role not in allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Permission denied. Role '{user_role}' is not authorized. Allowed roles: {allowed_roles}"
+            )
+        return current_user
+
+    return role_checker

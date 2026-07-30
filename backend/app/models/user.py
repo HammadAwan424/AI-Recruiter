@@ -1,30 +1,47 @@
-from sqlalchemy import Column, Integer, String, Date, DateTime  # ← DateTime add karo
-from app.database import Base
+from datetime import date, datetime
+from typing import Optional, List
+from sqlalchemy import String, Date, DateTime, ForeignKey
+from sqlalchemy.orm import relationship, Mapped, mapped_column
+from sqlalchemy.sql import func
+from app.database import Base, BaseModelMixin
 
 
-class User(Base):
-
+class User(Base, BaseModelMixin):
     __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    full_name: Mapped[str] = mapped_column(String, nullable=False)
+    email: Mapped[str] = mapped_column(String, unique=True, nullable=False, index=True)
+    password: Mapped[str] = mapped_column(String, nullable=False)
+    role: Mapped[str] = mapped_column(String, nullable=False)  # superadmin / ceo / employee
 
-    full_name = Column(String)
-    email = Column(String, unique=True)
+    company_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("companies.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
-    password = Column(String)
+    phone: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    department: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    joining_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    status: Mapped[str] = mapped_column(String, default="active", nullable=False)  # pending / active / inactive / fired
 
-    role = Column(String)  # superadmin / ceo / employee
+    approved_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
-    company_name = Column(String)
+    # Audit Trail
+    created_by: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    updated_by: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
 
-    phone = Column(String)
-
-    department = Column(String)
-
-    joining_date = Column(Date)
-
-    status = Column(String)  # pending / approved / active / inactive
-
-    # ──── Yeh naye add karo ────
-    approved_at = Column(DateTime, nullable=True)   # approve hone ka time
-    expires_at = Column(DateTime, nullable=True)    # 30 days baad expire
+    # ORM Relationship
+    company = relationship("Company", back_populates="users", foreign_keys=[company_id])
