@@ -6,11 +6,13 @@ from app.database import get_db
 from app.models.company import Company
 from app.models.user import User
 from app.models.job import Job
+from app.models.job_distribution import JobDistribution
 from app.models.interview import InterviewModel, InterviewFeedback
 from app.models.application import Application
 from app.schemas.recruitment import JobCreate
 from app.utils.security import get_current_user
 from app.agents.jd_generator import generate_job_description
+from app.agents.job_distribution_agent import distribute_job
 
 router = APIRouter(prefix="/recruitment", tags=["Jobs"])
 
@@ -45,12 +47,13 @@ def create_job(data: JobCreate, db: Session = Depends(get_db), current_user: dic
     if not ceo:
         raise HTTPException(status_code=404, detail="CEO account not found")
 
+    additional_info = getattr(data, "additional_info", "")
     jd_result = generate_job_description(
         title=data.title, department=data.department,
         employment_type=data.employment_type, experience=data.experience,
         skills=data.skills, salary_range=data.salary_range,
         company_name=(ceo.company.name if ceo.company else "Company"),
-        additional_info=data.additional_info, ceo_email=ceo.email
+        additional_info=additional_info, ceo_email=ceo.email
     )
 
     full_description = to_string(jd_result.get("full_description", ""))
@@ -73,12 +76,31 @@ def create_job(data: JobCreate, db: Session = Depends(get_db), current_user: dic
     db.commit()
     db.refresh(new_job)
 
+    # Job Multi-Board Distribution
+    boards = getattr(data, "boards", [])
+    distribution_records = []
+    if boards:
+        distribution_results = distribute_job(new_job.id, new_job.title, boards)
+        for result in distribution_results:
+            dist_record = JobDistribution(
+                job_id=new_job.id,
+                board=result["board"],
+                status=result["status"],
+                external_ref=result.get("external_ref"),
+                error=result.get("error"),
+                created_by=current_user["user_id"]
+            )
+            db.add(dist_record)
+            distribution_records.append(result)
+        db.commit()
+
     return {
         "message": "Job successfully created!",
         "job_id": new_job.id,
         "title": new_job.title,
         "full_description": new_job.full_description,
-        "keywords": new_job.keywords
+        "keywords": new_job.keywords,
+        "distributions": distribution_records
     }
 
 
@@ -142,6 +164,7 @@ def delete_job(job_id: int, db: Session = Depends(get_db), current_user: dict = 
         db.query(InterviewFeedback).filter(InterviewFeedback.interview_id.in_(interview_ids)).delete(synchronize_session=False)
         db.query(InterviewModel).filter(InterviewModel.id.in_(interview_ids)).delete(synchronize_session=False)
 
+    db.query(JobDistribution).filter(JobDistribution.job_id == job_id).delete(synchronize_session=False)
     db.query(Application).filter(Application.job_id == job_id).delete(synchronize_session=False)
     db.delete(job)
     db.commit()

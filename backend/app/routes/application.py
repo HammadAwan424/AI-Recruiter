@@ -1,5 +1,6 @@
 import os
 import fitz
+import sys
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, WebSocket, WebSocketDisconnect, BackgroundTasks
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
@@ -185,7 +186,7 @@ def get_cv_pdf(application_id: int, db: Session = Depends(get_db)):
     return FileResponse(app.cv_pdf_path, media_type="application/pdf")
 
 
-# ──── Ranked Candidates (technical/communication scores retrieved from InterviewFeedback) ────
+# ──── Ranked Candidates ────
 @router.get("/ranked-candidates/{job_id}")
 def get_ranked_candidates(job_id: int, db: Session = Depends(get_db), current_user: dict = Depends(require_ceo)):
     applications = db.query(Application).filter(Application.job_id == job_id).all()
@@ -230,7 +231,7 @@ def get_ranked_candidates(job_id: int, db: Session = Depends(get_db), current_us
 
 # ──── Reject Application ────
 @router.put("/reject/{application_id}")
-def reject_application(application_id: int, db: Session = Depends(get_db), current_user: dict = Depends(require_ceo)):
+async def reject_application(application_id: int, db: Session = Depends(get_db), current_user: dict = Depends(require_ceo)):
     app = db.query(Application).filter(Application.id == application_id).first()
     if not app:
         raise HTTPException(status_code=404, detail="Application not found")
@@ -239,4 +240,41 @@ def reject_application(application_id: int, db: Session = Depends(get_db), curre
     app.updated_by = current_user["user_id"]
     db.commit()
 
-    return {"message": "Candidate rejected successfully!"}
+    candidate = db.query(Candidate).filter(Candidate.id == app.candidate_id).first()
+    job = db.query(Job).filter(Job.id == app.job_id).first()
+
+    email_sent = False
+    if candidate and job:
+        try:
+            from mcp import ClientSession, StdioServerParameters
+            from mcp.client.stdio import stdio_client
+
+            server_params = StdioServerParameters(
+                command=sys.executable,
+                args=[os.path.join(os.path.dirname(__file__), "..", "mcp_servers", "meeting_email_server.py")],
+            )
+
+            async with stdio_client(server_params) as (read, write):
+                async with ClientSession(read, write) as session:
+                    await session.initialize()
+                    result = await session.call_tool(
+                        "send_rejection_email",
+                        {
+                            "candidate_name": candidate.full_name,
+                            "candidate_email": candidate.email,
+                            "job_title": job.title,
+                            "company_name": job.company.name if job.company else "Company",
+                            "sender_email": "nirmal.naik1994@gmail.com",
+                            "sender_password": os.getenv("GMAIL_APP_PASSWORD", "")
+                        }
+                    )
+                    email_sent = "sent" in result.content[0].text.lower()
+        except Exception as e:
+            print(f"MCP rejection email error: {e}")
+            email_sent = False
+
+    return {
+        "message": "Candidate rejected and email sent!",
+        "application_id": application_id,
+        "email_sent": email_sent
+    }
