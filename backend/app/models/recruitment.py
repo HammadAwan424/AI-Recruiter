@@ -21,6 +21,18 @@ class Job(Base):
     created_at = Column(DateTime, server_default=func.now())
 
 
+class JobDistribution(Base):
+    __tablename__ = "job_distributions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    job_id = Column(Integer, ForeignKey("jobs.id"), nullable=False)
+    board = Column(String, nullable=False)
+    status = Column(String, default="pending")
+    external_ref = Column(String, nullable=True)
+    error = Column(Text, nullable=True)
+    posted_at = Column(DateTime, server_default=func.now())
+
+
 class Candidate(Base):
     __tablename__ = "candidates"
 
@@ -29,7 +41,7 @@ class Candidate(Base):
     email = Column(String, unique=True, nullable=False)
     phone = Column(String)
     cv_text = Column(Text)
-    cv_pdf = Column(LargeBinary, nullable=True)  # ← original PDF bytes
+    cv_pdf = Column(LargeBinary, nullable=True)  # original PDF bytes
     cv_filename = Column(String)
     created_at = Column(DateTime, server_default=func.now())
 

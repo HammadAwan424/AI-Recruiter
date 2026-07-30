@@ -12,6 +12,7 @@ class JobCreate(BaseModel):
     skills: str
     salary_range: str
     additional_info: str = ""  # ← add hua
+    boards: List[str] = []  # ← naya: job distribution ke liye
 
 
 class JobResponse(BaseModel):

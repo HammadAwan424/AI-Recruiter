@@ -5,7 +5,8 @@ from sqlalchemy.orm import Session
 import json
 import fitz
 from app.database import get_db
-from app.models.recruitment import Job, Candidate, Application
+from app.models.recruitment import Job, Candidate, Application, JobDistribution
+from app.agents.job_distribution_agent import distribute_job
 from app.schemas.recruitment import JobCreate, JobResponse, CandidateCreate
 from app.utils.security import get_current_user
 from app.agents.jd_generator import generate_job_description
@@ -128,6 +129,24 @@ def create_job(data: JobCreate, db: Session = Depends(get_db), current_user: dic
     db.add(new_job)
     db.commit()
     db.refresh(new_job)
+
+    distribution_results = distribute_job(new_job.id, new_job.title, data.boards)
+    for result in distribution_results:
+        dist_record = JobDistribution(
+            job_id=new_job.id, board=result["board"], status=result["status"],
+            external_ref=result["external_ref"], error=result["error"]
+        )
+        db.add(dist_record)
+    db.commit()
+
+    distribution_results = distribute_job(new_job.id, new_job.title, data.boards)
+    for result in distribution_results:
+        dist_record = JobDistribution(
+            job_id=new_job.id, board=result["board"], status=result["status"],
+            external_ref=result["external_ref"], error=result["error"]
+        )
+        db.add(dist_record)
+    db.commit()
 
     return {
         "message": "Job successfully created!",
@@ -1302,3 +1321,6 @@ async def reject_candidate(
         "application_id": application_id,
         "email_sent": email_sent
     }
+
+
+
