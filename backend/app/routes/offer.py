@@ -1,11 +1,17 @@
+import os
+import sys
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
 
 from app.database import get_db
+from app.models.company import Company
 from app.models.offer import Offer, OfferTemplate, OfferApproval
-from app.models.recruitment import Candidate, Application, Job
+from app.models.application import Application
+from app.models.candidate import Candidate
+from app.models.job import Job
 from app.models.user import User
 from app.schemas.offer import (
     OfferCreate,
@@ -18,10 +24,17 @@ from app.schemas.offer import (
     OfferTemplateCreate,
     OfferTemplateResponse,
 )
+from app.crud.offer import create_offer, create_offer_approval
 from app.utils.security import get_current_user
 from app.utils.offer_crypto import generate_secure_offer_token, compute_offer_audit_hash
 
 router = APIRouter(prefix="/offers", tags=["Offers"])
+
+
+def require_ceo(current_user: dict = Depends(get_current_user)):
+    if current_user["role"] != "ceo":
+        raise HTTPException(status_code=403, detail="Sirf CEO yeh kaam kar sakta hai")
+    return current_user
 
 
 # ─────────────────────────────────────────────────────────────
@@ -46,9 +59,11 @@ def create_offer_template(
         raise HTTPException(status_code=403, detail="Not authorized to create templates")
 
     template = OfferTemplate(
+        company_id=current_user.get("company_id"),
         title=payload.title,
         department=payload.department or "GLOBAL",
-        content=payload.content
+        content=payload.content,
+        created_by=current_user["user_id"]
     )
     db.add(template)
     db.commit()
@@ -60,58 +75,26 @@ def create_offer_template(
 # 2. OFFER CRUD & APPROVAL WORKFLOW
 # ─────────────────────────────────────────────────────────────
 @router.post("", response_model=OfferResponse)
-def create_offer(
+def create_offer_endpoint(
     payload: OfferCreate,
     db: Session = Depends(get_db),
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
-    # Verify candidate & application exist
-    candidate = db.query(Candidate).filter(Candidate.id == payload.candidate_id).first()
-    if not candidate:
-        raise HTTPException(status_code=404, detail="Candidate not found")
-
-    application = db.query(Application).filter(Application.id == payload.application_id).first()
-    if not application:
+    app = db.query(Application).filter(Application.id == payload.application_id).first()
+    if not app:
         raise HTTPException(status_code=404, detail="Application not found")
 
-    # Check for existing offer for this application
     existing_offer = db.query(Offer).filter(Offer.application_id == payload.application_id).first()
-    offer_data = payload.model_dump()
-    offer_data["status"] = "PENDING_APPROVAL" if payload.submit_for_approval else "DRAFT"
-
     if existing_offer:
-        if existing_offer.status in ["SIGNED", "SENT", "APPROVED"]:
-            raise HTTPException(
-                status_code=400,
-                detail=f"An active offer with status '{existing_offer.status}' already exists for this application."
-            )
-        offer = existing_offer.update_from_dict(offer_data)
+        offer = existing_offer.update_from_dict(payload.model_dump(exclude_unset=True))
+        offer.updated_by = current_user["user_id"]
     else:
-        offer_data["created_by_user_id"] = current_user["user_id"]
-        offer = Offer.from_dict(offer_data)
-        db.add(offer)
+        offer = create_offer(db, payload, created_by=current_user["user_id"])
 
-    # Determine assigned executive approver (CEO or SuperAdmin if available)
-    ceo_user = db.query(User).filter(User.role == "ceo").first()
-    target_approver_id = ceo_user.id if ceo_user else current_user["user_id"]
+    # Update application status to offer_approval
+    app.current_status = "offer_approval"
+    app.updated_by = current_user["user_id"]
 
-    # If submitted for approval immediately, create approval task atomically
-    if payload.submit_for_approval:
-        existing_approval = db.query(OfferApproval).filter(
-            OfferApproval.offer_id == offer.id,
-            OfferApproval.status == "PENDING"
-        ).first()
-
-        if not existing_approval:
-            approval = OfferApproval(
-                offer_id=offer.id,
-                approver_id=target_approver_id,
-                step_order=1,
-                status="PENDING"
-            )
-            db.add(approval)
-
-    # Single atomic transaction commit
     db.commit()
     db.refresh(offer)
 
@@ -150,49 +133,8 @@ def update_offer(
     if not offer:
         raise HTTPException(status_code=404, detail="Offer not found")
 
-    if offer.status not in ["DRAFT", "REJECTED"]:
-        raise HTTPException(status_code=400, detail="Only DRAFT or REJECTED offers can be updated")
-
     offer.update_from_dict(payload.model_dump(exclude_unset=True))
-
-    db.commit()
-    db.refresh(offer)
-    return offer
-
-
-@router.post("/{offer_id}/submit-approval", response_model=OfferResponse)
-def submit_offer_for_approval(
-    offer_id: int,
-    db: Session = Depends(get_db),
-    current_user: Dict[str, Any] = Depends(get_current_user)
-):
-    offer = db.query(Offer).filter(Offer.id == offer_id).first()
-    if not offer:
-        raise HTTPException(status_code=404, detail="Offer not found")
-
-    if offer.status not in ["DRAFT", "REJECTED"]:
-        raise HTTPException(status_code=400, detail="Offer is not in DRAFT or REJECTED state")
-
-    offer.status = "PENDING_APPROVAL"
-
-    # Find executive approver (CEO or SuperAdmin if available)
-    ceo_user = db.query(User).filter(User.role == "ceo").first()
-    target_approver_id = ceo_user.id if ceo_user else current_user["user_id"]
-
-    # Create approval step if not exists
-    existing_approval = db.query(OfferApproval).filter(
-        OfferApproval.offer_id == offer.id,
-        OfferApproval.status == "PENDING"
-    ).first()
-
-    if not existing_approval:
-        approval = OfferApproval(
-            offer_id=offer.id,
-            approver_id=target_approver_id,
-            step_order=1,
-            status="PENDING"
-        )
-        db.add(approval)
+    offer.updated_by = current_user["user_id"]
 
     db.commit()
     db.refresh(offer)
@@ -206,35 +148,31 @@ def handle_offer_approval(
     db: Session = Depends(get_db),
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
-    # Authorization Check: Only CEO or SuperAdmin can approve/reject offers
     if current_user["role"] not in ["ceo", "superadmin"]:
-        raise HTTPException(
-            status_code=403,
-            detail="Only executive users (CEO / SuperAdmin) are authorized to approve or reject offer letters."
-        )
+        raise HTTPException(status_code=403, detail="Only executives (CEO / SuperAdmin) are authorized to approve offers.")
 
     offer = db.query(Offer).filter(Offer.id == offer_id).first()
     if not offer:
         raise HTTPException(status_code=404, detail="Offer not found")
 
-    if offer.status != "PENDING_APPROVAL":
-        raise HTTPException(status_code=400, detail="Offer is not pending approval")
-
-    approval = db.query(OfferApproval).filter(
-        OfferApproval.offer_id == offer.id,
-        OfferApproval.status == "PENDING"
-    ).first()
-
-    now = datetime.utcnow()
-    if approval:
-        approval.status = "APPROVED" if action_payload.action == "APPROVE" else "REJECTED"
-        approval.comments = action_payload.comments
-        approval.decided_at = now
-
-    if action_payload.action == "APPROVE":
-        offer.status = "APPROVED"
+    approval = db.query(OfferApproval).filter(OfferApproval.offer_id == offer_id).first()
+    if not approval:
+        approval = create_offer_approval(
+            db,
+            offer_id=offer_id,
+            approver_id=current_user["user_id"],
+            comments=action_payload.comments,
+            created_by=current_user["user_id"]
+        )
     else:
-        offer.status = "REJECTED"
+        approval.comments = action_payload.comments
+        approval.approver_id = current_user["user_id"]
+        approval.updated_by = current_user["user_id"]
+        approval.decided_at = datetime.utcnow()
+
+    if offer.application:
+        offer.application.current_status = "offer_sent"
+        offer.application.updated_by = current_user["user_id"]
 
     db.commit()
     db.refresh(offer)
@@ -251,26 +189,14 @@ def send_offer_to_candidate(
     if not offer:
         raise HTTPException(status_code=404, detail="Offer not found")
 
-    # Authorization Check: Sending a DRAFT directly without prior approval requires CEO / SuperAdmin role
-    if offer.status == "DRAFT" and current_user["role"] not in ["ceo", "superadmin"]:
-        raise HTTPException(
-            status_code=403,
-            detail="DRAFT offers must be submitted for approval first before sending to candidate."
-        )
-
-    if offer.status not in ["APPROVED", "DRAFT"]:
-        raise HTTPException(status_code=400, detail="Offer must be APPROVED or DRAFT to send")
-
-    # Generate 7-day secure token
     token = generate_secure_offer_token()
     offer.secure_token = token
     offer.token_expires_at = datetime.utcnow() + timedelta(days=7)
-    offer.status = "SENT"
+    offer.updated_by = current_user["user_id"]
 
-    # Also update application status
-    application = db.query(Application).filter(Application.id == offer.application_id).first()
-    if application:
-        application.status = "offer_sent"
+    if offer.application:
+        offer.application.current_status = "offer_sent"
+        offer.application.updated_by = current_user["user_id"]
 
     db.commit()
     db.refresh(offer)
@@ -279,20 +205,106 @@ def send_offer_to_candidate(
     return offer
 
 
-@router.post("/{offer_id}/revoke", response_model=OfferResponse)
-def revoke_offer(
-    offer_id: int,
-    db: Session = Depends(get_db),
-    current_user: Dict[str, Any] = Depends(get_current_user)
-):
-    offer = db.query(Offer).filter(Offer.id == offer_id).first()
-    if not offer:
-        raise HTTPException(status_code=404, detail="Offer not found")
+# ──── Hire Candidate & Send Offer Email ────
+@router.post("/hire/{application_id}")
+async def hire_candidate(application_id: int, db: Session = Depends(get_db), current_user: dict = Depends(require_ceo)):
+    from mcp import ClientSession, StdioServerParameters
+    from mcp.client.stdio import stdio_client
 
-    offer.status = "REVOKED"
+    app = db.query(Application).filter(Application.id == application_id).first()
+    if not app:
+        raise HTTPException(status_code=404, detail="Application not found")
+
+    candidate = db.query(Candidate).filter(Candidate.id == app.candidate_id).first()
+    job = db.query(Job).filter(Job.id == app.job_id).first()
+    ceo = db.query(User).filter(User.id == current_user["user_id"]).first()
+
+    app.current_status = "hired"
+    app.disposition = "active"
+    app.updated_by = current_user["user_id"]
     db.commit()
-    db.refresh(offer)
-    return offer
+
+    ngrok_url = os.getenv("NGROK_URL", "http://127.0.0.1:8000")
+    accept_link = f"{ngrok_url}/offers/accept-offer/{application_id}?ngrok-skip-browser-warning=true"
+    today = datetime.now().strftime("%B %d, %Y")
+
+    email_sent = False
+    try:
+        server_params = StdioServerParameters(
+            command=sys.executable,
+            args=[os.path.join(os.path.dirname(__file__), "..", "mcp_servers", "meeting_email_server.py")],
+        )
+
+        async with stdio_client(server_params) as (read, write):
+            async with ClientSession(read, write) as session:
+                await session.initialize()
+                result = await session.call_tool(
+                    "send_offer_letter",
+                    {
+                        "candidate_name": candidate.full_name,
+                        "candidate_email": candidate.email,
+                        "job_title": job.title,
+                        "company_name": job.company.name if job.company else "Company",
+                        "salary_range": job.salary_range or "Competitive",
+                        "ceo_name": ceo.full_name,
+                        "accept_link": accept_link,
+                        "offer_date": today,
+                        "sender_email": "nirmal.naik1994@gmail.com",
+                        "sender_password": os.getenv("GMAIL_APP_PASSWORD")
+                    }
+                )
+                email_sent = "sent" in result.content[0].text.lower()
+    except Exception as e:
+        print(f"MCP offer error: {e}")
+        email_sent = False
+
+    return {
+        "message": "Candidate hired and offer letter sent successfully!",
+        "application_id": application_id,
+        "email_sent": email_sent
+    }
+
+
+# ──── Offer Accept Public Callback ────
+@router.get("/accept-offer/{application_id}")
+async def accept_offer(application_id: int, db: Session = Depends(get_db)):
+    app = db.query(Application).filter(Application.id == application_id).first()
+    if not app:
+        raise HTTPException(status_code=404, detail="Application not found")
+
+    app.current_status = "hired"
+    app.disposition = "active"
+    db.commit()
+
+    candidate = db.query(Candidate).filter(Candidate.id == app.candidate_id).first()
+    job = db.query(Job).filter(Job.id == app.job_id).first()
+
+    joining_date = (datetime.now() + timedelta(weeks=2)).strftime("%B %d, %Y")
+
+    html_content = f"""<!DOCTYPE html>
+<html>
+<head>
+    <title>Offer Accepted!</title>
+    <style>
+        body {{ font-family: 'Segoe UI', sans-serif; background: #0a0a0a; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; color: white; }}
+        .card {{ background: #111; border: 1px solid rgba(5, 220, 127, 0.4); border-radius: 20px; padding: 48px; text-align: center; max-width: 500px; width: 100%; }}
+        h1 {{ color: #05DC7F; font-size: 28px; margin-bottom: 12px; }}
+        p {{ color: #9ca3af; font-size: 15px; margin-bottom: 8px; }}
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div style="font-size: 64px; margin-bottom: 20px;">🎉</div>
+        <h1>Congratulations, {candidate.full_name}!</h1>
+        <p>You have accepted the offer for <strong style="color: white;">{job.title}</strong>.</p>
+        <p>Expected Joining Date: <strong style="color: white;">{joining_date}</strong></p>
+    </div>
+</body>
+</html>"""
+
+    response = HTMLResponse(content=html_content)
+    response.headers["ngrok-skip-browser-warning"] = "true"
+    return response
 
 
 # ─────────────────────────────────────────────────────────────
@@ -304,33 +316,27 @@ def get_public_offer(token: str, db: Session = Depends(get_db)):
     if not offer:
         raise HTTPException(status_code=404, detail="Invalid or expired offer link")
 
-    candidate = db.query(Candidate).filter(Candidate.id == offer.candidate_id).first() if offer.candidate_id else None
-    job = db.query(Job).filter(Job.id == offer.job_id).first() if offer.job_id else None
+    app = offer.application
+    candidate = app.candidate if app else None
+    job = app.job if app else None
 
     now = datetime.utcnow()
-    is_expired = False
-    if offer.token_expires_at and now > offer.token_expires_at:
-        is_expired = True
+    is_expired = bool(offer.token_expires_at and now > offer.token_expires_at)
 
     return OfferPublicResponse(
-        secure_token=offer.secure_token or "",
-        job_title=offer.job_title,
-        department=offer.department,
-        company_name=job.company_name if (job and job.company_name) else "AI Recruiter",
-        candidate_name=candidate.full_name if candidate else "Candidate",
-        candidate_email=candidate.email if candidate else "",
+        id=offer.id,
+        application_id=offer.application_id,
         base_salary=offer.base_salary,
         bonus_equity=offer.bonus_equity,
         start_date=offer.start_date,
         expiry_date=offer.expiry_date,
         offer_letter_text=offer.offer_letter_text,
-        status=offer.status,
-        signature_type=offer.signature_type,
-        signature_data=offer.signature_data,
-        signer_name=offer.signer_name,
+        candidate_name=candidate.full_name if candidate else "Candidate",
+        candidate_email=candidate.email if candidate else "",
+        job_title=job.title if job else "Position",
+        company_name=job.company.name if (job and job.company) else "Agentra AI",
         signed_at=offer.signed_at,
-        audit_hash=offer.audit_hash,
-        is_expired=is_expired
+        decline_reason=offer.decline_reason
     )
 
 
@@ -345,75 +351,59 @@ def sign_public_offer(
     if not offer:
         raise HTTPException(status_code=404, detail="Invalid offer link")
 
-    if offer.status == "SIGNED":
+    if offer.signed_at:
         raise HTTPException(status_code=400, detail="This offer has already been signed")
-
-    if offer.status in ["REVOKED", "DECLINED"]:
-        raise HTTPException(status_code=400, detail="This offer is no longer valid")
 
     now = datetime.utcnow()
     if offer.token_expires_at and now > offer.token_expires_at:
         raise HTTPException(status_code=400, detail="This offer link has expired")
 
-    candidate = db.query(Candidate).filter(Candidate.id == offer.candidate_id).first() if offer.candidate_id else None
+    app = offer.application
+    candidate = app.candidate if app else None
+    job = app.job if app else None
     client_ip = request.client.host if request.client else "127.0.0.1"
-    user_agent = request.headers.get("user-agent", "Unknown")
 
-    candidate_email_str = candidate.email if (candidate and candidate.email) else "candidate@example.com"
-    start_date_str = str(offer.start_date) if offer.start_date else ""
-
-    # Compute Canonical SHA-256 Audit Hash
     audit_hash = compute_offer_audit_hash(
         offer_id=offer.id,
-        candidate_email=candidate_email_str,
-        job_title=offer.job_title,
+        candidate_email=candidate.email if candidate else "candidate@example.com",
+        job_title=job.title if job else "Position",
         base_salary=offer.base_salary,
-        start_date=start_date_str,
+        start_date=str(offer.start_date),
         signer_name=payload.signer_name,
         signer_ip=client_ip,
         signed_at=now.isoformat(),
         signature_data=payload.signature_data
     )
 
-    # Save Signature & Audit Data
     offer.signature_type = payload.signature_type
     offer.signature_data = payload.signature_data
     offer.signer_name = payload.signer_name
     offer.signer_ip = client_ip
-    offer.signer_user_agent = user_agent
+    offer.signer_user_agent = request.headers.get("user-agent", "Unknown")
     offer.signed_at = now
     offer.audit_hash = audit_hash
-    offer.status = "SIGNED"
 
-    # Update Candidate & Application status to hired
-    application = db.query(Application).filter(Application.id == offer.application_id).first()
-    if application:
-        application.status = "hired"
+    if app:
+        app.current_status = "hired"
+        app.disposition = "active"
 
     db.commit()
     db.refresh(offer)
 
-    job = db.query(Job).filter(Job.id == offer.job_id).first() if offer.job_id else None
-
     return OfferPublicResponse(
-        secure_token=offer.secure_token or "",
-        job_title=offer.job_title,
-        department=offer.department,
-        company_name=job.company_name if (job and job.company_name) else "AI Recruiter",
-        candidate_name=candidate.full_name if candidate else "Candidate",
-        candidate_email=candidate_email_str,
+        id=offer.id,
+        application_id=offer.application_id,
         base_salary=offer.base_salary,
         bonus_equity=offer.bonus_equity,
         start_date=offer.start_date,
         expiry_date=offer.expiry_date,
         offer_letter_text=offer.offer_letter_text,
-        status=offer.status,
-        signature_type=offer.signature_type,
-        signature_data=offer.signature_data,
-        signer_name=offer.signer_name,
+        candidate_name=candidate.full_name if candidate else "Candidate",
+        candidate_email=candidate.email if candidate else "",
+        job_title=job.title if job else "Position",
+        company_name=job.company.name if (job and job.company) else "Agentra AI",
         signed_at=offer.signed_at,
-        audit_hash=offer.audit_hash,
-        is_expired=False
+        decline_reason=offer.decline_reason
     )
 
 
@@ -427,41 +417,33 @@ def decline_public_offer(
     if not offer:
         raise HTTPException(status_code=404, detail="Invalid offer link")
 
-    if offer.status == "SIGNED":
-        raise HTTPException(status_code=400, detail="Cannot decline an already signed offer")
-
-    if offer.status in ["REVOKED", "DECLINED"]:
-        raise HTTPException(status_code=400, detail="This offer is no longer active")
-
     now = datetime.utcnow()
     if offer.token_expires_at and now > offer.token_expires_at:
         raise HTTPException(status_code=400, detail="This offer link has expired")
 
-    offer.status = "DECLINED"
     offer.decline_reason = payload.decline_reason
+    if offer.application:
+        offer.application.disposition = "rejected"
+
     db.commit()
     db.refresh(offer)
 
-    candidate = db.query(Candidate).filter(Candidate.id == offer.candidate_id).first() if offer.candidate_id else None
-    job = db.query(Job).filter(Job.id == offer.job_id).first() if offer.job_id else None
+    app = offer.application
+    candidate = app.candidate if app else None
+    job = app.job if app else None
 
     return OfferPublicResponse(
-        secure_token=offer.secure_token or "",
-        job_title=offer.job_title,
-        department=offer.department,
-        company_name=job.company_name if (job and job.company_name) else "AI Recruiter",
-        candidate_name=candidate.full_name if candidate else "Candidate",
-        candidate_email=candidate.email if candidate else "",
+        id=offer.id,
+        application_id=offer.application_id,
         base_salary=offer.base_salary,
         bonus_equity=offer.bonus_equity,
         start_date=offer.start_date,
         expiry_date=offer.expiry_date,
         offer_letter_text=offer.offer_letter_text,
-        status=offer.status,
-        signature_type=None,
-        signature_data=None,
-        signer_name=None,
-        signed_at=None,
-        audit_hash=None,
-        is_expired=False
+        candidate_name=candidate.full_name if candidate else "Candidate",
+        candidate_email=candidate.email if candidate else "",
+        job_title=job.title if job else "Position",
+        company_name=job.company.name if (job and job.company) else "Agentra AI",
+        signed_at=offer.signed_at,
+        decline_reason=offer.decline_reason
     )

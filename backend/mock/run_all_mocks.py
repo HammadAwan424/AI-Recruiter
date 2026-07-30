@@ -1,11 +1,12 @@
 import sys
 import os
+from sqlalchemy import text
 
 # Add parent directory to sys.path so app imports work seamlessly
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from app.database import engine, Base, SessionLocal
-from app.models import user, recruitment, offer, interview
+from app.models import user, company, job, candidate, application, offer, interview
 from mock.level1_users_and_candidates import seed_users_and_candidates
 from mock.level2_jobs import seed_jobs
 from mock.level3_applications_and_slots import seed_applications_and_slots
@@ -13,11 +14,27 @@ from mock.level4_interviews import seed_interviews
 from mock.level5_offers import seed_offers
 
 def reset_database():
-    """Wipes all database tables cleanly for a fresh slate before seeding."""
-    print("🧹 Clearing database tables for a fresh mock run...")
-    Base.metadata.drop_all(bind=engine)
+    """Wipes all database tables cleanly using CASCADE before re-creating schema."""
+    print("🧹 Clearing database tables cleanly with SQL CASCADE...")
+    with engine.connect() as conn:
+        conn.execute(text("DROP TABLE IF EXISTS offer_approvals CASCADE;"))
+        conn.execute(text("DROP TABLE IF EXISTS offers CASCADE;"))
+        conn.execute(text("DROP TABLE IF EXISTS offer_templates CASCADE;"))
+        conn.execute(text("DROP TABLE IF EXISTS interview_feedback CASCADE;"))
+        conn.execute(text("DROP TABLE IF EXISTS interviews CASCADE;"))
+        conn.execute(text("DROP TABLE IF EXISTS interviews_v2 CASCADE;"))
+        conn.execute(text("DROP TABLE IF EXISTS interview_slots CASCADE;"))
+        conn.execute(text("DROP TABLE IF EXISTS final_scores CASCADE;"))
+        conn.execute(text("DROP TABLE IF EXISTS candidate_requisitions CASCADE;"))
+        conn.execute(text("DROP TABLE IF EXISTS applications CASCADE;"))
+        conn.execute(text("DROP TABLE IF EXISTS jobs CASCADE;"))
+        conn.execute(text("DROP TABLE IF EXISTS candidates CASCADE;"))
+        conn.execute(text("DROP TABLE IF EXISTS users CASCADE;"))
+        conn.execute(text("DROP TABLE IF EXISTS companies CASCADE;"))
+        conn.commit()
+
     Base.metadata.create_all(bind=engine)
-    print("  ✓ Database reset clean!")
+    print("  ✓ Database tables reset and recreated clean!")
 
 def run_all():
     print("🚀 Starting Clean 5-Level Database Mock Generation...")
@@ -29,7 +46,7 @@ def run_all():
     db = SessionLocal()
     try:
         # Level 1: Users & Candidates
-        ceo_user, hr_user, candidates = seed_users_and_candidates(db)
+        admin_user, ceo_user, hr_user, candidates = seed_users_and_candidates(db)
 
         # Level 2: Jobs (Consumes ceo_user)
         jobs = seed_jobs(db, ceo_user=ceo_user)

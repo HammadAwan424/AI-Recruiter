@@ -1,4 +1,4 @@
-from app.models.recruitment import Job
+from app.models.job import Job
 
 def seed_jobs(db, ceo_user):
     print("🔹 [Level 2] Generating Job Postings...")
@@ -31,8 +31,7 @@ def seed_jobs(db, ceo_user):
         job = db.query(Job).filter(Job.title == item["title"]).first()
         if not job:
             job = Job(
-                ceo_id=ceo_user.id,  # Read directly from named parameter
-                company_name=ceo_user.company_name,
+                company_id=ceo_user.company_id,  # Read directly from named parameter
                 title=item["title"],
                 department=item["department"],
                 employment_type=item["employment_type"],
@@ -48,5 +47,5 @@ def seed_jobs(db, ceo_user):
             db.refresh(job)
         jobs.append(job)
 
-    print(f"  ✓ Level 2 Complete: {len(jobs)} Jobs created (Linked to CEO ID: {ceo_user.id}).")
+    print(f"  ✓ Level 2 Complete: {len(jobs)} Jobs created (Linked to Company ID: {ceo_user.company_id}).")
     return jobs

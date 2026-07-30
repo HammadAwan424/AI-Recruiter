@@ -35,7 +35,7 @@ def pending_ceos(
             "id": ceo.id,
             "full_name": ceo.full_name,
             "email": ceo.email,
-            "company_name": ceo.company_name,
+            "company_name": ceo.company.name if ceo.company else "",
             "status": ceo.status
         }
         for ceo in ceos
@@ -93,7 +93,7 @@ def approved_ceos(
             "id": ceo.id,
             "full_name": ceo.full_name,
             "email": ceo.email,
-            "company_name": ceo.company_name,
+            "company_name": ceo.company.name if ceo.company else "",
             "status": ceo.status,
             "approved_at": ceo.approved_at.isoformat() if ceo.approved_at else None,
             "expires_at": ceo.expires_at.isoformat() if ceo.expires_at else None,
@@ -119,7 +119,7 @@ def inactive_ceos(
             "id": ceo.id,
             "full_name": ceo.full_name,
             "email": ceo.email,
-            "company_name": ceo.company_name,
+            "company_name": ceo.company.name if ceo.company else "",
             "status": ceo.status,
         }
         for ceo in ceos
@@ -142,7 +142,7 @@ def rejected_ceos(
             "id": ceo.id,
             "full_name": ceo.full_name,
             "email": ceo.email,
-            "company_name": ceo.company_name,
+            "company_name": ceo.company.name if ceo.company else "",
             "status": ceo.status
         }
         for ceo in ceos

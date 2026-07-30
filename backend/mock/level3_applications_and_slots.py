@@ -1,23 +1,23 @@
 from datetime import date, time, timedelta
-from app.models.recruitment import Application, FinalScore
+from app.models.application import Application
 from app.models.interview import InterviewSlot
 
 def seed_applications_and_slots(db, candidates, jobs, ceo_user):
-    print("🔹 [Level 3] Generating Candidate Applications, Final Scores & Interview Slots...")
+    print("🔹 [Level 3] Generating Candidate Applications & Interview Slots...")
 
     job_fs = jobs[0]  # Senior Full Stack Engineer
     job_ai = jobs[1]  # AI / ML Engineer
 
     # 1. Applications & Scores Definition
     app_mappings = [
-        (candidates[0], job_fs, "interview_scheduled", 94.5, "GraphQL", 92.0, 90.0, 92.5, "Strong Hire"),
-        (candidates[1], job_ai, "offer_sent", 91.0, "Kubernetes", 98.0, 95.0, 94.6, "Strong Hire"),
-        (candidates[2], job_fs, "shortlisted", 83.0, "Python Backend", 85.0, 88.0, 85.3, "Hire"),
-        (candidates[3], job_ai, "interview_completed", 96.0, "None", 94.0, 92.0, 94.0, "Strong Hire")
+        (candidates[0], job_fs, "interview", "active", 94.5, "GraphQL", "Strong fullstack fit.", 92.5),
+        (candidates[1], job_ai, "offer_sent", "active", 91.0, "Kubernetes", "Excellent ML experience.", 94.6),
+        (candidates[2], job_fs, "screening", "active", 88.0, "Python Backend", "Good backend engineer.", 85.3),
+        (candidates[3], job_ai, "offer_approval", "active", 96.0, "None", "Top AI candidate.", 94.0)
     ]
 
     applications = []
-    for cand, job, status, score, gap, tech_s, comm_s, final_s, cat in app_mappings:
+    for cand, job, curr_status, disp, score, gap, summ, final_s in app_mappings:
         app = db.query(Application).filter(
             Application.candidate_id == cand.id,
             Application.job_id == job.id
@@ -25,35 +25,19 @@ def seed_applications_and_slots(db, candidates, jobs, ceo_user):
 
         if not app:
             app = Application(
-                candidate_id=cand.id,  # Read directly from named parameter
-                job_id=job.id,          # Read directly from named parameter
-                status=status,
+                candidate_id=cand.id,
+                job_id=job.id,
+                current_status=curr_status,
+                disposition=disp,
                 match_score=score,
                 skill_gap=gap,
-                summary=f"Automated evaluation for {cand.full_name} applying to {job.title}."
+                summary=summ,
+                final_score=final_s,
+                created_by=ceo_user.id
             )
             db.add(app)
             db.commit()
             db.refresh(app)
-
-        # Seed FinalScore for ranked-candidates route
-        fs = db.query(FinalScore).filter(
-            FinalScore.candidate_id == cand.id,
-            FinalScore.job_id == job.id
-        ).first()
-
-        if not fs:
-            fs = FinalScore(
-                candidate_id=cand.id,
-                job_id=job.id,
-                resume_score=score,
-                technical_score=tech_s,
-                communication_score=comm_s,
-                final_score=final_s,
-                ranking_category=cat
-            )
-            db.add(fs)
-            db.commit()
 
         applications.append(app)
 
@@ -61,12 +45,13 @@ def seed_applications_and_slots(db, candidates, jobs, ceo_user):
     slot1 = db.query(InterviewSlot).filter(InterviewSlot.slot_date == date.today() + timedelta(days=1)).first()
     if not slot1:
         slot1 = InterviewSlot(
-            interviewer_id=ceo_user.id,  # Read directly from named parameter
+            interviewer_id=ceo_user.id,
             job_id=job_fs.id,
             slot_date=date.today() + timedelta(days=1),
             start_time=time(10, 0),
             end_time=time(11, 0),
-            is_booked=True
+            is_booked=True,
+            created_by=ceo_user.id
         )
         db.add(slot1)
 
@@ -74,15 +59,16 @@ def seed_applications_and_slots(db, candidates, jobs, ceo_user):
     if not slot2:
         slot2 = InterviewSlot(
             interviewer_id=ceo_user.id,
-            job_id=0,  # Sentinel 0 = Any job
+            job_id=job_ai.id,
             slot_date=date.today() + timedelta(days=2),
             start_time=time(14, 0),
             end_time=time(15, 0),
-            is_booked=False
+            is_booked=False,
+            created_by=ceo_user.id
         )
         db.add(slot2)
 
     db.commit()
 
-    print(f"  ✓ Level 3 Complete: {len(applications)} Applications & FinalScores, 2 Interview Slots created.")
+    print(f"  ✓ Level 3 Complete: {len(applications)} Applications & 2 Interview Slots created.")
     return applications

@@ -3,8 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from app.database import engine, SessionLocal
-from app.models import user, recruitment, offer, interview
-from app.routes import auth, admin, ceo, recruitment as recruitment_routes, offer as offer_routes, interview as interview_routes
+from app.models import user, company, job, candidate, application, offer, interview
+from app.routes import auth, admin, ceo, job as job_routes, application as application_routes, employee as employee_routes, offer as offer_routes, interview as interview_routes, ai_scoring as recruitment_routes
 from app.utils.security import hash_password
 
 app = FastAPI()
@@ -20,7 +20,10 @@ app.add_middleware(
 
 # ──── Tables create ────
 user.Base.metadata.create_all(bind=engine)
-recruitment.Base.metadata.create_all(bind=engine)
+company.Base.metadata.create_all(bind=engine)
+job.Base.metadata.create_all(bind=engine)
+candidate.Base.metadata.create_all(bind=engine)
+application.Base.metadata.create_all(bind=engine)
 offer.Base.metadata.create_all(bind=engine)
 interview.Base.metadata.create_all(bind=engine)
 
@@ -52,6 +55,9 @@ create_super_admin()
 app.include_router(auth.router)
 app.include_router(admin.router)
 app.include_router(ceo.router)
+app.include_router(job_routes.router)
+app.include_router(application_routes.router)
+app.include_router(employee_routes.router)
 app.include_router(recruitment_routes.router)
 app.include_router(offer_routes.router)
 app.include_router(interview_routes.router)

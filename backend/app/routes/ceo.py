@@ -52,13 +52,13 @@ def get_employees(
 
     ceo = db.query(User).filter(User.id == current_user["user_id"]).first()
 
-    if not ceo or not ceo.company_name:
-        raise HTTPException(status_code=404, detail="The CEO record was not found.")
+    if not ceo or not ceo.company_id:
+        raise HTTPException(status_code=404, detail="The CEO record or company was not found.")
 
-    employees = get_employees_by_company(db, ceo.company_name)
+    employees = get_employees_by_company(db, ceo.company_id)
 
     return {
-        "company": ceo.company_name,
+        "company": ceo.company.name if ceo.company else "",
         "total_employees": len(employees),
         "employees": [
             {
