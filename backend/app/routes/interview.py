@@ -23,7 +23,13 @@ from app.schemas.interview import (
     InterviewFeedbackResponse,
 )
 from app.crud.interview import create_interview, create_interview_feedback
-from app.utils.security import get_current_user
+from app.utils.security import (
+    get_current_user,
+    require_permissions,
+    scoped_interviews_query,
+    get_interview_or_403,
+    get_application_or_403
+)
 from app.utils.meeting_generator import generate_video_meeting_link
 from app.utils.ical_generator import generate_ical_event
 from app.utils.interview_crypto import generate_interview_token
@@ -140,16 +146,17 @@ def candidate_confirm_schedule(
 # ─────────────────────────────────────────────────────────────
 # 3. INTERNAL HR / EXECUTIVE INTERVIEW MANAGEMENT
 # ─────────────────────────────────────────────────────────────
-@router.post("", response_model=InterviewResponse)
+@router.post(
+    "",
+    response_model=InterviewResponse,
+    dependencies=[Depends(require_permissions(["create_interview"]))]
+)
 def schedule_interview(
     payload: InterviewCreate,
     db: Session = Depends(get_db),
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
-    app = db.query(Application).filter(Application.id == payload.application_id).first()
-    if not app:
-        raise HTTPException(status_code=404, detail="Application not found")
-
+    app = get_application_or_403(payload.application_id, db=db, current_user=current_user)
     candidate = app.candidate
     job = app.job
 
@@ -178,7 +185,7 @@ def list_interviews(
     db: Session = Depends(get_db),
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
-    interviews = db.query(InterviewModel).order_by(InterviewModel.scheduled_date.desc()).all()
+    interviews = scoped_interviews_query(db, current_user).order_by(InterviewModel.scheduled_date.desc()).all()
     results = []
 
     for item in interviews:
@@ -197,18 +204,18 @@ def list_interviews(
 # ─────────────────────────────────────────────────────────────
 # 4. INTERVIEW FEEDBACK ENDPOINT
 # ─────────────────────────────────────────────────────────────
-@router.post("/{interview_id}/feedback", response_model=InterviewFeedbackResponse)
+@router.post(
+    "/{interview_id}/feedback",
+    response_model=InterviewFeedbackResponse,
+    dependencies=[Depends(require_permissions(["take_interview"]))]
+)
 def submit_interview_feedback(
-    interview_id: int,
     payload: InterviewFeedbackCreate,
+    interview: InterviewModel = Depends(get_interview_or_403),
     db: Session = Depends(get_db),
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
-    interview = db.query(InterviewModel).filter(InterviewModel.id == interview_id).first()
-    if not interview:
-        raise HTTPException(status_code=404, detail="Interview not found")
-
-    feedback = db.query(InterviewFeedback).filter(InterviewFeedback.interview_id == interview_id).first()
+    feedback = db.query(InterviewFeedback).filter(InterviewFeedback.interview_id == interview.id).first()
     if feedback:
         feedback.technical_score = payload.technical_score
         feedback.communication_score = payload.communication_score
@@ -244,14 +251,8 @@ def submit_interview_feedback(
 # ─────────────────────────────────────────────────────────────
 @router.get("/{interview_id}", response_model=InterviewResponse)
 def get_interview_detail(
-    interview_id: int,
-    db: Session = Depends(get_db),
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    interview: InterviewModel = Depends(get_interview_or_403)
 ):
-    interview = db.query(InterviewModel).filter(InterviewModel.id == interview_id).first()
-    if not interview:
-        raise HTTPException(status_code=404, detail="Interview not found")
-
     app = interview.application
     candidate = app.candidate if app else None
     job = app.job if app else None
@@ -263,16 +264,16 @@ def get_interview_detail(
     return interview
 
 
-@router.post("/{interview_id}/self-schedule-link", response_model=InterviewResponse)
+@router.post(
+    "/{interview_id}/self-schedule-link",
+    response_model=InterviewResponse,
+    dependencies=[Depends(require_permissions(["create_interview"]))]
+)
 def create_candidate_self_schedule_link(
-    interview_id: int,
+    interview: InterviewModel = Depends(get_interview_or_403),
     db: Session = Depends(get_db),
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
-    interview = db.query(InterviewModel).filter(InterviewModel.id == interview_id).first()
-    if not interview:
-        raise HTTPException(status_code=404, detail="Interview not found")
-
     token = generate_interview_token()
     interview.self_schedule_token = token
     interview.token_expires_at = datetime.utcnow() + timedelta(days=7)
@@ -294,11 +295,9 @@ def create_candidate_self_schedule_link(
 
 
 @router.get("/{interview_id}/ical")
-def download_interview_ical(interview_id: int, db: Session = Depends(get_db)):
-    interview = db.query(InterviewModel).filter(InterviewModel.id == interview_id).first()
-    if not interview:
-        raise HTTPException(status_code=404, detail="Interview not found")
-
+def download_interview_ical(
+    interview: InterviewModel = Depends(get_interview_or_403)
+):
     app = interview.application
     candidate = app.candidate if app else None
     job = app.job if app else None
@@ -320,5 +319,5 @@ def download_interview_ical(interview_id: int, db: Session = Depends(get_db)):
     return Response(
         content=ical_data,
         media_type="text/calendar",
-        headers={"Content-Disposition": f"attachment; filename=interview_{interview_id}.ics"}
+        headers={"Content-Disposition": f"attachment; filename=interview_{interview.id}.ics"}
     )

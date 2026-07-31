@@ -4,27 +4,18 @@ from datetime import datetime, timedelta
 
 from app.database import get_db
 from app.models.user import User
-from app.utils.security import get_current_user
+from app.utils.security import require_permissions
 
 router = APIRouter(
     prefix="/admin",
-    tags=["Admin"]
+    tags=["Admin"],
+    dependencies=[Depends(require_permissions(["superadmin"]))]
 )
-
-
-# ──── Role check helper ────
-def require_admin(current_user: dict = Depends(get_current_user)):
-    if current_user["role"] != "superadmin":
-        raise HTTPException(status_code=403, detail="Only the Super Admin can perform this action.")
-    return current_user
 
 
 # Pending CEOs list
 @router.get("/pending-ceos")
-def pending_ceos(
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(require_admin)
-):
+def pending_ceos(db: Session = Depends(get_db)):
     ceos = db.query(User).filter(
         User.role == "ceo",
         User.status == "pending"
@@ -44,11 +35,7 @@ def pending_ceos(
 
 # Approve CEO
 @router.put("/approve-ceo/{ceo_id}")
-def approve_ceo(
-    ceo_id: int,
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(require_admin)
-):
+def approve_ceo(ceo_id: int, db: Session = Depends(get_db)):
     ceo = db.query(User).filter(User.id == ceo_id).first()
 
     if not ceo:
@@ -67,10 +54,7 @@ def approve_ceo(
 
 # Approved CEOs list
 @router.get("/approved-ceos")
-def approved_ceos(
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(require_admin)
-):
+def approved_ceos(db: Session = Depends(get_db)):
     ceos = db.query(User).filter(
         User.role == "ceo",
         User.status == "approved"
@@ -105,10 +89,7 @@ def approved_ceos(
 
 # Inactive CEOs list
 @router.get("/inactive-ceos")
-def inactive_ceos(
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(require_admin)
-):
+def inactive_ceos(db: Session = Depends(get_db)):
     ceos = db.query(User).filter(
         User.role == "ceo",
         User.status == "inactive"
@@ -128,10 +109,7 @@ def inactive_ceos(
 
 # Rejected CEOs list
 @router.get("/rejected-ceos")
-def rejected_ceos(
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(require_admin)
-):
+def rejected_ceos(db: Session = Depends(get_db)):
     ceos = db.query(User).filter(
         User.role == "ceo",
         User.status == "rejected"
@@ -151,11 +129,7 @@ def rejected_ceos(
 
 # CEO ko reject karo
 @router.put("/reject-ceo/{ceo_id}")
-def reject_ceo(
-    ceo_id: int,
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(require_admin)
-):
+def reject_ceo(ceo_id: int, db: Session = Depends(get_db)):
     ceo = db.query(User).filter(User.id == ceo_id).first()
     if not ceo:
         raise HTTPException(status_code=404, detail="The CEO was not found.")
@@ -166,11 +140,7 @@ def reject_ceo(
 
 # CEO manually inactive karo
 @router.put("/deactivate-ceo/{ceo_id}")
-def deactivate_ceo(
-    ceo_id: int,
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(require_admin)
-):
+def deactivate_ceo(ceo_id: int, db: Session = Depends(get_db)):
     ceo = db.query(User).filter(User.id == ceo_id).first()
     if not ceo:
         raise HTTPException(status_code=404, detail="The CEO was not found.")
@@ -181,11 +151,7 @@ def deactivate_ceo(
 
 # CEO dobara active karo
 @router.put("/activate-ceo/{ceo_id}")
-def activate_ceo(
-    ceo_id: int,
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(require_admin)
-):
+def activate_ceo(ceo_id: int, db: Session = Depends(get_db)):
     ceo = db.query(User).filter(User.id == ceo_id).first()
     if not ceo:
         raise HTTPException(status_code=404, detail="The CEO was not found.")
@@ -196,15 +162,9 @@ def activate_ceo(
     return {"message": "The CEO has been activated."}
 
 
-# ──── Yeh naya add hua ────
-
 # CEO delete karo
 @router.delete("/delete-ceo/{ceo_id}")
-def delete_ceo(
-    ceo_id: int,
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(require_admin)
-):
+def delete_ceo(ceo_id: int, db: Session = Depends(get_db)):
     ceo = db.query(User).filter(User.id == ceo_id).first()
     if not ceo:
         raise HTTPException(status_code=404, detail="The CEO was not found.")

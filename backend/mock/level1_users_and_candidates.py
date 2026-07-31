@@ -3,6 +3,8 @@ from app.models.company import Company
 from app.models.user import User
 from app.models.candidate import Candidate
 from app.utils.security import hash_password
+from app.utils.security_seeder import seed_default_roles, DEFAULT_ROLE_PERMISSIONS, DEFAULT_ROLES
+
 
 def seed_users_and_candidates(db):
     print("🔹 [Level 1] Generating Root Company, Users & Candidates...")
@@ -15,7 +17,15 @@ def seed_users_and_candidates(db):
         db.commit()
         db.refresh(company)
 
-    # 2. Users
+    # 2. Seed Default Company Roles via Security Seeder
+    seed_default_roles(
+        db,
+        company_id=company.id,
+        roles_list=DEFAULT_ROLES,
+        role_permissions_map=DEFAULT_ROLE_PERMISSIONS
+    )
+
+    # 3. Users
     admin = db.query(User).filter(User.role == "superadmin").first()
     if not admin:
         admin = User(
@@ -60,7 +70,7 @@ def seed_users_and_candidates(db):
     db.refresh(ceo)
     db.refresh(hr)
 
-    # 3. Candidates
+    # 4. Candidates
     candidate_data = [
         ("Alex Johnson", "alex.j@example.com", "+1 (555) 234-5678", "Senior Full Stack Engineer resume with React & Python."),
         ("Sophia Chen", "sophia.c@example.com", "+1 (555) 876-5432", "AI Engineer with PyTorch, NLP, and RAG expertise."),
@@ -82,5 +92,5 @@ def seed_users_and_candidates(db):
             db.refresh(cand)
         candidates.append(cand)
 
-    print(f"  ✓ Level 1 Complete: 1 Company ('{company.name}'), 3 Users (Admin, CEO, HR), {len(candidates)} Candidates created.")
+    print(f"  ✓ Level 1 Complete: 1 Company ('{company.name}'), Roles Seeded, 3 Users (Admin, CEO, HR), {len(candidates)} Candidates created.")
     return admin, ceo, hr, candidates

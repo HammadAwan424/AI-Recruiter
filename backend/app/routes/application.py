@@ -13,7 +13,12 @@ from app.models.application import Application
 from app.models.interview import InterviewModel, InterviewFeedback
 from app.crud.application import get_or_create_application, update_application_status
 from app.schemas.application import ApplicationResponse, ApplicationUpdate
-from app.utils.security import get_current_user
+from app.utils.security import (
+    get_current_user,
+    require_permissions,
+    get_job_or_403,
+    get_application_or_403
+)
 from app.utils.ws_manager import ws_manager
 from app.utils.background_workers import screen_candidate_background
 from app.agents.ranking_agent import rank_candidates
@@ -22,12 +27,6 @@ router = APIRouter(prefix="/recruitment", tags=["Applications & Candidates"])
 
 UPLOADS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "uploads", "cvs"))
 os.makedirs(UPLOADS_DIR, exist_ok=True)
-
-
-def require_ceo(current_user: dict = Depends(get_current_user)):
-    if current_user["role"] != "ceo":
-        raise HTTPException(status_code=403, detail="Sirf CEO yeh kaam kar sakta hai")
-    return current_user
 
 
 # ─────────────────────────────────────────────────────────────
@@ -107,10 +106,13 @@ def apply_for_job(
     }
 
 
-# ──── Applications list ────
+# ──── Scoped Applications list ────
 @router.get("/applications/{job_id}")
-def get_applications(job_id: int, db: Session = Depends(get_db), current_user: dict = Depends(require_ceo)):
-    applications = db.query(Application).filter(Application.job_id == job_id).all()
+def get_applications(
+    job: Job = Depends(get_job_or_403),
+    db: Session = Depends(get_db)
+):
+    applications = db.query(Application).filter(Application.job_id == job.id).all()
     result = []
     for app in applications:
         candidate = db.query(Candidate).filter(Candidate.id == app.candidate_id).first()
@@ -131,21 +133,21 @@ def get_applications(job_id: int, db: Session = Depends(get_db), current_user: d
             "summary": app.summary,
             "applied_at": app.created_at
         })
-    return {"job_id": job_id, "total": len(result), "applications": result}
+    return {"job_id": job.id, "total": len(result), "applications": result}
 
 
 @router.put("/applications/{candidate_id}/{job_id}", response_model=ApplicationResponse)
 def update_application_endpoint(
     candidate_id: int,
-    job_id: int,
     payload: ApplicationUpdate,
+    job: Job = Depends(get_job_or_403),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
     app = update_application_status(
         db,
         candidate_id=candidate_id,
-        job_id=job_id,
+        job_id=job.id,
         current_status=payload.current_status,
         disposition=payload.disposition,
         updated_by=current_user["user_id"]
@@ -155,10 +157,13 @@ def update_application_endpoint(
     return app
 
 
-# ──── Candidates list ────
+# ──── Scoped Candidates list ────
 @router.get("/candidates/{job_id}")
-def get_candidates(job_id: int, db: Session = Depends(get_db), current_user: dict = Depends(require_ceo)):
-    applications = db.query(Application).filter(Application.job_id == job_id).all()
+def get_candidates(
+    job: Job = Depends(get_job_or_403),
+    db: Session = Depends(get_db)
+):
+    applications = db.query(Application).filter(Application.job_id == job.id).all()
     result = []
     for app in applications:
         candidate = db.query(Candidate).filter(Candidate.id == app.candidate_id).first()
@@ -174,24 +179,28 @@ def get_candidates(job_id: int, db: Session = Depends(get_db), current_user: dic
                 "match_score": app.match_score,
                 "applied_at": app.created_at
             })
-    return {"job_id": job_id, "total": len(result), "candidates": result}
+    return {"job_id": job.id, "total": len(result), "candidates": result}
 
 
-# ──── View / Download Candidate CV PDF ────
+# ──── View / Download Scoped Candidate CV PDF ────
 @router.get("/cv-pdf/{application_id}")
-def get_cv_pdf(application_id: int, db: Session = Depends(get_db)):
-    app = db.query(Application).filter(Application.id == application_id).first()
-    if not app or not app.cv_pdf_path or not os.path.exists(app.cv_pdf_path):
+def get_cv_pdf(
+    app: Application = Depends(get_application_or_403)
+):
+    if not app.cv_pdf_path or not os.path.exists(app.cv_pdf_path):
         raise HTTPException(status_code=404, detail="CV PDF file not found on server")
     return FileResponse(app.cv_pdf_path, media_type="application/pdf")
 
 
 # ──── Ranked Candidates ────
 @router.get("/ranked-candidates/{job_id}")
-def get_ranked_candidates(job_id: int, db: Session = Depends(get_db), current_user: dict = Depends(require_ceo)):
-    applications = db.query(Application).filter(Application.job_id == job_id).all()
+def get_ranked_candidates(
+    job: Job = Depends(get_job_or_403),
+    db: Session = Depends(get_db)
+):
+    applications = db.query(Application).filter(Application.job_id == job.id).all()
     if not applications:
-        return {"job_id": job_id, "ranked_list": [], "best_candidate": {}}
+        return {"job_id": job.id, "ranked_list": [], "best_candidate": {}}
 
     candidates = []
     for app in applications:
@@ -221,21 +230,24 @@ def get_ranked_candidates(job_id: int, db: Session = Depends(get_db), current_us
             "evaluated_at": str(app.updated_at) if app.updated_at else "—"
         })
 
-    result = rank_candidates(job_id=job_id, candidates=candidates)
+    result = rank_candidates(job_id=job.id, candidates=candidates)
     return {
-        "job_id": job_id,
+        "job_id": job.id,
         "ranked_list": result["ranked_list"],
         "best_candidate": result["best_candidate"]
     }
 
 
 # ──── Reject Application ────
-@router.put("/reject/{application_id}")
-async def reject_application(application_id: int, db: Session = Depends(get_db), current_user: dict = Depends(require_ceo)):
-    app = db.query(Application).filter(Application.id == application_id).first()
-    if not app:
-        raise HTTPException(status_code=404, detail="Application not found")
-
+@router.put(
+    "/reject/{application_id}",
+    dependencies=[Depends(require_permissions(["disposition_candidate"]))]
+)
+async def reject_application(
+    app: Application = Depends(get_application_or_403),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
     app.disposition = "rejected"
     app.updated_by = current_user["user_id"]
     db.commit()
@@ -275,6 +287,6 @@ async def reject_application(application_id: int, db: Session = Depends(get_db),
 
     return {
         "message": "Candidate rejected and email sent!",
-        "application_id": application_id,
+        "application_id": app.id,
         "email_sent": email_sent
     }

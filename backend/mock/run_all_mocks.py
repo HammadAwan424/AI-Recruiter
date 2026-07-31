@@ -6,7 +6,7 @@ from sqlalchemy import text
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from app.database import engine, Base, SessionLocal
-from app.models import user, company, job, candidate, application, offer, interview
+from app.models import user, company, job, candidate, application, offer, interview, job_distribution, rbac
 from mock.level1_users_and_candidates import seed_users_and_candidates
 from mock.level2_jobs import seed_jobs
 from mock.level3_applications_and_slots import seed_applications_and_slots
@@ -17,6 +17,11 @@ def reset_database():
     """Wipes all database tables cleanly using CASCADE before re-creating schema."""
     print("🧹 Clearing database tables cleanly with SQL CASCADE...")
     with engine.connect() as conn:
+        conn.execute(text("DROP TABLE IF EXISTS user_job_scopes CASCADE;"))
+        conn.execute(text("DROP TABLE IF EXISTS role_permissions CASCADE;"))
+        conn.execute(text("DROP TABLE IF EXISTS roles CASCADE;"))
+        conn.execute(text("DROP TABLE IF EXISTS permissions CASCADE;"))
+        conn.execute(text("DROP TABLE IF EXISTS job_distributions CASCADE;"))
         conn.execute(text("DROP TABLE IF EXISTS offer_approvals CASCADE;"))
         conn.execute(text("DROP TABLE IF EXISTS offers CASCADE;"))
         conn.execute(text("DROP TABLE IF EXISTS offer_templates CASCADE;"))

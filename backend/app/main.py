@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from app.database import engine, SessionLocal
-from app.models import user, company, job, candidate, application, offer, interview, job_distribution
+from app.models import user, company, job, candidate, application, offer, interview, job_distribution, rbac
 from app.routes import auth, admin, ceo, job as job_routes, application as application_routes, employee as employee_routes, offer as offer_routes, interview as interview_routes, ai_scoring as recruitment_routes
 from app.utils.security import hash_password
 
@@ -27,13 +27,16 @@ application.Base.metadata.create_all(bind=engine)
 offer.Base.metadata.create_all(bind=engine)
 interview.Base.metadata.create_all(bind=engine)
 job_distribution.Base.metadata.create_all(bind=engine)
+rbac.Role.metadata.create_all(bind=engine)
+rbac.RolePermission.metadata.create_all(bind=engine)
+rbac.UserJobScope.metadata.create_all(bind=engine)
 
 
-# SUPER ADMIN CREATE FUNCTION
-def create_super_admin():
+# SUPER ADMIN INITIALIZATION FUNCTION
+def initialize_super_admin():
     db: Session = SessionLocal()
+    
     admin_user = db.query(user.User).filter(user.User.role == "superadmin").first()
-
     if not admin_user:
         new_admin = user.User(
             full_name="Super Admin",
@@ -48,8 +51,8 @@ def create_super_admin():
     db.close()
 
 
-# run function when server starts
-create_super_admin()
+# Run initialization when server starts
+initialize_super_admin()
 
 
 # ──── Routers ────
