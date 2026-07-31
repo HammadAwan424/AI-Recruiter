@@ -6,13 +6,13 @@ from datetime import datetime, timedelta
 from app.database import get_db
 from app.models.user import User
 from app.models.job import Job
-from app.models.rbac import Role, RolePermission, UserJobScope
+from app.models.application import Application
+from app.models.rbac import Role, RolePermission
 from app.schemas.user import (
     EmployeeCreate,
     UserCreateByCEO,
     UserRoleUpdate,
-    RolePermissionUpdate,
-    UserJobScopeUpdate
+    RolePermissionUpdate
 )
 from app.crud.user import create_employee, get_employees_by_company
 from app.utils.security import (
@@ -118,7 +118,6 @@ def update_user_role(
 ):
     company_id = current_user.get("company_id")
 
-    # Scoped Check: Target user must belong to current executive's company
     user = db.query(User).filter(User.id == user_id, User.company_id == company_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found in your company")
@@ -139,87 +138,7 @@ def update_user_role(
 
 
 # ─────────────────────────────────────────────────────────────
-# 2. USER JOB SCOPE ASSIGNMENT (COMPANY SCOPED)
-# ─────────────────────────────────────────────────────────────
-@router.post(
-    "/users/{user_id}/job-scopes",
-    dependencies=[Depends(require_permissions(["change_permissions"]))]
-)
-def assign_user_job_scopes(
-    user_id: int,
-    payload: UserJobScopeUpdate,
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
-):
-    company_id = current_user.get("company_id")
-
-    # Scoped Check: Target user must belong to current executive's company
-    user = db.query(User).filter(User.id == user_id, User.company_id == company_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found in your company")
-
-    # Scoped Check: Verify all target job_ids belong to current executive's company
-    valid_jobs = db.query(Job.id).filter(Job.id.in_(payload.job_ids), Job.company_id == company_id).all()
-    valid_job_ids = {j[0] for j in valid_jobs}
-
-    invalid_ids = [jid for jid in payload.job_ids if jid not in valid_job_ids]
-    if invalid_ids:
-        raise HTTPException(status_code=400, detail=f"Job IDs {invalid_ids} do not belong to your company")
-
-    # Replace user job scopes
-    db.query(UserJobScope).filter(UserJobScope.user_id == user_id).delete(synchronize_session=False)
-
-    for job_id in payload.job_ids:
-        scope = UserJobScope(
-            user_id=user_id,
-            job_id=job_id,
-            created_by=current_user["user_id"]
-        )
-        db.add(scope)
-
-    db.commit()
-
-    return {
-        "message": "User job scopes updated successfully!",
-        "user_id": user_id,
-        "assigned_job_ids": payload.job_ids
-    }
-
-
-@router.get("/users/{user_id}/job-scopes")
-def get_user_job_scopes(
-    user_id: int,
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
-):
-    company_id = current_user.get("company_id")
-
-    # Scoped Check: Target user must belong to current executive's company
-    user = db.query(User).filter(User.id == user_id, User.company_id == company_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found in your company")
-
-    scopes = db.query(UserJobScope).filter(UserJobScope.user_id == user_id).all()
-    job_ids = [s.job_id for s in scopes]
-
-    jobs = db.query(Job).filter(Job.id.in_(job_ids)).all() if job_ids else []
-
-    return {
-        "user_id": user_id,
-        "job_scopes": [
-            {
-                "job_id": j.id,
-                "title": j.title,
-                "department": j.department,
-                "status": j.status
-            }
-            for j in jobs
-        ]
-    }
-
-
-# ─────────────────────────────────────────────────────────────
-# 3. ROLE PERMISSION MANAGEMENT (COMPANY SCOPED)
+# 2. ROLE PERMISSION MANAGEMENT (COMPANY SCOPED)
 # ─────────────────────────────────────────────────────────────
 @router.get(
     "/roles",
@@ -266,7 +185,6 @@ def update_role_permissions(
 ):
     company_id = current_user.get("company_id")
 
-    # Scoped Check: Role must belong to current executive's company (or company_id is matching)
     role = db.query(Role).filter(Role.id == role_id).first()
     if not role:
         raise HTTPException(status_code=404, detail="Role not found")
@@ -277,7 +195,6 @@ def update_role_permissions(
     if role.company_id and role.company_id != company_id:
         raise HTTPException(status_code=403, detail="Access denied: role belongs to another company")
 
-    # Clear old permissions and assign new keys
     db.query(RolePermission).filter(RolePermission.role_id == role_id).delete(synchronize_session=False)
 
     for perm_key in payload.permission_keys:
@@ -298,7 +215,7 @@ def update_role_permissions(
 
 
 # ─────────────────────────────────────────────────────────────
-# 4. EXECUTIVE PROFILE MANAGEMENT
+# 3. EXECUTIVE PROFILE MANAGEMENT
 # ─────────────────────────────────────────────────────────────
 @router.get("/profile")
 def get_profile(
@@ -336,4 +253,59 @@ def update_profile(
         "message": "The profile has been updated successfully.",
         "full_name": ceo.full_name,
         "company_name": ceo.company.name if ceo.company else "",
+    }
+
+
+# ─────────────────────────────────────────────────────────────
+# 4. EXECUTIVE DASHBOARD STATS
+# ─────────────────────────────────────────────────────────────
+@router.get("/dashboard-stats")
+def get_dashboard_stats(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_ceo)
+):
+    company_id = current_user.get("company_id")
+    jobs = db.query(Job).filter(Job.company_id == company_id).all() if company_id else []
+    job_ids = [j.id for j in jobs]
+
+    total_jobs = len(jobs)
+
+    total_applied = db.query(Application).filter(
+        Application.job_id.in_(job_ids),
+        Application.current_status == "applied"
+    ).count() if job_ids else 0
+
+    total_screening = db.query(Application).filter(
+        Application.job_id.in_(job_ids),
+        Application.current_status == "screening"
+    ).count() if job_ids else 0
+
+    total_interviews = db.query(Application).filter(
+        Application.job_id.in_(job_ids),
+        Application.current_status == "interview"
+    ).count() if job_ids else 0
+
+    total_offer = db.query(Application).filter(
+        Application.job_id.in_(job_ids),
+        Application.current_status.in_(["offer_approval", "offer_sent"])
+    ).count() if job_ids else 0
+
+    total_hired = db.query(Application).filter(
+        Application.job_id.in_(job_ids),
+        Application.current_status == "hired"
+    ).count() if job_ids else 0
+
+    dept_list = list(set([j.department for j in jobs if j.department]))
+
+    return {
+        "total_employees": total_hired,
+        "total_departments": len(dept_list),
+        "active_openings": total_jobs,
+        "pipeline": {
+            "applied": total_applied,
+            "screening": total_screening,
+            "interviews": total_interviews,
+            "offer": total_offer,
+            "hired": total_hired
+        }
     }

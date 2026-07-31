@@ -42,23 +42,3 @@ class RolePermissionResponse(RolePermissionBase):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
-
-
-# ──── UserJobScope Schemas ────
-class UserJobScopeBase(BaseModel):
-    user_id: int
-    job_id: int
-
-
-class UserJobScopeCreate(UserJobScopeBase):
-    pass
-
-
-class UserJobScopeResponse(UserJobScopeBase):
-    id: int
-    created_by: Optional[int] = None
-    updated_by: Optional[int] = None
-    created_at: datetime
-    updated_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)

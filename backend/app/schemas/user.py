@@ -46,8 +46,3 @@ class UserRoleUpdate(BaseModel):
 # Role Permission Update Schema
 class RolePermissionUpdate(BaseModel):
     permission_keys: List[str]
-
-
-# User Job Scope Update Schema
-class UserJobScopeUpdate(BaseModel):
-    job_ids: List[int]
