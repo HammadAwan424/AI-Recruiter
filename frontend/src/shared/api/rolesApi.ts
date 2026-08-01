@@ -4,7 +4,7 @@ import { RolesListResponse, RolePermissionUpdatePayload, Role } from "../types/r
 export const rolesApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getCompanyRoles: builder.query<RolesListResponse, void>({
-      query: () => "/ceo/roles",
+      query: () => "/users/roles",
       providesTags: ["Roles"],
     }),
     updateRolePermissions: builder.mutation<
@@ -12,7 +12,7 @@ export const rolesApi = baseApi.injectEndpoints({
       { roleId: number; payload: RolePermissionUpdatePayload }
     >({
       query: ({ roleId, payload }) => ({
-        url: `/ceo/roles/${roleId}/permissions`,
+        url: `/users/roles/${roleId}/permissions`,
         method: "PUT",
         body: payload,
       }),

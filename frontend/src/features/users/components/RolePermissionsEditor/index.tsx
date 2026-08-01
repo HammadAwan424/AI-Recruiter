@@ -23,14 +23,26 @@ interface RolePermissionsEditorProps {
 }
 
 const ALL_PERMISSION_KEYS: { key: PermissionKey; description: string }[] = [
-  { key: "change_permissions", description: "Manage Team Roles & Permissions" },
-  { key: "view_compensation", description: "View Salary & Compensation Data" },
-  { key: "disposition_candidate", description: "Reject Candidates / Applications" },
-  { key: "create_requisition", description: "Create & Delete Job Postings" },
-  { key: "approve_requisition", description: "Approve & Dispatch Offer Letters (CEO)" },
-  { key: "create_offer", description: "Create & Edit Offer Templates" },
-  { key: "create_interview", description: "Schedule & Assign Interviews" },
-  { key: "take_interview", description: "Conduct Interviews & Submit Scorecards" },
+  { key: "user:change_permissions", description: "Manage Team Roles & Permissions" },
+  { key: "user:invite", description: "Invite Team Users" },
+  { key: "user:deactivate", description: "Deactivate User Accounts" },
+  { key: "user:view", description: "View Team Users & Roles" },
+  { key: "job:create", description: "Create & Delete Job Requisitions" },
+  { key: "job:approve", description: "Approve Job Postings" },
+  { key: "job:close", description: "Close Job Positions" },
+  { key: "job:assign_recruiter", description: "Assign Recruiters & Hiring Managers to Job Scope" },
+  { key: "job:view", description: "View Job Positions" },
+  { key: "candidate:view_compensation", description: "View Candidate Compensation & Salary Data" },
+  { key: "candidate:disposition", description: "Reject Candidates / Applications" },
+  { key: "candidate:view", description: "View Candidate Applications" },
+  { key: "interview:create", description: "Schedule Interviews" },
+  { key: "interview:assign", description: "Assign Interviewers to Interview Rounds" },
+  { key: "interview:submit_feedback", description: "Conduct Interviews & Submit Scorecards" },
+  { key: "interview:reschedule", description: "Reschedule Interviews" },
+  { key: "offer:generate", description: "Generate & Send Offer Letters" },
+  { key: "offer:approve", description: "Approve Candidate Offer Letters" },
+  { key: "offer:view", description: "View Offer Details" },
+  { key: "profile:update", description: "Update Profile Info & Password" },
 ];
 
 export const RolePermissionsEditor: React.FC<RolePermissionsEditorProps> = ({

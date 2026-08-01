@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List, Dict, Any
-from datetime import datetime, timedelta
+from typing import List, Dict, Any, Optional
 
 from app.database import get_db
 from app.models.user import User
@@ -9,12 +8,10 @@ from app.models.job import Job
 from app.models.application import Application
 from app.models.rbac import Role, RolePermission
 from app.schemas.user import (
-    EmployeeCreate,
     UserCreateByCEO,
     UserRoleUpdate,
     RolePermissionUpdate
 )
-from app.crud.user import create_employee, get_employees_by_company
 from app.utils.security import (
     get_current_user,
     require_permissions,
@@ -22,23 +19,17 @@ from app.utils.security import (
 )
 
 router = APIRouter(
-    prefix="/ceo",
-    tags=["CEO & User Management"]
+    prefix="/users",
+    tags=["Users & Permissions"]
 )
 
 
-def require_ceo(current_user: dict = Depends(get_current_user)):
-    if current_user["role"] != "ceo":
-        raise HTTPException(status_code=403, detail="Only the CEO can perform this action.")
-    return current_user
-
-
 # ─────────────────────────────────────────────────────────────
-# 1. COMPANY USER MANAGEMENT (COMPANY SCOPED)
+# 1. COMPANY USER MANAGEMENT (COMPANY SCOPED WITH ROLE FILTERING)
 # ─────────────────────────────────────────────────────────────
 @router.post(
-    "/users",
-    dependencies=[Depends(require_permissions(["change_permissions"]))]
+    "",
+    dependencies=[Depends(require_permissions(["user:change_permissions"]))]
 )
 def create_company_user(
     data: UserCreateByCEO,
@@ -47,7 +38,7 @@ def create_company_user(
 ):
     company_id = current_user.get("company_id")
     if not company_id:
-        raise HTTPException(status_code=400, detail="Executive account has no associated company")
+        raise HTTPException(status_code=400, detail="Account has no associated company")
 
     existing_user = db.query(User).filter(User.email == data.email).first()
     if existing_user:
@@ -77,16 +68,23 @@ def create_company_user(
     }
 
 
-@router.get("/users")
+@router.get("", 
+    dependencies=[Depends(require_permissions(["user:view"]))]
+)
 def get_company_users(
+    role: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     company_id = current_user.get("company_id")
     if not company_id:
-        raise HTTPException(status_code=400, detail="Executive account has no associated company")
+        raise HTTPException(status_code=400, detail="Account has no associated company")
 
-    users = db.query(User).filter(User.company_id == company_id).all()
+    query = db.query(User).filter(User.company_id == company_id)
+    if role:
+        query = query.filter(User.role == role)
+
+    users = query.all()
     return {
         "company_id": company_id,
         "total_users": len(users),
@@ -107,8 +105,8 @@ def get_company_users(
 
 
 @router.put(
-    "/users/{user_id}/role",
-    dependencies=[Depends(require_permissions(["change_permissions"]))]
+    "/{user_id}/role",
+    dependencies=[Depends(require_permissions(["user:change_permissions"]))]
 )
 def update_user_role(
     user_id: int,
@@ -142,7 +140,7 @@ def update_user_role(
 # ─────────────────────────────────────────────────────────────
 @router.get(
     "/roles",
-    dependencies=[Depends(require_permissions(["change_permissions"]))]
+    dependencies=[Depends(require_permissions(["user:view"]))]
 )
 def get_company_roles(
     db: Session = Depends(get_db),
@@ -175,7 +173,7 @@ def get_company_roles(
 
 @router.put(
     "/roles/{role_id}/permissions",
-    dependencies=[Depends(require_permissions(["change_permissions"]))]
+    dependencies=[Depends(require_permissions(["user:change_permissions"]))]
 )
 def update_role_permissions(
     role_id: int,
@@ -215,97 +213,49 @@ def update_role_permissions(
 
 
 # ─────────────────────────────────────────────────────────────
-# 3. EXECUTIVE PROFILE MANAGEMENT
+# 3. USER PROFILE MANAGEMENT (REQUIRES profile_update PERMISSION FOR UPDATE)
 # ─────────────────────────────────────────────────────────────
 @router.get("/profile")
 def get_profile(
     db: Session = Depends(get_db),
-    current_user: dict = Depends(require_ceo)
+    current_user: dict = Depends(get_current_user)
 ):
-    ceo = db.query(User).filter(User.id == current_user["user_id"]).first()
-    if not ceo:
-        raise HTTPException(status_code=404, detail="The CEO was not found.")
+    user = db.query(User).filter(User.id == current_user["user_id"]).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User profile not found.")
     return {
-        "full_name": ceo.full_name,
-        "email": ceo.email,
-        "company_name": ceo.company.name if ceo.company else "",
+        "user_id": user.id,
+        "full_name": user.full_name,
+        "email": user.email,
+        "role": user.role,
+        "department": user.department,
+        "company_name": user.company.name if user.company else "",
     }
 
 
-@router.put("/profile")
+@router.put(
+    "/profile",
+    dependencies=[Depends(require_permissions(["profile:update"]))]
+)
 def update_profile(
     data: dict,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(require_ceo)
+    current_user: dict = Depends(get_current_user)
 ):
-    ceo = db.query(User).filter(User.id == current_user["user_id"]).first()
-    if not ceo:
-        raise HTTPException(status_code=404, detail="The CEO was not found.")
+    user = db.query(User).filter(User.id == current_user["user_id"]).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User account not found.")
 
     if "full_name" in data and data["full_name"]:
-        ceo.full_name = data["full_name"]
+        user.full_name = data["full_name"]
     if "password" in data and data["password"]:
-        ceo.password = hash_password(data["password"])
+        user.password = hash_password(data["password"])
 
     db.commit()
 
     return {
-        "message": "The profile has been updated successfully.",
-        "full_name": ceo.full_name,
-        "company_name": ceo.company.name if ceo.company else "",
-    }
-
-
-# ─────────────────────────────────────────────────────────────
-# 4. EXECUTIVE DASHBOARD STATS
-# ─────────────────────────────────────────────────────────────
-@router.get("/dashboard-stats")
-def get_dashboard_stats(
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(require_ceo)
-):
-    company_id = current_user.get("company_id")
-    jobs = db.query(Job).filter(Job.company_id == company_id).all() if company_id else []
-    job_ids = [j.id for j in jobs]
-
-    total_jobs = len(jobs)
-
-    total_applied = db.query(Application).filter(
-        Application.job_id.in_(job_ids),
-        Application.current_status == "applied"
-    ).count() if job_ids else 0
-
-    total_screening = db.query(Application).filter(
-        Application.job_id.in_(job_ids),
-        Application.current_status == "screening"
-    ).count() if job_ids else 0
-
-    total_interviews = db.query(Application).filter(
-        Application.job_id.in_(job_ids),
-        Application.current_status == "interview"
-    ).count() if job_ids else 0
-
-    total_offer = db.query(Application).filter(
-        Application.job_id.in_(job_ids),
-        Application.current_status.in_(["offer_approval", "offer_sent"])
-    ).count() if job_ids else 0
-
-    total_hired = db.query(Application).filter(
-        Application.job_id.in_(job_ids),
-        Application.current_status == "hired"
-    ).count() if job_ids else 0
-
-    dept_list = list(set([j.department for j in jobs if j.department]))
-
-    return {
-        "total_employees": total_hired,
-        "total_departments": len(dept_list),
-        "active_openings": total_jobs,
-        "pipeline": {
-            "applied": total_applied,
-            "screening": total_screening,
-            "interviews": total_interviews,
-            "offer": total_offer,
-            "hired": total_hired
-        }
+        "message": "Profile updated successfully.",
+        "full_name": user.full_name,
+        "email": user.email,
+        "company_name": user.company.name if user.company else "",
     }

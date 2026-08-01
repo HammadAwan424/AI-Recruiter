@@ -17,41 +17,39 @@ const PermissionContext = createContext<PermissionContextType | null>(null);
 
 const ROLE_PERMISSIONS_FALLBACK: Record<UserRole, PermissionKey[]> = {
   ceo: [
-    "change_permissions",
-    "view_compensation",
-    "disposition_candidate",
-    "create_requisition",
-    "approve_requisition",
-    "create_offer",
-    "create_interview",
-    "take_interview",
+    "user:change_permissions", "user:invite", "user:deactivate", "user:view",
+    "job:create", "job:approve", "job:close", "job:assign_recruiter", "job:view",
+    "candidate:view_compensation", "candidate:disposition", "candidate:view",
+    "interview:create", "interview:assign", "interview:submit_feedback", "interview:reschedule",
+    "offer:generate", "offer:approve", "offer:view", "profile:update"
   ],
   hr_manager: [
-    "change_permissions",
-    "view_compensation",
-    "disposition_candidate",
-    "create_requisition",
-    "create_offer",
-    "create_interview",
-    "take_interview",
+    "user:change_permissions", "user:invite", "user:deactivate", "user:view",
+    "job:create", "job:close", "job:assign_recruiter", "job:view",
+    "candidate:view_compensation", "candidate:disposition", "candidate:view",
+    "interview:create", "interview:assign", "interview:submit_feedback", "interview:reschedule",
+    "offer:generate", "offer:view", "profile:update"
   ],
   recruiter: [
-    "view_compensation",
-    "disposition_candidate",
-    "create_requisition",
-    "create_offer",
-    "create_interview",
-    "take_interview",
+    "job:create", "job:close", "job:assign_recruiter", "job:view",
+    "candidate:view_compensation", "candidate:disposition", "candidate:view",
+    "interview:create", "interview:assign", "interview:submit_feedback", "interview:reschedule",
+    "offer:generate", "offer:view", "profile:update"
   ],
   hiring_manager: [
-    "disposition_candidate",
-    "create_offer",
-    "create_interview",
-    "take_interview",
+    "job:view",
+    "candidate:disposition", "candidate:view",
+    "interview:create", "interview:assign", "interview:submit_feedback", "interview:reschedule",
+    "offer:generate", "offer:approve", "offer:view", "profile:update"
   ],
-  interviewer: ["take_interview"],
+  interviewer: [
+    "job:view",
+    "candidate:view",
+    "interview:submit_feedback",
+    "profile:update"
+  ],
   employee: [],
-  superadmin: [],
+  superadmin: ["*"],
 };
 
 interface PermissionProviderProps {
@@ -87,23 +85,28 @@ export const PermissionProvider: React.FC<PermissionProviderProps> = ({ children
 
   const hasPermission = useCallback(
     (key: PermissionKey): boolean => {
-      return permissions.includes(key);
+      if (permissions.includes("*") || permissions.includes(key)) return true;
+      if (key.includes(":")) {
+        const domain = key.split(":")[0];
+        if (permissions.includes(`${domain}:*` as PermissionKey)) return true;
+      }
+      return false;
     },
     [permissions]
   );
 
   const hasAnyPermission = useCallback(
     (keys: PermissionKey[] = []): boolean => {
-      return keys.some((k) => permissions.includes(k));
+      return keys.some((k) => hasPermission(k));
     },
-    [permissions]
+    [hasPermission]
   );
 
   const hasAllPermissions = useCallback(
     (keys: PermissionKey[] = []): boolean => {
-      return keys.every((k) => permissions.includes(k));
+      return keys.every((k) => hasPermission(k));
     },
-    [permissions]
+    [hasPermission]
   );
 
   const value: PermissionContextType = {

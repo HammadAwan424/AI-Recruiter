@@ -1,6 +1,7 @@
 from pydantic import BaseModel, ConfigDict
 from datetime import date, time, datetime
 from typing import Optional, List
+from app.schemas.user import UserResponse
 
 
 class InterviewSlotCreate(BaseModel):
@@ -42,8 +43,7 @@ class InterviewRescheduleRequest(BaseModel):
 
 class InterviewCreate(BaseModel):
     application_id: int
-    interviewer_1_id: int
-    interviewer_2_id: Optional[int] = None
+    interviewer_ids: Optional[List[int]] = []
     scheduled_date: date
     scheduled_time: time
     duration_minutes: Optional[int] = 45
@@ -64,8 +64,6 @@ class InterviewUpdate(BaseModel):
 class InterviewResponse(BaseModel):
     id: int
     application_id: int
-    interviewer_1_id: int
-    interviewer_2_id: Optional[int] = None
     scheduled_date: date
     scheduled_time: time
     duration_minutes: int
@@ -87,18 +85,11 @@ class InterviewResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class InterviewFeedbackCreate(BaseModel):
-    interview_id: int
-    interviewer_id: int
-    technical_score: float
-    communication_score: float
-    notes: Optional[str] = None
-
-
 class InterviewFeedbackResponse(BaseModel):
     id: int
-    interview_id: int
-    interviewer_id: int
+    interview_interviewer_id: int
+    interview_id: Optional[int] = None
+    interviewer_id: Optional[int] = None
     technical_score: float
     communication_score: float
     notes: Optional[str] = None
@@ -108,3 +99,20 @@ class InterviewFeedbackResponse(BaseModel):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class InterviewDetail(InterviewResponse):
+    class _InterviewerAssignment(BaseModel):
+        model_config = ConfigDict(from_attributes=True)
+        interviewer_id: int
+        interviewer: UserResponse
+        feedback: Optional[InterviewFeedbackResponse] = None
+    interviewer_assignments: List[_InterviewerAssignment] = []
+
+
+class InterviewFeedbackCreate(BaseModel):
+    interview_id: int
+    interviewer_id: int
+    technical_score: float
+    communication_score: float
+    notes: Optional[str] = None

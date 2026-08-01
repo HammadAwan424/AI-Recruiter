@@ -1,4 +1,5 @@
 import { PermissionKey } from "./role.types";
+import { JobPost } from "./job.types";
 
 export type UserRole =
   | "superadmin"
@@ -19,6 +20,11 @@ export interface CompanyUser {
   status: "active" | "inactive" | "fired" | string;
   joining_date?: string;
   permissions?: PermissionKey[];
+}
+
+export interface UserDetail extends CompanyUser {
+  permissions: PermissionKey[];
+  assigned_jobs: JobPost[];
 }
 
 export interface CompanyUsersResponse {

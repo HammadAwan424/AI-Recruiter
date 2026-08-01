@@ -26,6 +26,7 @@ def reset_database():
         conn.execute(text("DROP TABLE IF EXISTS offers CASCADE;"))
         conn.execute(text("DROP TABLE IF EXISTS offer_templates CASCADE;"))
         conn.execute(text("DROP TABLE IF EXISTS interview_feedback CASCADE;"))
+        conn.execute(text("DROP TABLE IF EXISTS interview_interviewers CASCADE;"))
         conn.execute(text("DROP TABLE IF EXISTS interviews CASCADE;"))
         conn.execute(text("DROP TABLE IF EXISTS interviews_v2 CASCADE;"))
         conn.execute(text("DROP TABLE IF EXISTS interview_slots CASCADE;"))
@@ -51,19 +52,19 @@ def run_all():
     db = SessionLocal()
     try:
         # Level 1: Users & Candidates
-        admin_user, ceo_user, hr_user, candidates = seed_users_and_candidates(db)
+        users_context = seed_users_and_candidates(db)
 
-        # Level 2: Jobs (Consumes ceo_user)
-        jobs = seed_jobs(db, ceo_user=ceo_user)
+        # Level 2: Jobs & UserJobScopes
+        jobs = seed_jobs(db, users_context=users_context)
 
-        # Level 3: Applications & Slots (Consumes candidates, jobs, and ceo_user)
-        applications = seed_applications_and_slots(db, candidates=candidates, jobs=jobs, ceo_user=ceo_user)
+        # Level 3: Applications across ALL stages & Slots
+        applications = seed_applications_and_slots(db, users_context=users_context, jobs=jobs)
 
-        # Level 4: Interviews (Consumes applications, ceo_user, and hr_user)
-        interviews = seed_interviews(db, applications=applications, ceo_user=ceo_user, hr_user=hr_user)
+        # Level 4: Interviews & Multi-Interviewer Feedback
+        interviews = seed_interviews(db, users_context=users_context, applications=applications)
 
-        # Level 5: Offers & Approvals (Consumes applications, jobs, and ceo_user)
-        offers = seed_offers(db, applications=applications, jobs=jobs, ceo_user=ceo_user)
+        # Level 5: Offers & Approvals
+        offers = seed_offers(db, users_context=users_context, applications=applications, jobs=jobs)
 
         print("\n✨ Success! Database wiped and all 5 levels generated cleanly!")
 

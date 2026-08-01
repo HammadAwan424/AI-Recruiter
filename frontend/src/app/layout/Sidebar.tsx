@@ -1,7 +1,6 @@
 import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
-  FaTachometerAlt,
   FaBriefcase,
   FaCalendarCheck,
   FaFileContract,
@@ -24,12 +23,11 @@ interface SidebarProps {
 }
 
 export const NAV_ITEMS: NavItemConfig[] = [
-  { name: "Dashboard", path: "/ceo/dashboard", icon: <FaTachometerAlt size={20} /> },
-  { name: "Team & Permissions", path: "/ceo/users", icon: <FaUserShield size={20} />, permission: "change_permissions" },
-  { name: "Job Requisitions", path: "/jobs", icon: <FaBriefcase size={20} />, permission: "create_requisition" },
-  { name: "Candidate Pipeline", path: "/candidates", icon: <MdTouchIcon size={20} />, permission: "disposition_candidate" },
-  { name: "Interviews", path: "/interviews", icon: <FaCalendarCheck size={20} />, permission: "create_interview" },
-  { name: "Offer Letters", path: "/offers", icon: <FaFileContract size={20} />, permission: "create_offer" },
+  { name: "Team & Permissions", path: "/users", icon: <FaUserShield size={20} />, permission: "user:change_permissions" },
+  { name: "Job Requisitions", path: "/jobs", icon: <FaBriefcase size={20} />, permission: "job:create" },
+  { name: "Candidate Pipeline", path: "/candidates", icon: <MdTouchIcon size={20} />, permission: "candidate:disposition" },
+  { name: "Interviews", path: "/interviews", icon: <FaCalendarCheck size={20} />, permission: "interview:create" },
+  { name: "Offer Letters", path: "/offers", icon: <FaFileContract size={20} />, permission: "offer:generate" },
   { name: "Settings", path: "/settings", icon: <LuSettingsIcon size={20} /> },
 ];
 

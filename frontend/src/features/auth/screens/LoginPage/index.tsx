@@ -35,11 +35,9 @@ export const LoginPage: React.FC = () => {
       const res = await loginUser({ email: email.trim(), password });
       
       if (res.role === "superadmin") {
-        navigate("/admin/dashboard");
-      } else if (res.role === "ceo") {
-        navigate("/ceo/dashboard");
+        navigate("/admin/companies");
       } else {
-        navigate("/employee/dashboard");
+        navigate("/jobs");
       }
     } catch (err: any) {
       setErrorMsg(err?.data?.detail || "Invalid credentials. Please try again.");

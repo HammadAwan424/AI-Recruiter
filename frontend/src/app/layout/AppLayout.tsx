@@ -24,7 +24,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     .toUpperCase();
 
   const currentNavItem = NAV_ITEMS.find((item) => item.path === location.pathname);
-  const activeTitle = currentNavItem ? currentNavItem.name : "Dashboard";
+  const activeTitle = currentNavItem ? currentNavItem.name : "Job Requisitions";
 
   const handleLogout = () => {
     localStorage.removeItem("token");

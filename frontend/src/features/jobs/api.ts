@@ -1,23 +1,38 @@
 import { baseApi } from "../../shared/api/baseApi";
-import { JobPost, JobCreatePayload, JobsListResponse } from "../../shared/types/job.types";
+import { JobPost, JobDetail, JobCreatePayload, JobsListResponse } from "../../shared/types/job.types";
 
 export const jobsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getJobs: builder.query<JobsListResponse, void>({
-      query: () => "/recruitment/jobs",
+      query: () => "/jobs",
       providesTags: ["Jobs"],
+    }),
+    getJobDetail: builder.query<JobDetail, number>({
+      query: (jobId) => `/jobs/${jobId}`,
+      providesTags: (_result, _error, jobId) => [{ type: "Jobs", id: jobId }],
     }),
     createJob: builder.mutation<JobPost, JobCreatePayload>({
       query: (payload) => ({
-        url: "/recruitment/jobs/create",
+        url: "/jobs",
         method: "POST",
         body: payload,
       }),
       invalidatesTags: ["Jobs"],
     }),
+    assignUserToJob: builder.mutation<
+      { message: string; job_id: number; user_id: number },
+      { jobId: number; userId: number }
+    >({
+      query: ({ jobId, userId }) => ({
+        url: `/jobs/${jobId}/assign`,
+        method: "POST",
+        body: { user_id: userId },
+      }),
+      invalidatesTags: (_result, _error, { jobId }) => ["Jobs", { type: "Jobs", id: jobId }],
+    }),
     deleteJob: builder.mutation<{ message: string }, number>({
       query: (id) => ({
-        url: `/recruitment/jobs/${id}`,
+        url: `/jobs/${id}`,
         method: "DELETE",
       }),
       invalidatesTags: ["Jobs"],
@@ -25,4 +40,11 @@ export const jobsApi = baseApi.injectEndpoints({
   }),
 });
 
-export const { useGetJobsQuery, useCreateJobMutation, useDeleteJobMutation } = jobsApi;
+export const {
+  useGetJobsQuery,
+  useGetJobDetailQuery,
+  useLazyGetJobDetailQuery,
+  useCreateJobMutation,
+  useAssignUserToJobMutation,
+  useDeleteJobMutation,
+} = jobsApi;

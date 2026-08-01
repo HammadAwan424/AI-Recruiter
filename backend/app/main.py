@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.database import engine, SessionLocal
 from app.models import user, company, job, candidate, application, offer, interview, job_distribution, rbac
-from app.routes import auth, admin, ceo, job as job_routes, application as application_routes, offer as offer_routes, interview as interview_routes, ai_scoring as recruitment_routes
+from app.routes import auth, admin, user as user_routes, job as job_routes, application as application_routes, offer as offer_routes, interview as interview_routes
 from app.utils.security import hash_password
 
 app = FastAPI()
@@ -29,6 +29,7 @@ interview.Base.metadata.create_all(bind=engine)
 job_distribution.Base.metadata.create_all(bind=engine)
 rbac.Role.metadata.create_all(bind=engine)
 rbac.RolePermission.metadata.create_all(bind=engine)
+rbac.UserJobScope.metadata.create_all(bind=engine)
 
 
 # SUPER ADMIN INITIALIZATION FUNCTION
@@ -57,10 +58,9 @@ initialize_super_admin()
 # ──── Routers ────
 app.include_router(auth.router)
 app.include_router(admin.router)
-app.include_router(ceo.router)
+app.include_router(user_routes.router)
 app.include_router(job_routes.router)
 app.include_router(application_routes.router)
-app.include_router(recruitment_routes.router)
 app.include_router(offer_routes.router)
 app.include_router(interview_routes.router)
 

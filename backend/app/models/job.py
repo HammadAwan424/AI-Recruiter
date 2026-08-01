@@ -1,7 +1,8 @@
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Any
 from sqlalchemy import String, Text, ForeignKey, DateTime
 from sqlalchemy.orm import relationship, Mapped, mapped_column
+from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 from sqlalchemy.sql import func
 from app.database import Base, BaseModelMixin
 
@@ -45,3 +46,12 @@ class Job(Base, BaseModelMixin):
     creator = relationship("User", foreign_keys=[created_by])
     updater = relationship("User", foreign_keys=[updated_by])
     applications = relationship("Application", back_populates="job", cascade="all, delete-orphan")
+    job_scopes = relationship(
+        "UserJobScope",
+        back_populates="job",
+        foreign_keys="UserJobScope.job_id",
+        cascade="all, delete-orphan"
+    )
+
+    # Association Proxy: Access assigned User ORM instances directly
+    assigned_users: AssociationProxy[List[Any]] = association_proxy("job_scopes", "user")

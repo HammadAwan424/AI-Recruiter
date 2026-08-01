@@ -78,7 +78,7 @@ def create_offer_template(
 @router.post(
     "",
     response_model=OfferResponse,
-    dependencies=[Depends(require_permissions(["create_offer"]))]
+    dependencies=[Depends(require_permissions(["offer:generate"]))]
 )
 def create_offer_endpoint(
     payload: OfferCreate,
@@ -104,16 +104,20 @@ def create_offer_endpoint(
     return offer
 
 
-@router.get("", response_model=List[OfferResponse])
+@router.get("", response_model=List[OfferResponse],
+    dependencies=[Depends(require_permissions(["offer:view"]))]
+)
 def list_offers(
     db: Session = Depends(get_db),
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(get_current_user),
 ):
     offers = scoped_offers_query(db, current_user).order_by(Offer.created_at.desc()).all()
     return offers
 
 
-@router.get("/{offer_id}", response_model=OfferResponse)
+@router.get("/{offer_id}", response_model=OfferResponse,
+    dependencies=[Depends(require_permissions(["offer:view"]))]
+)
 def get_offer_detail(
     offer: Offer = Depends(get_offer_or_403)
 ):
@@ -123,7 +127,7 @@ def get_offer_detail(
 @router.put(
     "/{offer_id}",
     response_model=OfferResponse,
-    dependencies=[Depends(require_permissions(["create_offer"]))]
+    dependencies=[Depends(require_permissions(["offer:generate"]))]
 )
 def update_offer(
     payload: OfferUpdate,
@@ -143,7 +147,7 @@ def update_offer(
 @router.post(
     "/{offer_id}/approval",
     response_model=OfferResponse,
-    dependencies=[Depends(require_permissions(["approve_requisition"]))]
+    dependencies=[Depends(require_permissions(["offer:approve"]))]
 )
 async def handle_offer_approval(
     action_payload: OfferApprovalAction,
@@ -180,46 +184,7 @@ async def handle_offer_approval(
     db.commit()
     db.refresh(offer)
 
-    # 3. Dispatch E-Signature Offer Link to Candidate Email via MCP
-    app = offer.application
-    candidate = app.candidate if app else None
-    job = app.job if app else None
-    ceo = db.query(User).filter(User.id == current_user["user_id"]).first()
-
-    if candidate and job and ceo:
-        try:
-            from mcp import ClientSession, StdioServerParameters
-            from mcp.client.stdio import stdio_client
-
-            frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
-            sign_link = f"{frontend_url}/offer/sign/{token}"
-            today = datetime.now().strftime("%B %d, %Y")
-
-            server_params = StdioServerParameters(
-                command=sys.executable,
-                args=[os.path.join(os.path.dirname(__file__), "..", "mcp_servers", "meeting_email_server.py")],
-            )
-
-            async with stdio_client(server_params) as (read, write):
-                async with ClientSession(read, write) as session:
-                    await session.initialize()
-                    await session.call_tool(
-                        "send_offer_letter",
-                        {
-                            "candidate_name": candidate.full_name,
-                            "candidate_email": candidate.email,
-                            "job_title": job.title,
-                            "company_name": job.company.name if job.company else "Company",
-                            "salary_range": f"${offer.base_salary:,.2f}" if offer.base_salary else (job.salary_range or "Competitive"),
-                            "ceo_name": ceo.full_name,
-                            "accept_link": sign_link,
-                            "offer_date": today,
-                            "sender_email": "nirmal.naik1994@gmail.com",
-                            "sender_password": os.getenv("GMAIL_APP_PASSWORD", "")
-                        }
-                    )
-        except Exception as e:
-            print(f"MCP offer dispatch error: {e}")
+    # TODO: 3. Dispatch E-Signature Offer Link to Candidate Email via MCP
 
     return offer
 

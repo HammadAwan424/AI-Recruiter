@@ -11,7 +11,7 @@ from app.models.job import Job
 from app.models.application import Application
 from app.models.interview import InterviewModel
 from app.models.offer import Offer
-from app.models.rbac import Role, RolePermission
+from app.models.rbac import Role, RolePermission, UserJobScope
 
 pwd_context = CryptContext(
     schemes=["sha256_crypt"],
@@ -73,8 +73,32 @@ def require_roles(allowed_roles: list[str]):
 
 
 # ─────────────────────────────────────────────────────────────
-# 1. GRANULAR PERMISSION DEPENDENCY FACTORY
+# 1. GRANULAR PERMISSION DEPENDENCY FACTORY & WILDCARD MATCHING
 # ─────────────────────────────────────────────────────────────
+def user_has_permission(requested_key: str, user_permission_keys: set) -> bool:
+    """Checks exact key match or domain wildcard match (e.g. 'job:*' or '*')."""
+    if "*" in user_permission_keys or requested_key in user_permission_keys:
+        return True
+    if ":" in requested_key:
+        domain, _ = requested_key.split(":", 1)
+        if f"{domain}:*" in user_permission_keys:
+            return True
+    return False
+
+
+def get_user_permissions(db: Session, user_id: int, user_role_name: str) -> List[str]:
+    """Helper to resolve all permission keys for a given user role."""
+    role_obj = db.query(Role).filter(Role.name == user_role_name).first()
+    if not role_obj:
+        return []
+    user_permissions = (
+        db.query(RolePermission.permission_key)
+        .filter(RolePermission.role_id == role_obj.id)
+        .all()
+    )
+    return [rp[0] for rp in user_permissions]
+
+
 def require_permissions(required_keys: List[str]):
     def permission_checker(
         current_user: dict = Depends(get_current_user),
@@ -107,7 +131,9 @@ def require_permissions(required_keys: List[str]):
         )
         user_permission_keys = {rp[0] for rp in user_permissions}
 
-        missing_keys = [key for key in required_keys if key not in user_permission_keys]
+        missing_keys = [
+            key for key in required_keys if not user_has_permission(key, user_permission_keys)
+        ]
         if missing_keys:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -125,10 +151,12 @@ def require_permissions(required_keys: List[str]):
 def scoped_jobs_query(db: Session, current_user: dict) -> Query:
     company_id = current_user.get("company_id")
     user_role = current_user.get("role")
+    user_id = current_user.get("user_id")
 
-    q = db.query(Job)
-    if company_id and user_role != "superadmin":
-        q = q.filter(Job.company_id == company_id)
+    q = db.query(Job).filter(Job.company_id == company_id)
+
+    if user_role in ("hiring_manager", "interviewer"):
+        q = q.join(UserJobScope, UserJobScope.job_id == Job.id).filter(UserJobScope.user_id == user_id)
 
     return q
 
@@ -136,11 +164,13 @@ def scoped_jobs_query(db: Session, current_user: dict) -> Query:
 def scoped_offers_query(db: Session, current_user: dict) -> Query:
     company_id = current_user.get("company_id")
     user_role = current_user.get("role")
+    user_id = current_user.get("user_id")
 
     q = db.query(Offer).join(Application, Offer.application_id == Application.id).join(Job, Application.job_id == Job.id)
+    q = q.filter(Job.company_id == company_id)
 
-    if company_id and user_role != "superadmin":
-        q = q.filter(Job.company_id == company_id)
+    if user_role in ("hiring_manager", "interviewer"):
+        q = q.join(UserJobScope, UserJobScope.job_id == Job.id).filter(UserJobScope.user_id == user_id)
 
     return q
 
@@ -148,11 +178,13 @@ def scoped_offers_query(db: Session, current_user: dict) -> Query:
 def scoped_interviews_query(db: Session, current_user: dict) -> Query:
     company_id = current_user.get("company_id")
     user_role = current_user.get("role")
+    user_id = current_user.get("user_id")
 
     q = db.query(InterviewModel).join(Application, InterviewModel.application_id == Application.id).join(Job, Application.job_id == Job.id)
+    q = q.filter(Job.company_id == company_id)
 
-    if company_id and user_role != "superadmin":
-        q = q.filter(Job.company_id == company_id)
+    if user_role in ("hiring_manager", "interviewer"):
+        q = q.join(UserJobScope, UserJobScope.job_id == Job.id).filter(UserJobScope.user_id == user_id)
 
     return q
 
@@ -167,10 +199,9 @@ def get_job_or_403(
 ) -> Job:
     company_id = current_user.get("company_id")
     user_role = current_user.get("role")
+    user_id = current_user.get("user_id")
 
-    job_query = db.query(Job).filter(Job.id == job_id)
-    if company_id and user_role != "superadmin":
-        job_query = job_query.filter(Job.company_id == company_id)
+    job_query = db.query(Job).filter(Job.id == job_id, Job.company_id == company_id)
 
     job = job_query.first()
     if not job:
@@ -178,6 +209,17 @@ def get_job_or_403(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Job position not found"
         )
+
+    if user_role in ("hiring_manager", "interviewer"):
+        in_scope = db.query(UserJobScope).filter_by(
+            user_id=user_id,
+            job_id=job_id
+        ).first()
+        if not in_scope:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied: job position is outside your assigned user scope."
+            )
 
     return job
 
@@ -192,8 +234,16 @@ def get_application_or_403(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
 
     job = db.query(Job).filter(Job.id == app.job_id).first()
-    if not job or (current_user.get("company_id") and current_user.get("role") != "superadmin" and job.company_id != current_user.get("company_id")):
+    if not job or job.company_id != current_user.get("company_id"):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
+
+    if current_user.get("role") in ("hiring_manager", "interviewer"):
+        in_scope = db.query(UserJobScope).filter_by(
+            user_id=current_user.get("user_id"),
+            job_id=app.job_id
+        ).first()
+        if not in_scope:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied: application is outside your assigned job scope.")
 
     return app
 
@@ -212,8 +262,16 @@ def get_interview_or_403(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Associated application not found")
 
     job = db.query(Job).filter(Job.id == app.job_id).first()
-    if not job or (current_user.get("company_id") and current_user.get("role") != "superadmin" and job.company_id != current_user.get("company_id")):
+    if not job or job.company_id != current_user.get("company_id"):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Interview not found")
+
+    if current_user.get("role") in ("hiring_manager", "interviewer"):
+        in_scope = db.query(UserJobScope).filter_by(
+            user_id=current_user.get("user_id"),
+            job_id=app.job_id
+        ).first()
+        if not in_scope:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied: interview is outside your assigned job scope.")
 
     return interview
 
@@ -232,7 +290,15 @@ def get_offer_or_403(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Associated application not found")
 
     job = db.query(Job).filter(Job.id == app.job_id).first()
-    if not job or (current_user.get("company_id") and current_user.get("role") != "superadmin" and job.company_id != current_user.get("company_id")):
+    if not job or job.company_id != current_user.get("company_id"):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Offer not found")
+
+    if current_user.get("role") in ("hiring_manager", "interviewer"):
+        in_scope = db.query(UserJobScope).filter_by(
+            user_id=current_user.get("user_id"),
+            job_id=app.job_id
+        ).first()
+        if not in_scope:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied: offer is outside your assigned job scope.")
 
     return offer

@@ -1,13 +1,25 @@
 export type PermissionKey =
-  | "superadmin"
-  | "change_permissions"
-  | "view_compensation"
-  | "disposition_candidate"
-  | "create_requisition"
-  | "approve_requisition"
-  | "create_offer"
-  | "create_interview"
-  | "take_interview";
+  | "*"
+  | "user:change_permissions"
+  | "user:invite"
+  | "user:deactivate"
+  | "user:view"
+  | "job:create"
+  | "job:approve"
+  | "job:close"
+  | "job:assign_recruiter"
+  | "job:view"
+  | "candidate:view_compensation"
+  | "candidate:disposition"
+  | "candidate:view"
+  | "interview:create"
+  | "interview:assign"
+  | "interview:submit_feedback"
+  | "interview:reschedule"
+  | "offer:generate"
+  | "offer:approve"
+  | "offer:view"
+  | "profile:update";
 
 export interface Role {
   id: number;

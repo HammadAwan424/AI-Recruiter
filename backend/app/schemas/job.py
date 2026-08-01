@@ -1,6 +1,7 @@
 from pydantic import BaseModel, ConfigDict
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
+from app.schemas.user import UserResponse
 
 
 class JobCreate(BaseModel):
@@ -46,3 +47,8 @@ class JobResponse(BaseModel):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class JobDetail(JobResponse):
+    creator: Optional[UserResponse] = None
+    assigned_users: List[UserResponse] = []

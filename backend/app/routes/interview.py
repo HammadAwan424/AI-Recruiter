@@ -1,15 +1,17 @@
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, date, time
 from typing import List, Dict, Any, Optional
+from pydantic import BaseModel
 
 from app.database import get_db
 from app.models.company import Company
-from app.models.interview import InterviewModel, InterviewFeedback, InterviewSlot
+from app.models.interview import InterviewInterviewers, InterviewModel, InterviewFeedback, InterviewSlot
 from app.models.application import Application
 from app.models.candidate import Candidate
 from app.models.job import Job
 from app.models.user import User
+from app.models.rbac import UserJobScope
 from app.schemas.interview import (
     InterviewCreate,
     InterviewUpdate,
@@ -33,13 +35,24 @@ from app.utils.security import (
 from app.utils.meeting_generator import generate_video_meeting_link
 from app.utils.ical_generator import generate_ical_event
 from app.utils.interview_crypto import generate_interview_token
-from app.agents.evaluation_agent import evaluate_candidate
+from app.utils.candidate_evaluation import evaluate_candidate
 
 router = APIRouter(prefix="/interviews", tags=["Interviews"])
 
 
+class AssignInterviewerPayload(BaseModel):
+    interviewer_ids: list[int]
+
+
+def auto_grant_user_job_scope(db: Session, user_id: int, job_id: int, created_by: int):
+    existing = db.query(UserJobScope).filter_by(user_id=user_id, job_id=job_id).first()
+    if not existing:
+        scope = UserJobScope(user_id=user_id, job_id=job_id, created_by=created_by)
+        db.add(scope)
+
+
 # ─────────────────────────────────────────────────────────────
-# 1. INTERVIEWER AVAILABILITY SLOTS (STATIC PATHS FIRST)
+# 1. INTERVIEWER AVAILABILITY SLOTS
 # ─────────────────────────────────────────────────────────────
 @router.post("/slots", response_model=InterviewSlotResponse)
 def create_interview_slot(
@@ -84,9 +97,6 @@ def get_public_schedule_slots(token: str, db: Session = Depends(get_db)):
     candidate = app.candidate if app else None
     job = app.job if app else None
 
-    now = datetime.utcnow()
-    is_expired = bool(interview.token_expires_at and now > interview.token_expires_at)
-
     raw_slots = db.query(InterviewSlot).filter(InterviewSlot.is_booked.is_(False)).all()
     typed_slots = [InterviewSlotResponse.model_validate(s) for s in raw_slots]
 
@@ -120,7 +130,6 @@ def candidate_confirm_schedule(
     if interview.token_expires_at and now > interview.token_expires_at:
         raise HTTPException(status_code=400, detail="This scheduling link has expired.")
 
-    # Book slot & update interview schedule
     slot.is_booked = True
     interview.scheduled_date = slot.slot_date
     interview.scheduled_time = slot.start_time
@@ -149,7 +158,7 @@ def candidate_confirm_schedule(
 @router.post(
     "",
     response_model=InterviewResponse,
-    dependencies=[Depends(require_permissions(["create_interview"]))]
+    dependencies=[Depends(require_permissions(["interview:assign"]))]
 )
 def schedule_interview(
     payload: InterviewCreate,
@@ -160,7 +169,6 @@ def schedule_interview(
     candidate = app.candidate
     job = app.job
 
-    # Generate video meeting link (Google Meet / Jitsi fallback)
     meeting_link = generate_video_meeting_link(
         meeting_type=payload.meeting_type or "GOOGLE_MEET",
         title=f"{job.title if job else 'Job'} — {candidate.full_name if candidate else 'Candidate'}"
@@ -168,7 +176,11 @@ def schedule_interview(
 
     interview = create_interview(db, payload, meeting_link=meeting_link, created_by=current_user["user_id"])
 
-    # Update application status to interview
+    # Auto-grant UserJobScope to assigned interviewers
+    if payload.interviewer_ids:
+        for uid in payload.interviewer_ids:
+            auto_grant_user_job_scope(db, uid, app.job_id, current_user["user_id"])
+
     app.current_status = "interview"
     app.updated_by = current_user["user_id"]
     db.commit()
@@ -202,12 +214,56 @@ def list_interviews(
 
 
 # ─────────────────────────────────────────────────────────────
-# 4. INTERVIEW FEEDBACK ENDPOINT
+# 4. ASSIGN INTERVIEWERS (REQUIRES create_interview PERMISSION)
+# ─────────────────────────────────────────────────────────────
+@router.post(
+    "/{interview_id}/assign-interviewer",
+    response_model=InterviewResponse,
+    dependencies=[Depends(require_permissions(["interview:assign"]))]
+)
+def assign_interviewers_to_interview(
+    payload: AssignInterviewerPayload,
+    interview: InterviewModel = Depends(get_interview_or_403),
+    db: Session = Depends(get_db),
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    company_id = current_user.get("company_id")
+    app = interview.application
+
+    for uid in payload.interviewer_ids:
+        user = db.query(User).filter(User.id == uid, User.company_id == company_id).first()
+        if not user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Interviewer ID {uid} not found in your company.")
+
+        existing = db.query(InterviewInterviewers).filter_by(interview_id=interview.id, interviewer_id=uid).first()
+        if not existing:
+            assignment = InterviewInterviewers(interview_id=interview.id, interviewer_id=uid)
+            db.add(assignment)
+
+        if app and app.job_id:
+            auto_grant_user_job_scope(db, uid, app.job_id, current_user["user_id"])
+
+    interview.updated_by = current_user["user_id"]
+    db.commit()
+    db.refresh(interview)
+
+    candidate = app.candidate if app else None
+    job = app.job if app else None
+
+    setattr(interview, "candidate_name", candidate.full_name if candidate else "Candidate")
+    setattr(interview, "candidate_email", candidate.email if candidate else "")
+    setattr(interview, "job_title", job.title if job else "Position")
+
+    return interview
+
+
+# ─────────────────────────────────────────────────────────────
+# 5. INTERVIEW FEEDBACK / SCORING ENDPOINT (REQUIRES take_interview PERMISSION)
 # ─────────────────────────────────────────────────────────────
 @router.post(
     "/{interview_id}/feedback",
     response_model=InterviewFeedbackResponse,
-    dependencies=[Depends(require_permissions(["take_interview"]))]
+    dependencies=[Depends(require_permissions(["interview:submit_feedback"]))]
 )
 def submit_interview_feedback(
     payload: InterviewFeedbackCreate,
@@ -215,29 +271,48 @@ def submit_interview_feedback(
     db: Session = Depends(get_db),
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
-    feedback = db.query(InterviewFeedback).filter(InterviewFeedback.interview_id == interview.id).first()
+    interviewer_id = payload.interviewer_id or current_user["user_id"]
+
+    assignment = (
+        db.query(InterviewInterviewers)
+        .filter_by(interview_id=interview.id, interviewer_id=interviewer_id)
+        .first()
+    )
+    if not assignment:
+        assignment = InterviewInterviewers(interview_id=interview.id, interviewer_id=interviewer_id)
+        db.add(assignment)
+        db.flush()
+
+    feedback = db.query(InterviewFeedback).filter_by(interview_interviewer_id=assignment.id).first()
+
     if feedback:
         feedback.technical_score = payload.technical_score
         feedback.communication_score = payload.communication_score
         feedback.notes = payload.notes
-        feedback.interviewer_id = payload.interviewer_id or current_user["user_id"]
         feedback.updated_by = current_user["user_id"]
     else:
-        feedback = create_interview_feedback(db, payload, created_by=current_user["user_id"])
+        feedback = InterviewFeedback(
+            interview_interviewer_id=assignment.id,
+            technical_score=payload.technical_score,
+            communication_score=payload.communication_score,
+            notes=payload.notes,
+            created_by=current_user["user_id"]
+        )
+        db.add(feedback)
 
-    # Update interview status to COMPLETED
     interview.status = "COMPLETED"
     interview.updated_by = current_user["user_id"]
 
-    # Calculate combined final score via Evaluation Agent and store on Application
     app = interview.application
     if app:
-        resume_score = app.match_score or 75.0
-        eval_result = evaluate_candidate(
-            resume_score=resume_score,
-            technical_score=payload.technical_score,
-            communication_score=payload.communication_score
+        all_feedbacks = (
+            db.query(InterviewFeedback)
+            .join(InterviewInterviewers)
+            .filter(InterviewInterviewers.interview_id == interview.id)
+            .all()
         )
+
+        eval_result = evaluate_candidate(all_feedbacks)
         app.final_score = eval_result["final_score"]
         app.updated_by = current_user["user_id"]
 
@@ -247,7 +322,7 @@ def submit_interview_feedback(
 
 
 # ─────────────────────────────────────────────────────────────
-# 5. DYNAMIC PATH PARAMETER ROUTES (MUST COME LAST)
+# 6. DYNAMIC PATH PARAMETER ROUTES (MUST COME LAST)
 # ─────────────────────────────────────────────────────────────
 @router.get("/{interview_id}", response_model=InterviewResponse)
 def get_interview_detail(
@@ -290,7 +365,6 @@ def create_candidate_self_schedule_link(
     setattr(interview, "candidate_email", candidate.email if candidate else "")
     setattr(interview, "job_title", job.title if job else "Position")
 
-    print(f"[INTERVIEW SELF-SCHEDULE LINK] Link: http://localhost:5173/interview/schedule/{token}")
     return interview
 
 

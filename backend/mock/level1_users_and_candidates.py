@@ -7,7 +7,7 @@ from app.utils.security_seeder import seed_default_roles, DEFAULT_ROLE_PERMISSIO
 
 
 def seed_users_and_candidates(db):
-    print("🔹 [Level 1] Generating Root Company, Users & Candidates...")
+    print("🔹 [Level 1] Generating Root Company, RBAC Users & Candidates...")
 
     # 1. Company
     company = db.query(Company).filter(Company.name == "Agentra AI").first()
@@ -25,19 +25,19 @@ def seed_users_and_candidates(db):
         role_permissions_map=DEFAULT_ROLE_PERMISSIONS
     )
 
-    # 3. Users
+    # 3. Users Across All Roles
     admin = db.query(User).filter(User.role == "superadmin").first()
     if not admin:
         admin = User(
-            full_name="System Admin",
+            full_name="Super Admin",
             email="admin@agentra.com",
             password=hash_password("admin123"),
             role="superadmin",
-            status="approved"
+            status="active"
         )
         db.add(admin)
 
-    ceo = db.query(User).filter(User.role == "ceo").first()
+    ceo = db.query(User).filter(User.email == "ceo@agentra.com").first()
     if not ceo:
         ceo = User(
             full_name="Sarah Jenkins (CEO)",
@@ -45,41 +45,66 @@ def seed_users_and_candidates(db):
             password=hash_password("ceo123"),
             role="ceo",
             company_id=company.id,
-            status="approved"
+            status="active"
         )
         db.add(ceo)
-    elif not ceo.company_id:
-        ceo.company_id = company.id
 
-    hr = db.query(User).filter(User.email == "hr@agentra.com").first()
-    if not hr:
-        hr = User(
-            full_name="David Miller (HR Head)",
-            email="hr@agentra.com",
-            password=hash_password("hr123"),
-            role="employee",
+    recruiter = db.query(User).filter(User.email == "recruiter@agentra.com").first()
+    if not recruiter:
+        recruiter = User(
+            full_name="Rachel Vance (Lead Recruiter)",
+            email="recruiter@agentra.com",
+            password=hash_password("recruiter123"),
+            role="recruiter",
             company_id=company.id,
             status="active"
         )
-        db.add(hr)
-    elif not hr.company_id:
-        hr.company_id = company.id
+        db.add(recruiter)
+
+    hm = db.query(User).filter(User.email == "hm@agentra.com").first()
+    if not hm:
+        hm = User(
+            full_name="Henry Miller (Hiring Manager)",
+            email="hm@agentra.com",
+            password=hash_password("hm123"),
+            role="hiring_manager",
+            company_id=company.id,
+            status="active"
+        )
+        db.add(hm)
+
+    interviewer = db.query(User).filter(User.email == "interviewer@agentra.com").first()
+    if not interviewer:
+        interviewer = User(
+            full_name="Ian Thorne (Lead Tech Interviewer)",
+            email="interviewer@agentra.com",
+            password=hash_password("interviewer123"),
+            role="interviewer",
+            company_id=company.id,
+            status="active"
+        )
+        db.add(interviewer)
 
     db.commit()
     db.refresh(admin)
     db.refresh(ceo)
-    db.refresh(hr)
+    db.refresh(recruiter)
+    db.refresh(hm)
+    db.refresh(interviewer)
 
-    # 4. Candidates
+    # 4. Candidates Across All Stages
     candidate_data = [
-        ("Alex Johnson", "alex.j@example.com", "+1 (555) 234-5678", "Senior Full Stack Engineer resume with React & Python."),
-        ("Sophia Chen", "sophia.c@example.com", "+1 (555) 876-5432", "AI Engineer with PyTorch, NLP, and RAG expertise."),
-        ("Marcus Vance", "marcus.v@example.com", "+1 (555) 432-1098", "Frontend React Specialist with UI UX experience."),
-        ("Elena Rostova", "elena.r@example.com", "+1 (555) 999-8877", "Senior ML Researcher with LangChain and vector DB experience.")
+        ("Alex Johnson", "alex.j@example.com", "+1 (555) 234-5678"),
+        ("Sophia Chen", "sophia.c@example.com", "+1 (555) 876-5432"),
+        ("Marcus Vance", "marcus.v@example.com", "+1 (555) 432-1098"),
+        ("Elena Rostova", "elena.r@example.com", "+1 (555) 999-8877"),
+        ("David Kim", "david.k@example.com", "+1 (555) 111-2233"),
+        ("Olivia Taylor", "olivia.t@example.com", "+1 (555) 444-5566"),
+        ("Lucas Wright", "lucas.w@example.com", "+1 (555) 777-8899")
     ]
 
     candidates = []
-    for name, email, phone, cv in candidate_data:
+    for name, email, phone in candidate_data:
         cand = db.query(Candidate).filter(Candidate.email == email).first()
         if not cand:
             cand = Candidate(
@@ -92,5 +117,13 @@ def seed_users_and_candidates(db):
             db.refresh(cand)
         candidates.append(cand)
 
-    print(f"  ✓ Level 1 Complete: 1 Company ('{company.name}'), Roles Seeded, 3 Users (Admin, CEO, HR), {len(candidates)} Candidates created.")
-    return admin, ceo, hr, candidates
+    print(f"  ✓ Level 1 Complete: 1 Company ('{company.name}'), 5 Users (Admin, CEO, Recruiter, HM, Interviewer), {len(candidates)} Candidates.")
+    return {
+        "admin": admin,
+        "ceo": ceo,
+        "recruiter": recruiter,
+        "hm": hm,
+        "interviewer": interviewer,
+        "candidates": candidates,
+        "company": company
+    }

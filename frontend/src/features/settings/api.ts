@@ -15,12 +15,12 @@ export interface CeoProfileUpdatePayload {
 export const settingsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getCeoProfile: builder.query<CeoProfile, void>({
-      query: () => "/ceo/profile",
+      query: () => "/users/profile",
       providesTags: ["Users"],
     }),
     updateCeoProfile: builder.mutation<CeoProfile, CeoProfileUpdatePayload>({
       query: (payload) => ({
-        url: "/ceo/profile",
+        url: "/users/profile",
         method: "PUT",
         body: payload,
       }),

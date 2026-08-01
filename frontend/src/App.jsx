@@ -11,8 +11,6 @@ import { CandidateSelfSchedulePage } from "./features/interviews/screens/Candida
 
 import { LoginPage } from "./features/auth/screens/LoginPage";
 import { SignupPage } from "./features/auth/screens/SignupPage";
-import { DashboardOverviewPage } from "./features/dashboard/screens/DashboardOverviewPage";
-import { SuperAdminOverviewPage } from "./features/superadmin/screens/SuperAdminOverviewPage";
 import { CompanyManagementPage } from "./features/superadmin/screens/CompanyManagementPage";
 import { UserManagementPage } from "./features/users/screens/UserManagementPage";
 import { JobManagementPage } from "./features/jobs/screens/JobManagementPage";
@@ -48,6 +46,11 @@ function App() {
         <Route path="/offer/sign/:token" element={<CandidateOfferSignPage />} />
         <Route path="/interview/schedule/:token" element={<CandidateSelfSchedulePage />} />
 
+        {/* Legacy Dashboard Redirects */}
+        <Route path="/ceo/dashboard" element={<Navigate to="/jobs" replace />} />
+        <Route path="/employee/dashboard" element={<Navigate to="/jobs" replace />} />
+        <Route path="/admin/dashboard" element={<Navigate to="/admin/companies" replace />} />
+
         {/* Main Application Layout Protected Routes */}
         <Route
           element={
@@ -56,13 +59,10 @@ function App() {
             </ProtectedRoute>
           }
         >
-          <Route path="/ceo/dashboard" element={<DashboardOverviewPage />} />
-          <Route path="/employee/dashboard" element={<DashboardOverviewPage />} />
-          <Route path="/admin/dashboard" element={<SuperAdminOverviewPage />} />
           <Route path="/admin/companies" element={<CompanyManagementPage />} />
 
           <Route
-            path="/ceo/users"
+            path="/users"
             element={
               <RequirePermission permission={USER_PERMISSIONS.CHANGE_PERMISSIONS}>
                 <UserManagementPage />
@@ -72,7 +72,7 @@ function App() {
           <Route
             path="/jobs"
             element={
-              <RequirePermission permission={JOB_PERMISSIONS.CREATE_REQUISITION}>
+              <RequirePermission permission={JOB_PERMISSIONS.CREATE}>
                 <JobManagementPage />
               </RequirePermission>
             }
@@ -80,7 +80,7 @@ function App() {
           <Route
             path="/candidates"
             element={
-              <RequirePermission permission={CANDIDATE_PERMISSIONS.DISPOSITION_CANDIDATE}>
+              <RequirePermission permission={CANDIDATE_PERMISSIONS.DISPOSITION}>
                 <CandidatePipelinePage />
               </RequirePermission>
             }
@@ -88,7 +88,7 @@ function App() {
           <Route
             path="/interviews"
             element={
-              <RequirePermission permission={INTERVIEW_PERMISSIONS.CREATE_INTERVIEW}>
+              <RequirePermission permission={INTERVIEW_PERMISSIONS.CREATE}>
                 <InterviewManagementPage />
               </RequirePermission>
             }
@@ -96,7 +96,7 @@ function App() {
           <Route
             path="/offers"
             element={
-              <RequirePermission permission={OFFER_PERMISSIONS.CREATE_OFFER}>
+              <RequirePermission permission={OFFER_PERMISSIONS.GENERATE}>
                 <OfferManagementPage />
               </RequirePermission>
             }

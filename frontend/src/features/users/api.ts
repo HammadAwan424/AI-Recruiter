@@ -3,12 +3,17 @@ import {
   CompanyUsersResponse,
   UserCreatePayload,
   UserRoleUpdatePayload,
+  UserDetail,
 } from "../../shared/types/user.types";
 
 export const usersApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    getCompanyUsers: builder.query<CompanyUsersResponse, void>({
-      query: () => "/ceo/users",
+    getMe: builder.query<UserDetail, void>({
+      query: () => "/auth/me",
+      providesTags: ["Users"],
+    }),
+    getCompanyUsers: builder.query<CompanyUsersResponse, string | void>({
+      query: (role) => (role ? `/users?role=${role}` : "/users"),
       providesTags: ["Users"],
     }),
     createCompanyUser: builder.mutation<
@@ -16,7 +21,7 @@ export const usersApi = baseApi.injectEndpoints({
       UserCreatePayload
     >({
       query: (payload) => ({
-        url: "/ceo/users",
+        url: "/users",
         method: "POST",
         body: payload,
       }),
@@ -27,7 +32,7 @@ export const usersApi = baseApi.injectEndpoints({
       { userId: number; payload: UserRoleUpdatePayload }
     >({
       query: ({ userId, payload }) => ({
-        url: `/ceo/users/${userId}/role`,
+        url: `/users/${userId}/role`,
         method: "PUT",
         body: payload,
       }),
@@ -37,6 +42,8 @@ export const usersApi = baseApi.injectEndpoints({
 });
 
 export const {
+  useGetMeQuery,
+  useLazyGetMeQuery,
   useGetCompanyUsersQuery,
   useCreateCompanyUserMutation,
   useUpdateUserRoleMutation,

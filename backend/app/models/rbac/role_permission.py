@@ -22,7 +22,7 @@ class RolePermission(Base, BaseModelMixin):
         String,
         nullable=False,
         index=True,
-    )  # superadmin | change_permissions | view_compensation | disposition_candidate | create_requisition | approve_requisition | create_offer | create_interview | take_interview
+    )  # Standardized domain:action keys (e.g. user:change_permissions, job:create, interview:submit_feedback, offer:generate)
 
     # Audit Trail
     created_by: Mapped[Optional[int]] = mapped_column(

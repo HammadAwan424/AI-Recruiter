@@ -7,7 +7,7 @@ export const candidateRoutes = [
   {
     path: "/candidates",
     element: (
-      <RequirePermission permission={CANDIDATE_PERMISSIONS.DISPOSITION_CANDIDATE}>
+      <RequirePermission permission={CANDIDATE_PERMISSIONS.DISPOSITION}>
         <CandidatePipelinePage />
       </RequirePermission>
     ),

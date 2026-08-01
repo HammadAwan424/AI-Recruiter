@@ -7,7 +7,7 @@ export const offerRoutes = [
   {
     path: "/offers",
     element: (
-      <RequirePermission permission={OFFER_PERMISSIONS.CREATE_OFFER}>
+      <RequirePermission permission={OFFER_PERMISSIONS.GENERATE}>
         <OfferManagementPage />
       </RequirePermission>
     ),

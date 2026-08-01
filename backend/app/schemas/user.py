@@ -1,6 +1,9 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, ConfigDict
 from datetime import date
-from typing import Optional, List
+from typing import Optional, List, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.schemas.job import JobResponse
 
 
 # CEO Signup Schema
@@ -46,3 +49,24 @@ class UserRoleUpdate(BaseModel):
 # Role Permission Update Schema
 class RolePermissionUpdate(BaseModel):
     permission_keys: List[str]
+
+
+# User Response Schema
+class UserResponse(BaseModel):
+    id: int
+    full_name: str
+    email: EmailStr
+    role: str
+    company_id: Optional[int] = None
+    phone: Optional[str] = None
+    department: Optional[str] = None
+    joining_date: Optional[date] = None
+    status: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# User Detail Schema (for /auth/me or user detail views)
+class UserDetail(UserResponse):
+    permissions: List[str] = []
+    assigned_jobs: List["JobResponse"] = []

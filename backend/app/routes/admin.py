@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
+from typing import Optional
+from pydantic import BaseModel
 
 from app.database import get_db
 from app.models.user import User
@@ -13,64 +15,28 @@ router = APIRouter(
 )
 
 
-# Pending CEOs list
-@router.get("/pending-ceos")
-def pending_ceos(db: Session = Depends(get_db)):
-    ceos = db.query(User).filter(
-        User.role == "ceo",
-        User.status == "pending"
-    ).all()
-
-    return [
-        {
-            "id": ceo.id,
-            "full_name": ceo.full_name,
-            "email": ceo.email,
-            "company_name": ceo.company.name if ceo.company else "",
-            "status": ceo.status
-        }
-        for ceo in ceos
-    ]
+class StatusPayload(BaseModel):
+    status: str  # active | inactive | pending | rejected
 
 
-# Approve CEO
-@router.put("/approve-ceo/{ceo_id}")
-def approve_ceo(ceo_id: int, db: Session = Depends(get_db)):
-    ceo = db.query(User).filter(User.id == ceo_id).first()
-
-    if not ceo:
-        raise HTTPException(status_code=404, detail="The CEO was not found.")
-
-    if ceo.status == "approved":
-        raise HTTPException(status_code=400, detail="The CEO is already approved.")
-
-    ceo.status = "approved"
-    ceo.approved_at = datetime.utcnow()
-    ceo.expires_at = datetime.utcnow() + timedelta(days=30)
-    db.commit()
-
-    return {"message": "The CEO has been approved.", "ceo_id": ceo.id}
-
-
-# Approved CEOs list
-@router.get("/approved-ceos")
-def approved_ceos(db: Session = Depends(get_db)):
-    ceos = db.query(User).filter(
-        User.role == "ceo",
-        User.status == "approved"
-    ).all()
-
+# Get CEOs list filtered by status
+@router.get("/ceos")
+def get_ceos(status: Optional[str] = None, db: Session = Depends(get_db)):
+    query = db.query(User).filter(User.role == "ceo")
+    if status:
+        query = query.filter(User.status == status)
+    
+    ceos = query.all()
     now = datetime.utcnow()
     result = []
 
     for ceo in ceos:
-        if ceo.expires_at and now > ceo.expires_at:
+        if ceo.status == "active" and ceo.expires_at and now > ceo.expires_at:
             ceo.status = "inactive"
             db.commit()
-            continue
 
         days_left = None
-        if ceo.expires_at:
+        if ceo.status == "active" and ceo.expires_at:
             days_left = (ceo.expires_at - now).days
 
         result.append({
@@ -87,87 +53,31 @@ def approved_ceos(db: Session = Depends(get_db)):
     return result
 
 
-# Inactive CEOs list
-@router.get("/inactive-ceos")
-def inactive_ceos(db: Session = Depends(get_db)):
-    ceos = db.query(User).filter(
-        User.role == "ceo",
-        User.status == "inactive"
-    ).all()
-
-    return [
-        {
-            "id": ceo.id,
-            "full_name": ceo.full_name,
-            "email": ceo.email,
-            "company_name": ceo.company.name if ceo.company else "",
-            "status": ceo.status,
-        }
-        for ceo in ceos
-    ]
-
-
-# Rejected CEOs list
-@router.get("/rejected-ceos")
-def rejected_ceos(db: Session = Depends(get_db)):
-    ceos = db.query(User).filter(
-        User.role == "ceo",
-        User.status == "rejected"
-    ).all()
-
-    return [
-        {
-            "id": ceo.id,
-            "full_name": ceo.full_name,
-            "email": ceo.email,
-            "company_name": ceo.company.name if ceo.company else "",
-            "status": ceo.status
-        }
-        for ceo in ceos
-    ]
-
-
-# CEO ko reject karo
-@router.put("/reject-ceo/{ceo_id}")
-def reject_ceo(ceo_id: int, db: Session = Depends(get_db)):
+# Update CEO Status
+@router.put("/ceos/{ceo_id}/status")
+def update_ceo_status(ceo_id: int, payload: StatusPayload, db: Session = Depends(get_db)):
     ceo = db.query(User).filter(User.id == ceo_id).first()
     if not ceo:
-        raise HTTPException(status_code=404, detail="The CEO was not found.")
-    ceo.status = "rejected"
+        raise HTTPException(status_code=404, detail="CEO account not found.")
+
+    if payload.status not in ("active", "inactive", "pending", "rejected"):
+        raise HTTPException(status_code=400, detail="Invalid status value. Must be active, inactive, pending, or rejected.")
+
+    ceo.status = payload.status
+    if payload.status == "active":
+        ceo.approved_at = datetime.utcnow()
+        ceo.expires_at = datetime.utcnow() + timedelta(days=30)
+
     db.commit()
-    return {"message": "The CEO has been rejected."}
+    return {"message": f"CEO status updated to '{ceo.status}'.", "ceo_id": ceo.id, "status": ceo.status}
 
 
-# CEO manually inactive karo
-@router.put("/deactivate-ceo/{ceo_id}")
-def deactivate_ceo(ceo_id: int, db: Session = Depends(get_db)):
-    ceo = db.query(User).filter(User.id == ceo_id).first()
-    if not ceo:
-        raise HTTPException(status_code=404, detail="The CEO was not found.")
-    ceo.status = "inactive"
-    db.commit()
-    return {"message": "The CEO has been deactivated."}
-
-
-# CEO dobara active karo
-@router.put("/activate-ceo/{ceo_id}")
-def activate_ceo(ceo_id: int, db: Session = Depends(get_db)):
-    ceo = db.query(User).filter(User.id == ceo_id).first()
-    if not ceo:
-        raise HTTPException(status_code=404, detail="The CEO was not found.")
-    ceo.status = "approved"
-    ceo.approved_at = datetime.utcnow()
-    ceo.expires_at = datetime.utcnow() + timedelta(days=30)
-    db.commit()
-    return {"message": "The CEO has been activated."}
-
-
-# CEO delete karo
-@router.delete("/delete-ceo/{ceo_id}")
+# Delete CEO
+@router.delete("/ceos/{ceo_id}")
 def delete_ceo(ceo_id: int, db: Session = Depends(get_db)):
     ceo = db.query(User).filter(User.id == ceo_id).first()
     if not ceo:
-        raise HTTPException(status_code=404, detail="The CEO was not found.")
+        raise HTTPException(status_code=404, detail="CEO account not found.")
     db.delete(ceo)
     db.commit()
-    return {"message": "The CEO has been deleted."}
+    return {"message": "CEO account deleted successfully."}
