@@ -4,23 +4,32 @@ import {
   Route,
   Navigate,
 } from "react-router-dom";
-import Login from "./components/pages/Login";
-import Signup from "./components/pages/Signup";
-import SuperAdminDashboard from "./components/superAdmin/SuperAdminDashboard";
-import EmployeeDashboard from "./components/employee/EmployeeDashboard";
-import CeoDashboard from "./components/ceo/Dashboard";
-import JobPortal from "./components/pages/JobPortal";
-import CandidateOfferSignPage from "./components/pages/CandidateOfferSignPage";
-import CandidateSelfSchedulePage from "./components/pages/CandidateSelfSchedulePage";
+import { AppLayout } from "./app/layout/AppLayout";
+import { JobPortalPage } from "./features/jobs/screens/JobPortalPage";
+import { CandidateOfferSignPage } from "./features/offers/screens/CandidateOfferSignPage";
+import { CandidateSelfSchedulePage } from "./features/interviews/screens/CandidateSelfSchedulePage";
 
-// ──── Protected Route ────
-function ProtectedRoute({ children, allowedRole }) {
-  const role = localStorage.getItem("role");
+import { LoginPage } from "./features/auth/screens/LoginPage";
+import { SignupPage } from "./features/auth/screens/SignupPage";
+import { CompanyManagementPage } from "./features/superadmin/screens/CompanyManagementPage";
+import { UserManagementPage } from "./features/users/screens/UserManagementPage";
+import { JobManagementPage } from "./features/jobs/screens/JobManagementPage";
+import { CandidatePipelinePage } from "./features/candidates/screens/CandidatePipelinePage";
+import { InterviewManagementPage } from "./features/interviews/screens/InterviewManagementPage";
+import { OfferManagementPage } from "./features/offers/screens/OfferManagementPage";
+import { SettingsPage } from "./features/settings/screens/SettingsPage";
+
+import { RequirePermission } from "./shared/guards/RequirePermission";
+import { USER_PERMISSIONS } from "./features/users/permissions";
+import { JOB_PERMISSIONS } from "./features/jobs/permissions";
+import { CANDIDATE_PERMISSIONS } from "./features/candidates/permissions";
+import { INTERVIEW_PERMISSIONS } from "./features/interviews/permissions";
+import { OFFER_PERMISSIONS } from "./features/offers/permissions";
+
+// Protected Route Guard
+function ProtectedRoute({ children }) {
   const token = localStorage.getItem("token");
-
-  if (!token) return <Navigate to="/" />;
-  if (allowedRole && role !== allowedRole) return <Navigate to="/" />;
-
+  if (!token) return <Navigate to="/" replace />;
   return children;
 }
 
@@ -28,40 +37,67 @@ function App() {
   return (
     <Router>
       <Routes>
-        {/* Public Routes */}
-        <Route path="/" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
-        <Route path="/jobs" element={<JobPortal />} />
+        {/* Auth Feature Public Routes */}
+        <Route path="/" element={<LoginPage />} />
+        <Route path="/signup" element={<SignupPage />} />
+
+        {/* Public Portal & Signature Routes */}
+        <Route path="/jobs/portal" element={<JobPortalPage />} />
         <Route path="/offer/sign/:token" element={<CandidateOfferSignPage />} />
         <Route path="/interview/schedule/:token" element={<CandidateSelfSchedulePage />} />
 
-        {/* Super Admin Routes */}
+        {/* Main Application Layout Protected Routes */}
         <Route
-          path="/admin/dashboard"
           element={
-            <ProtectedRoute allowedRole="superadmin">
-              <SuperAdminDashboard />
+            <ProtectedRoute>
+              <AppLayout />
             </ProtectedRoute>
           }
-        />
-        {/* CEO Routes */}
-        <Route
-          path="/ceo/dashboard"
-          element={
-            <ProtectedRoute allowedRole="ceo">
-              <CeoDashboard />
-            </ProtectedRoute>
-          }
-        />
-        {/* Employee Routes */}
-        <Route
-          path="/employee/dashboard"
-          element={
-            <ProtectedRoute allowedRole="employee">
-              <EmployeeDashboard />
-            </ProtectedRoute>
-          }
-        />
+        >
+          <Route path="/admin" element={<CompanyManagementPage />} />
+
+          <Route
+            path="/users"
+            element={
+              <RequirePermission permission="user:">
+                <UserManagementPage />
+              </RequirePermission>
+            }
+          />
+          <Route
+            path="/jobs"
+            element={
+              <RequirePermission permission="job:">
+                <JobManagementPage />
+              </RequirePermission>
+            }
+          />
+          <Route
+            path="/candidates"
+            element={
+              <RequirePermission permission="candidate:">
+                <CandidatePipelinePage />
+              </RequirePermission>
+            }
+          />
+          <Route
+            path="/interviews"
+            element={
+              <RequirePermission permission="interview:">
+                <InterviewManagementPage />
+              </RequirePermission>
+            }
+          />
+          <Route
+            path="/offers"
+            element={
+              <RequirePermission permission="offer:">
+                <OfferManagementPage />
+              </RequirePermission>
+            }
+          />
+          <Route path="/settings" element={<SettingsPage />} />
+        </Route>
       </Routes>
     </Router>
   );

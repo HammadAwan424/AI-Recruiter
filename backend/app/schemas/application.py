@@ -1,6 +1,8 @@
 from pydantic import BaseModel, ConfigDict
 from typing import Optional
 from datetime import datetime
+from app.schemas.offer import OfferResponse
+from app.schemas.interview import InterviewDetail, InterviewResponse
 
 
 class ScreeningTaskPayload(BaseModel):
@@ -54,3 +56,39 @@ class ApplicationResponse(BaseModel):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class CommentCreate(BaseModel):
+    content: str
+
+
+class CommentResponse(BaseModel):
+    id: int
+    application_id: int
+    author_id: int
+    author_name: Optional[str] = None
+    content: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ApplicationDetail(ApplicationResponse):
+    interviews: list[InterviewDetail]
+    comments: list[CommentResponse]
+    offer: Optional[OfferResponse] = None
+
+
+class ApplicationListItem(ApplicationResponse):
+    interviews: Optional[list[InterviewResponse]] = None
+
+
+class ScreeningResultResponse(BaseModel):
+    application_id: int
+    candidate_id: int
+    candidate_name: str
+    match_score: float
+    skill_gap: Optional[str] = None
+    summary: Optional[str] = None
+    status: str
+    disposition: str

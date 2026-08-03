@@ -1,12 +1,19 @@
 import json
 import os
+import math
+import re
 from typing import TypedDict
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import StateGraph, END
-import chromadb
-from sentence_transformers import SentenceTransformer
+
+try:
+    import chromadb
+    has_chroma = True
+except ImportError:
+    chromadb = None
+    has_chroma = False
 
 load_dotenv()
 
@@ -18,55 +25,108 @@ llm = ChatGroq(
 )
 
 # ──── ChromaDB + Sentence Transformer initialize ────
-chroma_client = chromadb.PersistentClient(
-    path=os.path.join(os.path.dirname(__file__), "..", "chroma_db")
-)
-embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
+chroma_client = None
+if has_chroma:
+    try:
+        chroma_client = chromadb.PersistentClient(
+            path=os.path.join(os.path.dirname(__file__), "..", "chroma_db")
+        )
+    except Exception:
+        chroma_client = None
+
+_embedding_model = None
+
+def get_embedding_model():
+    global _embedding_model
+    if _embedding_model is None:
+        try:
+            from sentence_transformers import SentenceTransformer
+            _embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
+        except ImportError:
+            _embedding_model = None
+    return _embedding_model
+
+
+def compute_keyword_similarity(text1: str, text2: str) -> float:
+    """Lightweight term frequency cosine similarity fallback when PyTorch vector DB is not installed."""
+    words1 = re.findall(r"\w+", text1.lower())
+    words2 = re.findall(r"\w+", text2.lower())
+    if not words1 or not words2:
+        return 0.0
+    vec1 = {w: words1.count(w) for w in set(words1)}
+    vec2 = {w: words2.count(w) for w in set(words2)}
+    intersection = set(vec1.keys()) & set(vec2.keys())
+    dot_product = sum([vec1[x] * vec2[x] for x in intersection])
+    sum1 = sum([vec1[x] ** 2 for x in vec1.keys()])
+    sum2 = sum([vec2[x] ** 2 for x in vec2.keys()])
+    denominator = math.sqrt(sum1) * math.sqrt(sum2)
+    if not denominator:
+        return 0.0
+    return round(min(1.0, dot_product / denominator) * 100, 2)
 
 
 # ──── RAG: Job Description store karo ────
 def store_job_in_vectordb(job_id: int, job_title: str, job_description: str, job_skills: str, job_keywords: str):
-    collection = chroma_client.get_or_create_collection(name="job_descriptions")
-    doc_id = f"job_{job_id}"
+    if not chroma_client or not get_embedding_model():
+        return
+    try:
+        collection = chroma_client.get_or_create_collection(name="job_descriptions")
+        doc_id = f"job_{job_id}"
 
-    full_job_text = f"""
-    Job Title: {job_title}
-    Required Skills: {job_skills}
-    Keywords: {job_keywords}
-    Description: {job_description}
-    """.strip()
+        full_job_text = f"""
+        Job Title: {job_title}
+        Required Skills: {job_skills}
+        Keywords: {job_keywords}
+        Description: {job_description}
+        """.strip()
 
-    embedding = embedding_model.encode(full_job_text).tolist()
+        embedding = get_embedding_model().encode(full_job_text).tolist()
 
-    # ──── Already exist karta hai to update karo ────
-    existing = collection.get(ids=[doc_id])
-    if existing["ids"]:
-        collection.update(
-            ids=[doc_id],
-            embeddings=[embedding],
-            documents=[full_job_text],
-            metadatas=[{"job_id": job_id, "job_title": job_title}]
-        )
-    else:
-        collection.add(
-            ids=[doc_id],
-            embeddings=[embedding],
-            documents=[full_job_text],
-            metadatas=[{"job_id": job_id, "job_title": job_title}]
-        )
+        # ──── Already exist karta hai to update karo ────
+        existing = collection.get(ids=[doc_id])
+        if existing["ids"]:
+            collection.update(
+                ids=[doc_id],
+                embeddings=[embedding],
+                documents=[full_job_text],
+                metadatas=[{"job_id": job_id, "job_title": job_title}]
+            )
+        else:
+            collection.add(
+                ids=[doc_id],
+                embeddings=[embedding],
+                documents=[full_job_text],
+                metadatas=[{"job_id": job_id, "job_title": job_title}]
+            )
+    except Exception as err:
+        print(f"Vector DB store error: {err}")
 
 
 # ──── RAG: CV ko job se match karo ────
-def get_rag_similarity(job_id: int, cv_text: str) -> float:
+def get_rag_similarity(job_id: int, cv_text: str, full_job_text: str = "") -> float:
+    if not chroma_client or not get_embedding_model():
+        if full_job_text:
+            return compute_keyword_similarity(full_job_text, cv_text)
+        return 0.0
     try:
         collection = chroma_client.get_or_create_collection(name="job_descriptions")
-        cv_embedding = embedding_model.encode(cv_text[:2000]).tolist()
+        cv_embedding = get_embedding_model().encode(cv_text[:2000]).tolist()
 
         results = collection.query(
             query_embeddings=[cv_embedding],
             n_results=1,
             where={"job_id": job_id}
         )
+
+        if results and results["distances"] and results["distances"][0]:
+            distance = results["distances"][0][0]
+            similarity = max(0, (1 - distance / 2) * 100)
+            return round(similarity, 2)
+        return compute_keyword_similarity(full_job_text, cv_text) if full_job_text else 0.0
+
+    except Exception as e:
+        print(f"RAG similarity error: {e}")
+        return compute_keyword_similarity(full_job_text, cv_text) if full_job_text else 0.0
 
         if results and results["distances"] and results["distances"][0]:
             # Distance 0 = perfect match, 2 = worst
