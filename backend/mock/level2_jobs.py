@@ -1,7 +1,12 @@
 from app.models.job import Job
+from app.models.rbac import UserJobScope
 
-def seed_jobs(db, ceo_user):
-    print("🔹 [Level 2] Generating Job Postings...")
+def seed_jobs(db, users_context):
+    print("🔹 [Level 2] Generating Job Postings & Assigning UserJobScopes...")
+    ceo_user = users_context["ceo"]
+    recruiter = users_context["recruiter"]
+    hm = users_context["hm"]
+    interviewer = users_context["interviewer"]
 
     jobs_def = [
         {
@@ -31,7 +36,7 @@ def seed_jobs(db, ceo_user):
         job = db.query(Job).filter(Job.title == item["title"]).first()
         if not job:
             job = Job(
-                company_id=ceo_user.company_id,  # Read directly from named parameter
+                company_id=ceo_user.company_id,
                 title=item["title"],
                 department=item["department"],
                 employment_type=item["employment_type"],
@@ -40,12 +45,27 @@ def seed_jobs(db, ceo_user):
                 salary_range=item["salary_range"],
                 full_description=item["full_description"],
                 keywords=item["keywords"],
-                status="published"
+                status="published",
+                created_by=ceo_user.id
             )
             db.add(job)
             db.commit()
             db.refresh(job)
         jobs.append(job)
 
-    print(f"  ✓ Level 2 Complete: {len(jobs)} Jobs created (Linked to Company ID: {ceo_user.company_id}).")
+        # Seed UserJobScopes for recruiter, hiring manager, and interviewer
+        for scoped_user in (recruiter, hm, interviewer):
+            existing_scope = db.query(UserJobScope).filter_by(
+                user_id=scoped_user.id,
+                job_id=job.id
+            ).first()
+            if not existing_scope:
+                db.add(UserJobScope(
+                    user_id=scoped_user.id,
+                    job_id=job.id,
+                    created_by=ceo_user.id
+                ))
+        db.commit()
+
+    print(f"  ✓ Level 2 Complete: {len(jobs)} Jobs created & UserJobScopes assigned.")
     return jobs

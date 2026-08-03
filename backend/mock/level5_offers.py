@@ -2,8 +2,9 @@ from datetime import date, datetime, timedelta
 from app.models.offer import Offer, OfferTemplate, OfferApproval
 from app.utils.offer_crypto import generate_secure_offer_token
 
-def seed_offers(db, applications, jobs, ceo_user):
+def seed_offers(db, users_context, applications, jobs):
     print("🔹 [Level 5] Generating Offer Templates, Active Offers & Approvals...")
+    ceo_user = users_context["ceo"]
 
     # 1. Offer Template
     tmpl = db.query(OfferTemplate).filter(OfferTemplate.title == "Standard Full-Time Offer").first()
@@ -21,19 +22,19 @@ def seed_offers(db, applications, jobs, ceo_user):
 
     offers_created = []
 
-    # 2. Offer 1 -> Linked to Application 1
-    app1 = applications[1]
-    offer1 = db.query(Offer).filter(Offer.application_id == app1.id).first()
+    # 2. Offer for Candidate in 'offer_sent' stage (index 4 - David Kim)
+    app_sent = applications[4]
+    offer1 = db.query(Offer).filter(Offer.application_id == app_sent.id).first()
     if not offer1:
         token = generate_secure_offer_token()
         offer1 = Offer(
-            application_id=app1.id,
+            application_id=app_sent.id,
             template_id=tmpl.id if tmpl else None,
             base_salary=145000.0,
             bonus_equity="10% Annual Bonus + 5,000 Options",
             start_date=date.today() + timedelta(days=14),
             expiry_date=date.today() + timedelta(days=7),
-            offer_letter_text="Dear Sophia Chen,\n\nWe are thrilled to offer you the position of AI / ML Engineer at Agentra AI.",
+            offer_letter_text="Dear David Kim,\n\nWe are thrilled to offer you the position of Senior Full Stack Engineer at Agentra AI.",
             secure_token=token,
             token_expires_at=datetime.utcnow() + timedelta(days=7),
             created_by=ceo_user.id
@@ -43,18 +44,18 @@ def seed_offers(db, applications, jobs, ceo_user):
         db.refresh(offer1)
     offers_created.append(offer1)
 
-    # 3. Offer 2 -> Linked to Application 2
-    app2 = applications[2]
-    offer2 = db.query(Offer).filter(Offer.application_id == app2.id).first()
+    # 3. Offer Approval for Candidate in 'offer_approval' stage (index 3 - Elena Rostova)
+    app_approval = applications[3]
+    offer2 = db.query(Offer).filter(Offer.application_id == app_approval.id).first()
     if not offer2:
         offer2 = Offer(
-            application_id=app2.id,
+            application_id=app_approval.id,
             template_id=tmpl.id if tmpl else None,
-            base_salary=135000.0,
+            base_salary=155000.0,
             bonus_equity="15% Performance Bonus + 2,500 Options",
             start_date=date.today() + timedelta(days=21),
             expiry_date=date.today() + timedelta(days=7),
-            offer_letter_text="Dear Marcus Vance,\n\nWe are pleased to offer you the position of Senior Full Stack Engineer.",
+            offer_letter_text="Dear Elena Rostova,\n\nWe are pleased to offer you the position of AI / ML Engineer at Agentra AI.",
             created_by=ceo_user.id
         )
         db.add(offer2)
@@ -66,14 +67,14 @@ def seed_offers(db, applications, jobs, ceo_user):
             appr2 = OfferApproval(
                 offer_id=offer2.id,
                 approver_id=ceo_user.id,
-                comments="Draft offer approved.",
+                comments="Draft offer approved by CEO.",
                 created_by=ceo_user.id
             )
             db.add(appr2)
             db.commit()
     offers_created.append(offer2)
 
-    print(f"  ✓ Level 5 Complete: {len(offers_created)} Offers created.")
+    print(f"  ✓ Level 5 Complete: {len(offers_created)} Offers & Approvals created.")
 
     if offer1.secure_token:
         print(f"\n🎉 Candidate Signing Test Link:\n   http://localhost:5173/offer/sign/{offer1.secure_token}\n")

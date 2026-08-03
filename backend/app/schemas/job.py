@@ -1,6 +1,7 @@
 from pydantic import BaseModel, ConfigDict
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
+from app.schemas.user import UserResponse
 
 
 class JobCreate(BaseModel):
@@ -13,6 +14,10 @@ class JobCreate(BaseModel):
     full_description: Optional[str] = None
     keywords: Optional[str] = None
     status: Optional[str] = "published"
+    hiring_manager_id: Optional[int] = None
+    recruiter_ids: Optional[List[int]] = None
+    interviewer_ids: Optional[List[int]] = None
+    boards: Optional[List[str]] = []
 
 
 class JobUpdate(BaseModel):
@@ -25,6 +30,9 @@ class JobUpdate(BaseModel):
     full_description: Optional[str] = None
     keywords: Optional[str] = None
     status: Optional[str] = None
+    hiring_manager_id: Optional[int] = None
+    recruiter_ids: Optional[List[int]] = None
+    interviewer_ids: Optional[List[int]] = None
     updated_by: Optional[int] = None
 
 
@@ -46,3 +54,8 @@ class JobResponse(BaseModel):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class JobDetail(JobResponse):
+    creator: Optional[UserResponse] = None
+    assigned_users: List[UserResponse] = []

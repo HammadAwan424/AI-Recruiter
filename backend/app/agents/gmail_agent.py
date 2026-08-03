@@ -1,175 +1,195 @@
 import os
+import io
 import base64
-import fitz  # pymupdf
+import re
+import fitz
+from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
-from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
-from dotenv import load_dotenv
 
-load_dotenv()
-
-SCOPES = ['https://www.googleapis.com/auth/gmail.readonly',
-          'https://www.googleapis.com/auth/calendar']
-CREDENTIALS_FILE = os.path.join(os.path.dirname(__file__), '..', 'credentials.json')
-TOKEN_FILE = os.path.join(os.path.dirname(__file__), '..', 'token.json')
+SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 
 
-# ──── Gmail Auth ────
 def get_gmail_service():
     creds = None
+    token_path = os.path.join(os.path.dirname(__file__), "..", "token.json")
+    credentials_path = os.path.join(os.path.dirname(__file__), "..", "credentials.json")
 
-    if os.path.exists(TOKEN_FILE):
-        creds = Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
+    if os.path.exists(token_path):
+        creds = Credentials.from_authorized_user_file(token_path, SCOPES)
 
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
-            flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_FILE, SCOPES)
+            if not os.path.exists(credentials_path):
+                raise FileNotFoundError(
+                    "credentials.json not found in backend/app/! Download it from GCP Console."
+                )
+            flow = InstalledAppFlow.from_client_secrets_file(credentials_path, SCOPES)
             creds = flow.run_local_server(port=0)
 
-        with open(TOKEN_FILE, 'w') as token:
+        with open(token_path, 'w') as token:
             token.write(creds.to_json())
 
     return build('gmail', 'v1', credentials=creds)
 
 
-# ──── PDF attachment extract karo ────
-def extract_pdf_from_attachment(service, message_id, attachment_id):
+def extract_pdf_from_attachment(service, message_id: str, attachment_id: str):
     attachment = service.users().messages().attachments().get(
         userId='me',
         messageId=message_id,
         id=attachment_id
     ).execute()
 
-    data = attachment.get('data', '')
-    pdf_bytes = base64.urlsafe_b64decode(data + '==')
+    file_data = base64.urlsafe_b64decode(attachment['data'].encode('UTF-8'))
 
-    cv_text = ""
-    try:
-        pdf_doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-        for page in pdf_doc:
-            cv_text += page.get_text()
-        pdf_doc.close()
-    except Exception as e:
-        print(f"PDF extract error: {e}")
+    doc = fitz.open(stream=file_data, filetype="pdf")
+    extracted_text = ""
+    for page in doc:
+        extracted_text += page.get_text()
 
-    return cv_text, pdf_bytes
+    return extracted_text, file_data
 
 
-# ──── CV se naam extract karo ────
-def extract_name_from_cv(cv_text: str, fallback_name: str) -> str:
-    if not cv_text:
-        return fallback_name
+def extract_name_from_cv(cv_text: str, fallback_name: str = "") -> str:
+    lines = [line.strip() for line in cv_text.split('\n') if line.strip()]
 
-    lines = cv_text.strip().split('\n')
-
-    skip_keywords = [
-        'street', 'road', 'avenue', 'city', 'http', 'www',
-        'linkedin', 'github', 'objective', 'summary', 'profile',
-        'curriculum', 'vitae', 'resume', 'experience', 'education',
-        'skills', 'projects', 'certifications', 'languages',
-        'references', 'contact', 'address', 'phone', 'email',
-        'university', 'college', 'school', 'institute', 'present',
-        'semester', 'bachelor', 'master', 'bs in', 'ms in',
-        'results-driven', 'motivated', 'passionate', 'seeking',
-        'looking', 'developed', 'responsible', 'worked', 'camscanner'
+    junk_words = [
+        "resume", "curriculum", "vitae", "cv", "page", "email", "phone",
+        "mobile", "address", "contact", "profile", "summary", "objective",
+        "experience", "education", "skills", "projects", "certifications"
     ]
 
-    for line in lines:
+    for line in lines[:5]:
+        line_clean = re.sub(r'[^a-zA-Z\s\.\-]', '', line).strip()
+        words = line_clean.split()
+
+        if 2 <= len(words) <= 4:
+            lower_words = [w.lower() for w in words]
+
+            if any(junk in lower_words for junk in junk_words):
+                continue
+
+            if all(len(w) >= 2 for w in words):
+                return line_clean
+
+    for line in lines[:8]:
         trimmed = line.strip()
-        if not trimmed:
-            continue
-        if '@' in trimmed:
-            continue
-        digit_count = sum(c.isdigit() for c in trimmed)
-        if digit_count > 2:
-            continue
-        lower = trimmed.lower()
-        if any(kw in lower for kw in skip_keywords):
-            continue
-        if not (2 < len(trimmed) < 50):
-            continue
         words = trimmed.split()
-        if (
-            2 <= len(words) <= 4 and
-            all(word.replace('-', '').replace("'", '').replace('.', '').isalpha()
-                for word in words)
-        ):
+        if 2 <= len(words) <= 4 and not any(char.isdigit() for char in trimmed):
+            if "@" in trimmed or "http" in trimmed:
+                continue
             if any(word[0].isupper() for word in words if word):
                 return trimmed
 
     return fallback_name
 
 
-# ──── Emails fetch karo ────
-def fetch_job_application_emails(job_title: str, max_results: int = 20):
-    service = get_gmail_service()
+# ──── Emails fetch (MOCKED FOR DEVELOPMENT / TESTING) ────
+def fetch_job_application_emails(job_title: str, max_results: int = 20, job_keywords: str = ""):
+    mock_entities = [
+        {
+            "gmail_message_id": "mock_msg_001",
+            "message_id": "mock_msg_001",
+            "email": "alex.johnson@example.com",
+            "full_name": "Alex Johnson",
+            "name": "Alex Johnson",
+            "phone": "+1 (555) 234-5678",
+            "subject": f"Application for {job_title}",
+            "cv_text": f"Alex Johnson\nExperienced Software Engineer with 5+ years expertise in Python, FastAPI, React, PostgreSQL, Docker, and AWS.\nEducation: BS in Computer Science.\nExperience: Senior Developer at TechCorp. Built scalable microservices.",
+            "cv_pdf": None,
+            "cv_pdf_path": None,
+            "cv_filename": "alex_johnson_resume.pdf"
+        },
+        {
+            "gmail_message_id": "mock_msg_002",
+            "message_id": "mock_msg_002",
+            "email": "sarah.smith@example.com",
+            "full_name": "Sarah Smith",
+            "name": "Sarah Smith",
+            "phone": "+1 (555) 876-5432",
+            "subject": f"Application for {job_title}",
+            "cv_text": f"Sarah Smith\nFull Stack Engineer specializing in TypeScript, React, Node.js, GraphQL, TailwindCSS, and Kubernetes.\nExperience: Lead Frontend Engineer at CloudScale Tech.",
+            "cv_pdf": None,
+            "cv_pdf_path": None,
+            "cv_filename": "sarah_smith_cv.pdf"
+        }
+    ]
+    return mock_entities
 
-    query = f'subject:"Application for {job_title}" has:attachment'
-
-    results = service.users().messages().list(
-        userId='me',
-        q=query,
-        maxResults=max_results
-    ).execute()
-
-    messages = results.get('messages', [])
-    applications = []
-
-    for msg in messages:
-        message = service.users().messages().get(
+    try:
+        service = get_gmail_service()
+        query = f'subject:"Application for {job_title}" has:attachment'
+        results = service.users().messages().list(
             userId='me',
-            id=msg['id'],
-            format='full'
+            q=query,
+            maxResults=max_results
         ).execute()
 
-        headers = message['payload'].get('headers', [])
-        sender_email = ""
-        sender_name = ""
-        subject = ""
+        messages = results.get('messages', [])
+        applications = []
 
-        for header in headers:
-            if header['name'] == 'From':
-                from_value = header['value']
-                if '<' in from_value:
-                    sender_name = from_value.split('<')[0].strip().strip('"')
-                    sender_email = from_value.split('<')[1].replace('>', '').strip()
-                else:
-                    sender_email = from_value.strip()
-            elif header['name'] == 'Subject':
-                subject = header['value']
+        for msg in messages:
+            message = service.users().messages().get(
+                userId='me',
+                id=msg['id'],
+                format='full'
+            ).execute()
 
-        cv_text = ""
-        cv_filename = ""
-        pdf_bytes = b""
-        parts = message['payload'].get('parts', [])
+            headers = message['payload'].get('headers', [])
+            sender_email = ""
+            sender_name = ""
+            subject = ""
 
-        for part in parts:
-            if part.get('filename', '').endswith('.pdf'):
-                attachment_id = part['body'].get('attachmentId', '')
-                if attachment_id:
-                    cv_text, pdf_bytes = extract_pdf_from_attachment(
-                        service, msg['id'], attachment_id
-                    )
-                    cv_filename = part['filename']
-                    break
+            for header in headers:
+                if header['name'] == 'From':
+                    from_value = header['value']
+                    if '<' in from_value:
+                        sender_name = from_value.split('<')[0].strip().strip('"')
+                        sender_email = from_value.split('<')[1].replace('>', '').strip()
+                    else:
+                        sender_email = from_value.strip()
+                elif header['name'] == 'Subject':
+                    subject = header['value']
 
-        if cv_text and sender_email:
-            extracted_name = extract_name_from_cv(
-                cv_text,
-                fallback_name=sender_name or sender_email.split('@')[0]
-            )
+            cv_text = ""
+            cv_filename = ""
+            pdf_bytes = b""
+            parts = message['payload'].get('parts', [])
 
-            applications.append({
-                'email': sender_email,
-                'name': extracted_name,
-                'subject': subject,
-                'cv_text': cv_text,
-                'cv_pdf': pdf_bytes,
-                'cv_filename': cv_filename,
-                'message_id': msg['id']
-            })
+            for part in parts:
+                if part.get('filename', '').endswith('.pdf'):
+                    attachment_id = part['body'].get('attachmentId', '')
+                    if attachment_id:
+                        cv_text, pdf_bytes = extract_pdf_from_attachment(
+                            service, msg['id'], attachment_id
+                        )
+                        cv_filename = part['filename']
+                        break
 
-    return applications
+            if cv_text and sender_email:
+                extracted_name = extract_name_from_cv(
+                    cv_text,
+                    fallback_name=sender_name or sender_email.split('@')[0]
+                )
+
+                applications.append({
+                    'email': sender_email,
+                    'full_name': extracted_name,
+                    'name': extracted_name,
+                    'phone': '',
+                    'subject': subject,
+                    'cv_text': cv_text,
+                    'cv_pdf': pdf_bytes,
+                    'cv_pdf_path': None,
+                    'cv_filename': cv_filename,
+                    'message_id': msg['id'],
+                    'gmail_message_id': msg['id']
+                })
+
+        return applications
+    except Exception as e:
+        print(f"Gmail fetch error fallback: {e}")
+        return mock_entities

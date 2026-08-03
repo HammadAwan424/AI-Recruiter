@@ -1,7 +1,8 @@
 from datetime import date, datetime
-from typing import Optional, List
-from sqlalchemy import String, Date, DateTime, ForeignKey
+from typing import Optional, List, Any
+from sqlalchemy import String, Date, DateTime, ForeignKey, and_
 from sqlalchemy.orm import relationship, Mapped, mapped_column
+from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 from sqlalchemy.sql import func
 from app.database import Base, BaseModelMixin
 
@@ -24,7 +25,7 @@ class User(Base, BaseModelMixin):
     phone: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     department: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     joining_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
-    status: Mapped[str] = mapped_column(String, default="active", nullable=False)  # pending / active / inactive / fired
+    status: Mapped[str] = mapped_column(String, default="active", nullable=False)  # pending / active / inactive
 
     approved_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
@@ -43,5 +44,27 @@ class User(Base, BaseModelMixin):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
 
-    # ORM Relationship
+    # ORM Relationships
     company = relationship("Company", back_populates="users", foreign_keys=[company_id])
+    job_scopes = relationship(
+        "UserJobScope",
+        back_populates="user",
+        foreign_keys="UserJobScope.user_id",
+        cascade="all, delete-orphan"
+    )
+
+    slots = relationship(
+        "InterviewSlot",
+        foreign_keys="InterviewSlot.interviewer_id",
+        back_populates="interviewer"
+    )
+
+    available_slots = relationship(
+        "InterviewSlot",
+        primaryjoin="and_(InterviewSlot.interviewer_id==User.id, InterviewSlot.is_booked==False)",
+        foreign_keys="InterviewSlot.interviewer_id",
+        viewonly=True,
+    )
+
+    # Association Proxy: Access assigned Job ORM instances directly
+    assigned_jobs: AssociationProxy[List[Any]] = association_proxy("job_scopes", "job")

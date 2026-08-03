@@ -1,6 +1,8 @@
 import random
 from app.database import SessionLocal
-from app.models.recruitment import Job, Candidate, Application
+from app.models.job import Job
+from app.models.candidate import Candidate
+from app.models.application import Application
 
 def create_mock_applications(count: int = 5):
     db = SessionLocal()
@@ -22,7 +24,7 @@ def create_mock_applications(count: int = 5):
         ("David Kim", "david.k@example.com", "+1 (555) 777-8899")
     ]
 
-    statuses = ["applied", "shortlisted", "interview_scheduled", "hired", "rejected"]
+    statuses = ["applied", "screening", "interview", "hired", "rejected"]
     summaries = [
         "Strong engineering background with solid experience in cloud microservices.",
         "Experienced full stack developer with great communication and problem solving skills.",
@@ -38,9 +40,7 @@ def create_mock_applications(count: int = 5):
             cand = Candidate(
                 full_name=name,
                 email=email,
-                phone=phone,
-                cv_text=f"Resume of {name}. Experienced software engineer with expertise in modern web frameworks.",
-                cv_filename=f"{name.lower().replace(' ', '_')}_resume.pdf"
+                phone=phone
             )
             db.add(cand)
             db.commit()
@@ -60,7 +60,8 @@ def create_mock_applications(count: int = 5):
             app = Application(
                 candidate_id=cand.id,
                 job_id=job.id,
-                status=status,
+                current_status=status,
+                disposition="active" if status != "rejected" else "rejected",
                 match_score=score,
                 skill_gap=random.choice(["GraphQL", "Kubernetes", "Redis", "None"]),
                 summary=random.choice(summaries)

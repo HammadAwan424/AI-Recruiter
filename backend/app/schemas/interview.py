@@ -1,74 +1,16 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from datetime import date, time, datetime
-from typing import Optional, List
-
-
-class InterviewSlotCreate(BaseModel):
-    job_id: Optional[int] = 0
-    slot_date: date
-    start_time: time
-    end_time: time
-
-
-class InterviewSlotResponse(BaseModel):
-    id: int
-    interviewer_id: int
-    job_id: int
-    slot_date: date
-    start_time: time
-    end_time: time
-    is_booked: bool
-    created_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class InterviewPublicSlotResponse(BaseModel):
-    candidate_name: str
-    job_title: str
-    company_name: str
-    available_slots: List[InterviewSlotResponse]
-
-
-class CandidateScheduleSelectRequest(BaseModel):
-    slot_id: int
-
-
-class InterviewRescheduleRequest(BaseModel):
-    scheduled_date: date
-    scheduled_time: time
-    notes: Optional[str] = None
-
-
-class InterviewCreate(BaseModel):
-    application_id: int
-    interviewer_1_id: int
-    interviewer_2_id: Optional[int] = None
-    scheduled_date: date
-    scheduled_time: time
-    duration_minutes: Optional[int] = 45
-    meeting_type: Optional[str] = "GOOGLE_MEET"
-    notes: Optional[str] = None
-
-
-class InterviewUpdate(BaseModel):
-    scheduled_date: Optional[date] = None
-    scheduled_time: Optional[time] = None
-    duration_minutes: Optional[int] = None
-    meeting_type: Optional[str] = None
-    status: Optional[str] = None
-    notes: Optional[str] = None
-    updated_by: Optional[int] = None
-
+from typing import Literal, Optional, List, Union
+from app.schemas.user import UserResponse
+from app.schemas.job import JobResponse
 
 class InterviewResponse(BaseModel):
     id: int
     application_id: int
-    interviewer_1_id: int
-    interviewer_2_id: Optional[int] = None
-    scheduled_date: date
-    scheduled_time: time
-    duration_minutes: int
+    round_number: int = 1
+    round_label: Optional[str] = None
+    schedule_start: Optional[datetime] = None
+    schedule_end: Optional[datetime] = None
     meeting_type: str
     meeting_link: str
     self_schedule_token: Optional[str] = None
@@ -86,19 +28,91 @@ class InterviewResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+class InterviewSlotCreate(BaseModel):
+    job_id: Optional[int] = None
+    schedule_start: datetime
+    schedule_end: datetime
 
-class InterviewFeedbackCreate(BaseModel):
-    interview_id: int
+class InterviewSlotResponse(BaseModel):
+    id: int
     interviewer_id: int
-    technical_score: float
-    communication_score: float
+    job_id: Optional[int] = None
+    schedule_start: datetime
+    schedule_end: datetime
+    is_booked: bool
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+class InterviewSlotDetail(InterviewSlotResponse):
+    job: Optional[JobResponse] = None
+
+
+class InterviewerDetail(UserResponse):
+    available_slots: Optional[List[InterviewSlotDetail]] = []
+
+class InterviewDetail(InterviewResponse):
+    class _InterviewerAssignment(BaseModel):
+        model_config = ConfigDict(from_attributes=True)
+        interviewer_id: int
+        interviewer: UserResponse
+        feedback: Optional["InterviewFeedbackResponse"] = None
+    interviewer_assignments: List[_InterviewerAssignment] = []
+
+class InterviewPublicSlotResponse(BaseModel):
+    candidate_name: str
+    job_title: str
+    company_name: str
+    available_slots: List[InterviewSlotResponse]
+
+
+
+
+# This handles the interview create request payloads:
+# 1) FixedScheduleInterview when the recruiter manually selects the slot
+# 2) SelfScheduleInterview, no slot is provided, the candidate selects it
+class InterviewCreateBase(BaseModel):
+    application_id: int
+    round_number: int = 1
+    round_label: str | None = None
+    meeting_type: str
     notes: Optional[str] = None
+
+# Type 1
+class InterviewerSlotAssignment(BaseModel):
+    interviewer_id: int
+    slot_id: int
+class FixedScheduleInterview(InterviewCreateBase):
+    schedule_type: Literal["fixed"] = "fixed"
+    assignments: List[InterviewerSlotAssignment] = []
+
+# Type 2
+class SelfScheduleInterview(InterviewCreateBase):
+    schedule_type: Literal["self_schedule"] = "self_schedule"
+    self_schedule_token_expires_at: datetime
+    interviewer_ids: List[int]
+
+InterviewCreate = Union[FixedScheduleInterview, SelfScheduleInterview]
+
+# Request interfaces for fastapi
+class InterviewCreateRequest(BaseModel):
+    payload: InterviewCreate = Field(discriminator="schedule_type")
+
+class InterviewRescheduleRequest(BaseModel):
+    assignments: list[InterviewerSlotAssignment] 
+
+class InterviewMetadataUpdate(BaseModel):
+    meeting_type: Optional[str] = None
+    notes: Optional[str] = None
+
+
 
 
 class InterviewFeedbackResponse(BaseModel):
     id: int
-    interview_id: int
-    interviewer_id: int
+    interview_interviewer_id: int
+    interview_id: Optional[int] = None
+    interviewer_id: Optional[int] = None
     technical_score: float
     communication_score: float
     notes: Optional[str] = None
@@ -108,3 +122,10 @@ class InterviewFeedbackResponse(BaseModel):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+class InterviewFeedbackCreate(BaseModel):
+    interview_id: int
+    interviewer_id: int
+    technical_score: float
+    communication_score: float
+    notes: Optional[str] = None
