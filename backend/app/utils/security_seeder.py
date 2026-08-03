@@ -4,57 +4,28 @@ from app.models.rbac import Role, RolePermission
 
 DEFAULT_ROLES = [
     {
-        "name": "superadmin",
-        "description": "Super Administrator with platform multi-tenant control"
-    },
-    {
         "name": "ceo",
-        "description": "Chief Executive Officer with full organization control"
+        "description": "Chief Executive Officer with full organization control",
+        "job_scope": "all"
     },
     {
         "name": "recruiter",
-        "description": "Recruiter managing company-wide job candidates and pipeline"
+        "description": "Recruiter managing company-wide job candidates and pipeline",
+        "job_scope": "all"
     },
     {
         "name": "hiring_manager",
-        "description": "Hiring Manager managing assigned scoped jobs and candidate interviewers"
+        "description": "Hiring Manager managing assigned scoped jobs and candidate interviewers",
+        "job_scope": "own"
     },
     {
         "name": "interviewer",
-        "description": "Interviewer conducting assigned candidate interviews and submitting feedback"
+        "description": "Interviewer conducting assigned candidate interviews and submitting feedback",
+        "job_scope": "own"
     }
 ]
 
-DEFAULT_ROLE_PERMISSIONS = {
-    "superadmin": [
-        "*"
-    ],
-    "ceo": [
-        "user:change_permissions", "user:invite", "user:deactivate", "user:view",
-        "job:create", "job:approve", "job:close", "job:assign_recruiter", "job:view",
-        "candidate:view_compensation", "candidate:disposition", "candidate:view",
-        "interview:create", "interview:assign", "interview:submit_feedback", "interview:reschedule",
-        "offer:generate", "offer:approve", "offer:view", "profile:update"
-    ],
-    "recruiter": [
-        "job:create", "job:close", "job:assign_recruiter", "job:view",
-        "candidate:view_compensation", "candidate:disposition", "candidate:view",
-        "interview:create", "interview:assign", "interview:submit_feedback", "interview:reschedule",
-        "offer:generate", "offer:view", "profile:update"
-    ],
-    "hiring_manager": [
-        "job:view",
-        "candidate:disposition", "candidate:view",
-        "interview:create", "interview:assign", "interview:submit_feedback", "interview:reschedule",
-        "offer:generate", "offer:approve", "offer:view", "profile:update"
-    ],
-    "interviewer": [
-        "job:view",
-        "candidate:view",
-        "interview:submit_feedback",
-        "profile:update"
-    ]
-}
+from app.permissions import DEFAULT_ROLE_PERMISSIONS
 
 
 def seed_default_roles(
@@ -84,11 +55,16 @@ def seed_default_roles(
             role = Role(
                 name=r_data["name"],
                 company_id=company_id,
-                description=r_data["description"]
+                description=r_data["description"],
+                job_scope=r_data.get("job_scope", "own")
             )
             db.add(role)
             db.commit()
             db.refresh(role)
+        else:
+            if "job_scope" in r_data and role.job_scope != r_data["job_scope"]:
+                role.job_scope = r_data["job_scope"]
+                db.commit()
         role_map[role.name] = role
 
     # Seed RolePermission Mappings

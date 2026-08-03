@@ -2,7 +2,7 @@ import os
 import sys
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Query, Session
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
 
@@ -28,7 +28,7 @@ from app.crud.offer import create_offer, create_offer_approval
 from app.utils.security import (
     get_current_user,
     require_permissions,
-    scoped_offers_query,
+    get_scoped_offers_query,
     get_offer_or_403,
     get_application_or_403
 )
@@ -109,9 +109,9 @@ def create_offer_endpoint(
 )
 def list_offers(
     db: Session = Depends(get_db),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    offers_query: Query = Depends(get_scoped_offers_query),
 ):
-    offers = scoped_offers_query(db, current_user).order_by(Offer.created_at.desc()).all()
+    offers = offers_query.order_by(Offer.created_at.desc()).all()
     return offers
 
 

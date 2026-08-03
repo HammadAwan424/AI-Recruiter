@@ -19,6 +19,14 @@ export const jobsApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ["Jobs"],
     }),
+    updateJob: builder.mutation<JobDetail, { id: number; payload: Partial<JobCreatePayload> }>({
+      query: ({ id, payload }) => ({
+        url: `/jobs/${id}`,
+        method: "PUT",
+        body: payload,
+      }),
+      invalidatesTags: (_result, _error, { id }) => ["Jobs", { type: "Jobs", id }],
+    }),
     assignUserToJob: builder.mutation<
       { message: string; job_id: number; user_id: number },
       { jobId: number; userId: number }
@@ -45,6 +53,7 @@ export const {
   useGetJobDetailQuery,
   useLazyGetJobDetailQuery,
   useCreateJobMutation,
+  useUpdateJobMutation,
   useAssignUserToJobMutation,
   useDeleteJobMutation,
 } = jobsApi;

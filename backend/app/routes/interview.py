@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from sqlalchemy.orm import Session
-from datetime import datetime, timedelta, date, time
+from sqlalchemy.orm import Session, Query, joinedload
+from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
 
@@ -14,12 +14,13 @@ from app.models.user import User
 from app.models.rbac import UserJobScope
 from app.schemas.interview import (
     InterviewCreate,
-    InterviewUpdate,
+    InterviewCreateRequest,
     InterviewResponse,
     InterviewSlotCreate,
     InterviewSlotResponse,
+    InterviewSlotDetail,
+    InterviewerDetail,
     InterviewPublicSlotResponse,
-    CandidateScheduleSelectRequest,
     InterviewRescheduleRequest,
     InterviewFeedbackCreate,
     InterviewFeedbackResponse,
@@ -28,7 +29,7 @@ from app.crud.interview import create_interview, create_interview_feedback
 from app.utils.security import (
     get_current_user,
     require_permissions,
-    scoped_interviews_query,
+    get_scoped_interviews_query,
     get_interview_or_403,
     get_application_or_403
 )
@@ -44,7 +45,7 @@ class AssignInterviewerPayload(BaseModel):
     interviewer_ids: list[int]
 
 
-def auto_grant_user_job_scope(db: Session, user_id: int, job_id: int, created_by: int):
+def auto_grant_user_job_scope(db: Session, user_id: int, job_id: int, created_by: Optional[int] = None):
     existing = db.query(UserJobScope).filter_by(user_id=user_id, job_id=job_id).first()
     if not existing:
         scope = UserJobScope(user_id=user_id, job_id=job_id, created_by=created_by)
@@ -54,7 +55,7 @@ def auto_grant_user_job_scope(db: Session, user_id: int, job_id: int, created_by
 # ─────────────────────────────────────────────────────────────
 # 1. INTERVIEWER AVAILABILITY SLOTS
 # ─────────────────────────────────────────────────────────────
-@router.post("/slots", response_model=InterviewSlotResponse)
+@router.post("/slots", response_model=InterviewSlotDetail)
 def create_interview_slot(
     payload: InterviewSlotCreate,
     db: Session = Depends(get_db),
@@ -62,26 +63,94 @@ def create_interview_slot(
 ):
     slot = InterviewSlot(
         interviewer_id=current_user["user_id"],
-        job_id=payload.job_id or 0,
-        slot_date=payload.slot_date,
-        start_time=payload.start_time,
-        end_time=payload.end_time,
+        job_id=payload.job_id,
+        schedule_start=payload.schedule_start,
+        schedule_end=payload.schedule_end,
         is_booked=False,
         created_by=current_user["user_id"]
     )
     db.add(slot)
     db.commit()
     db.refresh(slot)
+    if slot.job_id:
+        db.refresh(slot, ["job"])
     return slot
 
 
-@router.get("/slots", response_model=List[InterviewSlotResponse])
+@router.get("/slots", response_model=List[InterviewSlotDetail])
 def get_available_slots(
     db: Session = Depends(get_db),
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
-    slots = db.query(InterviewSlot).filter(InterviewSlot.is_booked.is_(False)).all()
+    slots = (
+        db.query(InterviewSlot)
+        .options(joinedload(InterviewSlot.job))
+        .filter(InterviewSlot.is_booked.is_(False))
+        .order_by(InterviewSlot.schedule_start.asc())
+        .all()
+    )
     return slots
+
+
+@router.get("/interviewers", response_model=List[InterviewerDetail])
+def get_interviewers_with_slots(
+    job_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    company_id = current_user.get("company_id")
+    interviewers = (
+        db.query(User)
+        .options(
+            joinedload(User.available_slots).joinedload(InterviewSlot.job)
+        )
+        .filter(User.company_id == company_id, User.role == "interviewer")
+        .all()
+    )
+    return interviewers
+
+
+@router.put("/slots/{slot_id}", response_model=InterviewSlotDetail)
+def update_interview_slot(
+    slot_id: int,
+    payload: InterviewSlotCreate,
+    db: Session = Depends(get_db),
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    slot = db.query(InterviewSlot).filter(InterviewSlot.id == slot_id).first()
+    if not slot:
+        raise HTTPException(status_code=404, detail="Slot not found")
+    if slot.is_booked:
+        raise HTTPException(status_code=400, detail="Cannot edit a slot that is already booked.")
+
+    slot.job_id = payload.job_id
+    slot.schedule_start = payload.schedule_start
+    slot.schedule_end = payload.schedule_end
+    slot.updated_by = current_user["user_id"]
+
+    db.commit()
+    db.refresh(slot)
+    if slot.job_id:
+        db.refresh(slot, ["job"])
+
+    return slot
+
+
+@router.delete("/slots/{slot_id}")
+def delete_interview_slot(
+    slot_id: int,
+    db: Session = Depends(get_db),
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    slot = db.query(InterviewSlot).filter(InterviewSlot.id == slot_id).first()
+    if not slot:
+        raise HTTPException(status_code=404, detail="Slot not found")
+    if slot.is_booked:
+        raise HTTPException(status_code=400, detail="Cannot delete a slot that is already booked.")
+
+    db.delete(slot)
+    db.commit()
+    return {"message": "Slot deleted successfully"}
 
 
 # ─────────────────────────────────────────────────────────────
@@ -93,21 +162,36 @@ def get_public_schedule_slots(token: str, db: Session = Depends(get_db)):
     if not interview:
         raise HTTPException(status_code=404, detail="Invalid or expired scheduling link")
 
-    app = interview.application
-    candidate = app.candidate if app else None
-    job = app.job if app else None
+    now = datetime.utcnow()
+    if interview.token_expires_at and now > interview.token_expires_at:
+        raise HTTPException(status_code=400, detail="This scheduling link has expired.")
 
-    raw_slots = db.query(InterviewSlot).filter(InterviewSlot.is_booked.is_(False)).all()
+    if interview.status != "AWAITING_SELECTION":
+        raise HTTPException(status_code=400, detail="This interview has already been scheduled or completed.")
+
+    assignments = interview.interviewer_assignments
+    if len(assignments) == 0:
+        raise HTTPException(status_code=400, detail="No interviewer assigned to this interview round.")
+    if len(assignments) > 1:
+        raise HTTPException(status_code=400, detail="Multiple interviewers assigned to self-schedule round is not supported yet.")
+
+    interviewer_id = assignments[0].interviewer_id
+    raw_slots = (
+        db.query(InterviewSlot)
+        .filter(
+            InterviewSlot.interviewer_id == interviewer_id,
+            InterviewSlot.is_booked.is_(False)
+        )
+        .order_by(InterviewSlot.schedule_start.asc())
+        .all()
+    )
     typed_slots = [InterviewSlotResponse.model_validate(s) for s in raw_slots]
 
-    cand_name = str(candidate.full_name) if (candidate and candidate.full_name is not None) else "Candidate"
-    j_title = str(job.title) if (job and job.title is not None) else "Position"
-    comp_name = str(job.company.name) if (job and job.company and job.company.name is not None) else "Agentra AI"
-
+    app = interview.application
     return InterviewPublicSlotResponse(
-        candidate_name=cand_name,
-        job_title=j_title,
-        company_name=comp_name,
+        candidate_name=app.candidate.full_name,
+        job_title=app.job.title,
+        company_name=app.job.company.name,
         available_slots=typed_slots
     )
 
@@ -115,25 +199,42 @@ def get_public_schedule_slots(token: str, db: Session = Depends(get_db)):
 @router.post("/public/schedule/{token}", response_model=InterviewResponse)
 def candidate_confirm_schedule(
     token: str,
-    payload: CandidateScheduleSelectRequest,
+    payload: InterviewRescheduleRequest,
     db: Session = Depends(get_db)
 ):
     interview = db.query(InterviewModel).filter(InterviewModel.self_schedule_token == token).first()
     if not interview:
         raise HTTPException(status_code=404, detail="Invalid scheduling link")
 
-    slot = db.query(InterviewSlot).filter(InterviewSlot.id == payload.slot_id).first()
-    if not slot or slot.is_booked:
-        raise HTTPException(status_code=400, detail="This time slot is no longer available. Please select another slot.")
-
     now = datetime.utcnow()
     if interview.token_expires_at and now > interview.token_expires_at:
         raise HTTPException(status_code=400, detail="This scheduling link has expired.")
 
-    slot.is_booked = True
-    interview.scheduled_date = slot.slot_date
-    interview.scheduled_time = slot.start_time
+    if interview.status != "AWAITING_SELECTION":
+        raise HTTPException(status_code=400, detail="This interview has already been scheduled.")
+
+    slot_ids = [a.slot_id for a in payload.assignments]
+    slots = db.query(InterviewSlot).filter(InterviewSlot.id.in_(slot_ids)).all() if slot_ids else []
+
+    if not slots or any(s.is_booked for s in slots):
+        raise HTTPException(status_code=400, detail="One or more selected slots are no longer available.")
+
+    interview.schedule_start = min(s.schedule_start for s in slots)
+    interview.schedule_end = min(s.schedule_end for s in slots)
     interview.status = "SCHEDULED"
+
+    for slot in slots:
+        slot.is_booked = True
+
+    for assignment in payload.assignments:
+        existing = (
+            db.query(InterviewInterviewers)
+            .filter_by(interview_id=interview.id, interviewer_id=assignment.interviewer_id)
+            .first()
+        )
+        if not existing:
+            assoc = InterviewInterviewers(interview_id=interview.id, interviewer_id=assignment.interviewer_id)
+            db.add(assoc)
 
     if interview.application:
         interview.application.current_status = "interview"
@@ -142,12 +243,9 @@ def candidate_confirm_schedule(
     db.refresh(interview)
 
     app = interview.application
-    candidate = app.candidate if app else None
-    job = app.job if app else None
-
-    setattr(interview, "candidate_name", candidate.full_name if candidate else "Candidate")
-    setattr(interview, "candidate_email", candidate.email if candidate else "")
-    setattr(interview, "job_title", job.title if job else "Position")
+    interview.candidate_name = app.candidate.full_name
+    interview.candidate_email = app.candidate.email
+    interview.job_title = app.job.title
 
     return interview
 
@@ -161,104 +259,59 @@ def candidate_confirm_schedule(
     dependencies=[Depends(require_permissions(["interview:assign"]))]
 )
 def schedule_interview(
-    payload: InterviewCreate,
+    request: InterviewCreateRequest,
     db: Session = Depends(get_db),
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
-    app = get_application_or_403(payload.application_id, db=db, current_user=current_user)
-    candidate = app.candidate
-    job = app.job
+    interview_in = request.payload
+    app = get_application_or_403(interview_in.application_id, db=db, current_user=current_user)
 
     meeting_link = generate_video_meeting_link(
-        meeting_type=payload.meeting_type or "GOOGLE_MEET",
-        title=f"{job.title if job else 'Job'} — {candidate.full_name if candidate else 'Candidate'}"
+        meeting_type=interview_in.meeting_type,
+        title=f"{app.job.title} — {app.candidate.full_name}"
     )
 
-    interview = create_interview(db, payload, meeting_link=meeting_link, created_by=current_user["user_id"])
+    interview = create_interview(db, request, meeting_link=meeting_link, created_by=current_user["user_id"])
 
     # Auto-grant UserJobScope to assigned interviewers
-    if payload.interviewer_ids:
-        for uid in payload.interviewer_ids:
-            auto_grant_user_job_scope(db, uid, app.job_id, current_user["user_id"])
+    interviewer_ids = []
+    if interview_in.schedule_type == "fixed":
+        interviewer_ids = [a.interviewer_id for a in interview_in.assignments]
+    elif interview_in.schedule_type == "self_schedule":
+        interviewer_ids = interview_in.interviewer_ids
+
+    for uid in interviewer_ids:
+        auto_grant_user_job_scope(db, uid, app.job_id, current_user["user_id"])
 
     app.current_status = "interview"
     app.updated_by = current_user["user_id"]
     db.commit()
 
-    setattr(interview, "candidate_name", candidate.full_name if candidate else "Candidate")
-    setattr(interview, "candidate_email", candidate.email if candidate else "")
-    setattr(interview, "job_title", job.title if job else "Position")
+    interview.candidate_name = app.candidate.full_name
+    interview.candidate_email = app.candidate.email
+    interview.job_title = app.job.title
 
     return interview
 
 
-@router.get("", response_model=List[InterviewResponse])
+@router.get("", response_model=List[InterviewResponse], dependencies=[Depends(require_permissions(["interview:create"]))])
 def list_interviews(
     db: Session = Depends(get_db),
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    interviews_query: Query = Depends(get_scoped_interviews_query)
 ):
-    interviews = scoped_interviews_query(db, current_user).order_by(InterviewModel.scheduled_date.desc()).all()
-    results = []
+    interviews = interviews_query.order_by(InterviewModel.schedule_start.desc()).all()
 
     for item in interviews:
         app = item.application
-        candidate = app.candidate if app else None
-        job = app.job if app else None
+        item.candidate_name = app.candidate.full_name
+        item.candidate_email = app.candidate.email
+        item.job_title = app.job.title
 
-        setattr(item, "candidate_name", candidate.full_name if candidate else "Candidate")
-        setattr(item, "candidate_email", candidate.email if candidate else "")
-        setattr(item, "job_title", job.title if job else "Position")
-        results.append(item)
-
-    return results
+    return interviews
 
 
 # ─────────────────────────────────────────────────────────────
-# 4. ASSIGN INTERVIEWERS (REQUIRES create_interview PERMISSION)
-# ─────────────────────────────────────────────────────────────
-@router.post(
-    "/{interview_id}/assign-interviewer",
-    response_model=InterviewResponse,
-    dependencies=[Depends(require_permissions(["interview:assign"]))]
-)
-def assign_interviewers_to_interview(
-    payload: AssignInterviewerPayload,
-    interview: InterviewModel = Depends(get_interview_or_403),
-    db: Session = Depends(get_db),
-    current_user: Dict[str, Any] = Depends(get_current_user)
-):
-    company_id = current_user.get("company_id")
-    app = interview.application
-
-    for uid in payload.interviewer_ids:
-        user = db.query(User).filter(User.id == uid, User.company_id == company_id).first()
-        if not user:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Interviewer ID {uid} not found in your company.")
-
-        existing = db.query(InterviewInterviewers).filter_by(interview_id=interview.id, interviewer_id=uid).first()
-        if not existing:
-            assignment = InterviewInterviewers(interview_id=interview.id, interviewer_id=uid)
-            db.add(assignment)
-
-        if app and app.job_id:
-            auto_grant_user_job_scope(db, uid, app.job_id, current_user["user_id"])
-
-    interview.updated_by = current_user["user_id"]
-    db.commit()
-    db.refresh(interview)
-
-    candidate = app.candidate if app else None
-    job = app.job if app else None
-
-    setattr(interview, "candidate_name", candidate.full_name if candidate else "Candidate")
-    setattr(interview, "candidate_email", candidate.email if candidate else "")
-    setattr(interview, "job_title", job.title if job else "Position")
-
-    return interview
-
-
-# ─────────────────────────────────────────────────────────────
-# 5. INTERVIEW FEEDBACK / SCORING ENDPOINT (REQUIRES take_interview PERMISSION)
+# 4. INTERVIEW FEEDBACK / SCORING ENDPOINT (REQUIRES take_interview PERMISSION)
 # ─────────────────────────────────────────────────────────────
 @router.post(
     "/{interview_id}/feedback",
@@ -322,19 +375,16 @@ def submit_interview_feedback(
 
 
 # ─────────────────────────────────────────────────────────────
-# 6. DYNAMIC PATH PARAMETER ROUTES (MUST COME LAST)
+# 5. DYNAMIC PATH PARAMETER ROUTES (MUST COME LAST)
 # ─────────────────────────────────────────────────────────────
 @router.get("/{interview_id}", response_model=InterviewResponse)
 def get_interview_detail(
     interview: InterviewModel = Depends(get_interview_or_403)
 ):
     app = interview.application
-    candidate = app.candidate if app else None
-    job = app.job if app else None
-
-    setattr(interview, "candidate_name", candidate.full_name if candidate else "Candidate")
-    setattr(interview, "candidate_email", candidate.email if candidate else "")
-    setattr(interview, "job_title", job.title if job else "Position")
+    interview.candidate_name = app.candidate.full_name
+    interview.candidate_email = app.candidate.email
+    interview.job_title = app.job.title
 
     return interview
 
@@ -358,12 +408,9 @@ def create_candidate_self_schedule_link(
     db.refresh(interview)
 
     app = interview.application
-    candidate = app.candidate if app else None
-    job = app.job if app else None
-
-    setattr(interview, "candidate_name", candidate.full_name if candidate else "Candidate")
-    setattr(interview, "candidate_email", candidate.email if candidate else "")
-    setattr(interview, "job_title", job.title if job else "Position")
+    interview.candidate_name = app.candidate.full_name
+    interview.candidate_email = app.candidate.email
+    interview.job_title = app.job.title
 
     return interview
 
@@ -373,21 +420,14 @@ def download_interview_ical(
     interview: InterviewModel = Depends(get_interview_or_403)
 ):
     app = interview.application
-    candidate = app.candidate if app else None
-    job = app.job if app else None
-
-    candidate_name = str(candidate.full_name) if (candidate and candidate.full_name is not None) else "Candidate"
-    job_title = str(job.title) if (job and job.title is not None) else "Position"
-    attendee_email_str = str(candidate.email) if (candidate and candidate.email is not None) else ""
 
     ical_data = generate_ical_event(
-        title=f"Interview: {job_title} — {candidate_name}",
-        description=f"Job Interview for {job_title} at Agentra.",
-        scheduled_date=interview.scheduled_date,
-        scheduled_time=interview.scheduled_time,
-        duration_minutes=interview.duration_minutes or 45,
+        title=f"Interview: {app.job.title} — {app.candidate.full_name}",
+        description=f"Job Interview for {app.job.title} at Agentra.",
+        start_time=interview.schedule_start,
+        end_time=interview.schedule_end,
         location_url=interview.meeting_link,
-        attendee_email=attendee_email_str
+        attendee_email=app.candidate.email
     )
 
     return Response(

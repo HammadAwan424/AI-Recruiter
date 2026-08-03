@@ -2,6 +2,7 @@ from app.database import SessionLocal
 from app.models.company import Company
 from app.models.user import User
 from app.models.candidate import Candidate
+from app.models.rbac import Role, RolePermission
 from app.utils.security import hash_password
 from app.utils.security_seeder import seed_default_roles, DEFAULT_ROLE_PERMISSIONS, DEFAULT_ROLES
 
@@ -25,8 +26,18 @@ def seed_users_and_candidates(db):
         role_permissions_map=DEFAULT_ROLE_PERMISSIONS
     )
 
+    # Seed Platform Superadmin Role (Company-independent) for mock testing
+    superadmin_role = db.query(Role).filter(Role.name == "superadmin", Role.company_id.is_(None)).first()
+    if not superadmin_role:
+        superadmin_role = Role(name="superadmin", description="Platform Super Admin Role", job_scope="all", company_id=None)
+        db.add(superadmin_role)
+        db.flush()
+        db.add(RolePermission(role_id=superadmin_role.id, permission_key="superadmin"))
+        db.add(RolePermission(role_id=superadmin_role.id, permission_key="*"))
+        db.commit()
+
     # 3. Users Across All Roles
-    admin = db.query(User).filter(User.role == "superadmin").first()
+    admin = db.query(User).filter(User.email == "admin@agentra.com").first()
     if not admin:
         admin = User(
             full_name="Super Admin",
@@ -36,6 +47,7 @@ def seed_users_and_candidates(db):
             status="active"
         )
         db.add(admin)
+        db.commit()
 
     ceo = db.query(User).filter(User.email == "ceo@agentra.com").first()
     if not ceo:
@@ -48,6 +60,7 @@ def seed_users_and_candidates(db):
             status="active"
         )
         db.add(ceo)
+        db.commit()
 
     recruiter = db.query(User).filter(User.email == "recruiter@agentra.com").first()
     if not recruiter:
@@ -60,6 +73,7 @@ def seed_users_and_candidates(db):
             status="active"
         )
         db.add(recruiter)
+        db.commit()
 
     hm = db.query(User).filter(User.email == "hm@agentra.com").first()
     if not hm:
@@ -72,6 +86,7 @@ def seed_users_and_candidates(db):
             status="active"
         )
         db.add(hm)
+        db.commit()
 
     interviewer = db.query(User).filter(User.email == "interviewer@agentra.com").first()
     if not interviewer:
@@ -84,8 +99,7 @@ def seed_users_and_candidates(db):
             status="active"
         )
         db.add(interviewer)
-
-    db.commit()
+        db.commit()
     db.refresh(admin)
     db.refresh(ceo)
     db.refresh(recruiter)

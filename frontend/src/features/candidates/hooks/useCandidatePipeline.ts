@@ -184,11 +184,17 @@ export const useCandidatePipeline = () => {
           payload: { interviewer_ids: interviewerIds },
         }).unwrap();
       } else {
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 7);
+
         await scheduleInterview({
-          application_id: assignModalCandidate.application_id || assignModalCandidate.id,
-          scheduled_date: scheduledDate,
-          scheduled_time: scheduledTime,
-          interviewer_ids: interviewerIds,
+          payload: {
+            application_id: assignModalCandidate.application_id || assignModalCandidate.id,
+            schedule_type: "self_schedule",
+            meeting_type: "GOOGLE_MEET",
+            self_schedule_token_expires_at: expiresAt.toISOString(),
+            interviewer_ids: interviewerIds,
+          },
         }).unwrap();
       }
 

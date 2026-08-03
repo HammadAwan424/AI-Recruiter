@@ -1,4 +1,4 @@
-from datetime import date, time, timedelta
+from datetime import date, time, datetime, timedelta
 from app.models.interview import InterviewModel, InterviewFeedback, InterviewInterviewers
 
 def seed_interviews(db, users_context, applications):
@@ -13,11 +13,14 @@ def seed_interviews(db, users_context, applications):
     app_interview = applications[2]
     interview1 = db.query(InterviewModel).filter(InterviewModel.application_id == app_interview.id).first()
     if not interview1:
+        start_1 = datetime.combine(date.today() - timedelta(days=2), time(10, 0))
+        end_1 = datetime.combine(date.today() - timedelta(days=2), time(10, 45))
         interview1 = InterviewModel(
             application_id=app_interview.id,
-            scheduled_date=date.today() - timedelta(days=2),
-            scheduled_time=time(10, 0),
-            duration_minutes=45,
+            round_number=1,
+            round_label="Round 1",
+            schedule_start=start_1,
+            schedule_end=end_1,
             meeting_type="GOOGLE_MEET",
             meeting_link="https://meet.jit.si/Agentra-MOCK1001",
             status="COMPLETED",
@@ -56,11 +59,14 @@ def seed_interviews(db, users_context, applications):
     app_approval = applications[3]
     interview2 = db.query(InterviewModel).filter(InterviewModel.application_id == app_approval.id).first()
     if not interview2:
+        start_2 = datetime.combine(date.today() - timedelta(days=5), time(14, 30))
+        end_2 = datetime.combine(date.today() - timedelta(days=5), time(15, 30))
         interview2 = InterviewModel(
             application_id=app_approval.id,
-            scheduled_date=date.today() - timedelta(days=5),
-            scheduled_time=time(14, 30),
-            duration_minutes=60,
+            round_number=1,
+            round_label="Round 1",
+            schedule_start=start_2,
+            schedule_end=end_2,
             meeting_type="GOOGLE_MEET",
             meeting_link="https://meet.jit.si/Agentra-MOCK1002",
             status="COMPLETED",
@@ -89,11 +95,14 @@ def seed_interviews(db, users_context, applications):
     app_hired = applications[5]
     interview3 = db.query(InterviewModel).filter(InterviewModel.application_id == app_hired.id).first()
     if not interview3:
+        start_3 = datetime.combine(date.today() - timedelta(days=10), time(11, 0))
+        end_3 = datetime.combine(date.today() - timedelta(days=10), time(11, 45))
         interview3 = InterviewModel(
             application_id=app_hired.id,
-            scheduled_date=date.today() - timedelta(days=10),
-            scheduled_time=time(11, 0),
-            duration_minutes=45,
+            round_number=1,
+            round_label="Round 1",
+            schedule_start=start_3,
+            schedule_end=end_3,
             meeting_type="GOOGLE_MEET",
             meeting_link="https://meet.jit.si/Agentra-MOCK1003",
             status="COMPLETED",

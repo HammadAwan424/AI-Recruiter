@@ -7,7 +7,7 @@ export const jobRoutes = [
   {
     path: "/jobs",
     element: (
-      <RequirePermission permission={JOB_PERMISSIONS.CREATE}>
+      <RequirePermission permission="job:">
         <JobManagementPage />
       </RequirePermission>
     ),

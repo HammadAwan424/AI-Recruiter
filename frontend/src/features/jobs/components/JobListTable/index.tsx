@@ -12,21 +12,34 @@ import {
   IconButton,
   CircularProgress,
 } from "@mui/material";
-import { Eye, Trash2 } from "lucide-react";
-import { JobPost } from "../../../../shared/types/job.types";
+import { Eye, Pencil, Trash2 } from "lucide-react";
+import { JobPost, JobDetail } from "../../../../shared/types/job.types";
+import { useLazyGetJobDetailQuery } from "../../api";
+import { JobFormModal } from "../JobFormModal";
+import { usePermission } from "../../../../shared/hooks/usePermission";
+import { JOB_PERMISSIONS } from "../../permissions";
 
 interface JobListTableProps {
   jobs: JobPost[];
   isLoading: boolean;
   onDeleteJob: (id: number) => Promise<any> | any;
+  onRefresh?: () => void;
 }
 
 export const JobListTable: React.FC<JobListTableProps> = ({
   jobs,
   isLoading,
   onDeleteJob,
+  onRefresh,
 }) => {
   const [selectedJob, setSelectedJob] = useState<JobPost | null>(null);
+  const [editingJobDetail, setEditingJobDetail] = useState<JobDetail | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+
+  const [triggerGetJobDetail, { isLoading: isFetchingDetail }] = useLazyGetJobDetailQuery();
+
+  const { hasPermission } = usePermission();
+  const canDeleteJob = hasPermission(JOB_PERMISSIONS.CREATE);
 
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return "—";
@@ -35,6 +48,20 @@ export const JobListTable: React.FC<JobListTableProps> = ({
       month: "short",
       day: "numeric",
     });
+  };
+
+  const handleEditClick = async (jobId: number) => {
+    try {
+      const detail = await triggerGetJobDetail(jobId).unwrap();
+      // Ensure assigned_users defaults to empty array if missing
+      setEditingJobDetail({
+        ...detail,
+        assigned_users: detail.assigned_users || [],
+      });
+      setShowEditModal(true);
+    } catch (err) {
+      alert("Failed to load detailed requisition permissions.");
+    }
   };
 
   const handleDelete = async (id: number) => {
@@ -105,16 +132,29 @@ export const JobListTable: React.FC<JobListTableProps> = ({
                         size="small"
                         color="primary"
                         onClick={() => setSelectedJob(job)}
+                        title="View Job Details"
                       >
                         <Eye size={18} />
                       </IconButton>
                       <IconButton
                         size="small"
-                        color="error"
-                        onClick={() => handleDelete(job.id)}
+                        color="info"
+                        onClick={() => handleEditClick(job.id)}
+                        disabled={isFetchingDetail}
+                        title="Edit Requisition & Assigned Panel"
                       >
-                        <Trash2 size={18} />
+                        <Pencil size={18} />
                       </IconButton>
+                      {canDeleteJob && (
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() => handleDelete(job.id)}
+                          title="Delete Requisition"
+                        >
+                          <Trash2 size={18} />
+                        </IconButton>
+                      )}
                     </Stack>
                   </TableCell>
                 </TableRow>
@@ -124,7 +164,7 @@ export const JobListTable: React.FC<JobListTableProps> = ({
         </Table>
       </TableContainer>
 
-      {/* ===== LEGENDARY JOB DETAIL MODAL (RESTORED EXACTLY AS ORIGINAL) ===== */}
+      {/* ===== LEGENDARY JOB DETAIL MODAL ===== */}
       {selectedJob && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center px-2 sm:px-4">
           <div
@@ -168,6 +208,21 @@ export const JobListTable: React.FC<JobListTableProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* ===== EDIT JOB REQUISITION MODAL DIALOGUE ===== */}
+      {showEditModal && editingJobDetail && (
+        <JobFormModal
+          open={showEditModal}
+          initialJob={editingJobDetail}
+          onClose={() => {
+            setShowEditModal(false);
+            setEditingJobDetail(null);
+          }}
+          onSaved={() => {
+            if (onRefresh) onRefresh();
+          }}
+        />
       )}
     </Stack>
   );

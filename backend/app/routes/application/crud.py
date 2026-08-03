@@ -5,13 +5,16 @@ from sqlalchemy.orm import Session, joinedload
 from pydantic import BaseModel
 from app.database import get_db
 from app.models.application import Application
+from app.models.job import Job
 from app.models.interview import InterviewModel, InterviewInterviewers
 from app.schemas.application import (
     ApplicationListItem,
     ApplicationDetail,
     ApplicationUpdate,
 )
-from app.utils.security import get_current_user
+from app.utils.security import get_current_user, get_job_or_403, get_application_or_403
+from app.models.candidate import Candidate
+from app.crud.application import get_or_create_application
 
 router = APIRouter(tags=["Applications CRUD"])
 
@@ -23,20 +26,19 @@ router = APIRouter(tags=["Applications CRUD"])
 def fetch_new_cvs(
     job_id: int,
     db: Session = Depends(get_db),
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    job: Job = Depends(get_job_or_403)
 ):
-    from app.services.email_ingestion import fetch_and_ingest_candidate_emails
-    from app.models.candidate import Candidate
-    from app.crud.application import get_or_create_application
-
-    email_applications = fetch_and_ingest_candidate_emails(db, max_results=10)
+    from app.agents.gmail_agent import fetch_job_application_emails
+    email_applications = fetch_job_application_emails(job.title, 20, job.keywords or "")
     saved = 0
 
     for app_data in email_applications:
+        candidate_name = app_data.get("full_name") or app_data.get("name", "Candidate")
         candidate = db.query(Candidate).filter(Candidate.email == app_data["email"]).first()
         if not candidate:
             candidate = Candidate(
-                full_name=app_data["full_name"],
+                full_name=candidate_name,
                 email=app_data["email"],
                 phone=app_data.get("phone")
             )
@@ -49,7 +51,7 @@ def fetch_new_cvs(
 
         existing_app = (
             db.query(Application)
-            .filter(Application.candidate_id == candidate.id, Application.job_id == job_id)
+            .filter(Application.candidate_id == candidate.id, Application.job_id == job.id)
             .first()
         )
 
@@ -65,7 +67,7 @@ def fetch_new_cvs(
             get_or_create_application(
                 db,
                 candidate_id=candidate.id,
-                job_id=job_id,
+                job_id=job.id,
                 current_status="applied",
                 disposition="active",
                 cv_text=app_data["cv_text"],
@@ -80,7 +82,7 @@ def fetch_new_cvs(
 
     return {
         "message": f"Successfully ingested {saved} new applications.",
-        "job_id": job_id,
+        "job_id": job.id,
         "total_fetched": len(email_applications),
         "saved": saved
     }
@@ -92,6 +94,7 @@ def fetch_new_cvs(
 @router.get("/", response_model=List[ApplicationListItem])
 def list_job_applications(
     job_id: int,
+    job: Job = Depends(get_job_or_403),
     db: Session = Depends(get_db)
 ):
     applications = (
@@ -99,7 +102,7 @@ def list_job_applications(
         .options(
             joinedload(Application.interviews)
         )
-        .filter(Application.job_id == job_id)
+        .filter(Application.job_id == job.id)
         .all()
     )
     return applications
@@ -112,9 +115,10 @@ def list_job_applications(
 def get_application_detail(
     job_id: int,
     application_id: int,
+    app: Application = Depends(get_application_or_403),
     db: Session = Depends(get_db)
 ):
-    app = (
+    app_detail = (
         db.query(Application)
         .options(
             joinedload(Application.candidate),
@@ -127,13 +131,13 @@ def get_application_detail(
             joinedload(Application.comments),
             joinedload(Application.offer)
         )
-        .filter(Application.id == application_id, Application.job_id == job_id)
+        .filter(Application.id == app.id, Application.job_id == job_id)
         .first()
     )
-    if not app:
+    if not app_detail:
         raise HTTPException(status_code=404, detail="Application record not found")
 
-    return app
+    return app_detail
 
 
 # ─────────────────────────────────────────────────────────────
@@ -143,10 +147,10 @@ def get_application_detail(
 def get_cv_pdf(
     job_id: int,
     application_id: int,
+    app: Application = Depends(get_application_or_403),
     db: Session = Depends(get_db)
 ):
-    app = db.query(Application).filter(Application.id == application_id, Application.job_id == job_id).first()
-    if not app or not app.cv_pdf_path or not os.path.exists(app.cv_pdf_path):
+    if not app.cv_pdf_path or not os.path.exists(app.cv_pdf_path):
         raise HTTPException(status_code=404, detail="CV PDF file not found on server")
 
     from fastapi.responses import FileResponse
@@ -165,6 +169,7 @@ def update_application_stage(
     job_id: int,
     application_id: int,
     payload: ApplicationUpdate,
+    app: Application = Depends(get_application_or_403),
     db: Session = Depends(get_db),
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):

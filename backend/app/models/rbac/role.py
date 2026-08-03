@@ -20,6 +20,7 @@ class Role(Base, BaseModelMixin):
     )
     name: Mapped[str] = mapped_column(String, nullable=False, index=True)  # superadmin | ceo | recruiter | hiring_manager | interviewer
     description: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    job_scope: Mapped[str] = mapped_column(String, default="own", nullable=False)  # "own" | "all"
 
     # Audit Trail
     created_by: Mapped[Optional[int]] = mapped_column(

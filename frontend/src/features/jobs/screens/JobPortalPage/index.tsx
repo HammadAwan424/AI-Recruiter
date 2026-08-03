@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import logo from "../../../../images/logo.png";
 import bgGlow from "../../../../images/bg.png";
+import { getApiBaseUrl } from "../../../../shared/utils/config";
 
 export const JobPortalPage: React.FC = () => {
   const [jobs, setJobs] = useState<any[]>([]);
@@ -14,7 +15,7 @@ export const JobPortalPage: React.FC = () => {
   useEffect(() => {
     const fetchJobs = async () => {
       try {
-        const response = await fetch("http://127.0.0.1:8000/recruitment/public/jobs");
+        const response = await fetch(`${getApiBaseUrl()}/recruitment/public/jobs`);
         const data = await response.json();
         setJobs(data.jobs || []);
       } catch (err) {

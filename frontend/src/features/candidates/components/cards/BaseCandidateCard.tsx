@@ -50,10 +50,10 @@ export const BaseCandidateCard: React.FC<BaseCandidateCardProps> = ({
       draggable={isDraggable}
       onDragStart={handleDragStart}
       className={`flex flex-col p-3.5 rounded-xl border transition-all duration-300 overflow-hidden ${
-        isDraggable ? "cursor-grab active:cursor-grabbing hover:border-gray-700 hover:scale-[1.01]" : ""
+        isDraggable ? "cursor-grab active:cursor-grabbing hover:border-gray-700" : ""
       } ${
         isRejected
-          ? "bg-black/20 border-gray-800 opacity-45 grayscale hover:opacity-75"
+          ? "bg-[#0b0808] border-gray-800 hover:opacity-90 shadow-sm opacity-65 grayscale-[30%]"
           : isHired
           ? "bg-[#05DC7F]/10 border-[#05DC7F]/50 shadow-[0_0_12px_rgba(5,220,127,0.25)]"
           : "bg-[#0d0d0d] border-gray-800 hover:border-[#05DC7F]/40 shadow-sm"
@@ -63,9 +63,6 @@ export const BaseCandidateCard: React.FC<BaseCandidateCardProps> = ({
       <div className="flex justify-between items-start gap-1.5 w-full">
         <div className="flex items-center gap-1.5 min-w-0 flex-1">
           {isDraggable && <GripVertical size={13} className="text-gray-600 hover:text-gray-300 flex-shrink-0" />}
-          <div className="w-5 h-5 rounded-full bg-black/60 border border-gray-700/80 flex items-center justify-center flex-shrink-0">
-            {getRankIcon(candidate.rank || 1)}
-          </div>
           <div className="min-w-0 flex-1">
             <h5 className={`font-bold text-xs leading-tight truncate ${isRejected ? "line-through text-gray-500" : "text-white"}`}>
               {candidate.full_name || `Application #${candidate.id || candidate.application_id}`}
@@ -73,17 +70,16 @@ export const BaseCandidateCard: React.FC<BaseCandidateCardProps> = ({
             <p className="text-gray-500 text-[10px] truncate mt-0.5">{candidate.email || `Candidate ID: ${candidate.candidate_id}`}</p>
           </div>
         </div>
-
-        {isRejected && (
-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-red-950/60 border border-red-800/40 text-red-400 text-[9px] font-bold tracking-wide uppercase flex-shrink-0 whitespace-nowrap">
-            <span className="w-1 h-1 rounded-full bg-red-500 flex-shrink-0"></span>
-            Rejected
-          </span>
-        )}
         {isHired && (
           <Chip label="Hired" size="small" color="success" sx={{ height: 18, fontSize: 9, fontWeight: 700 }} />
         )}
       </div>
+
+      {isRejected && (
+        <span className="inline-flex items-center gap-1 py-0.5 text-red-400 text-[9px] font-bold tracking-wide uppercase flex-shrink-0 whitespace-nowrap">
+          Rejected
+        </span>
+      )}
 
       {/* Optional Badge */}
       {badge && !isRejected && <div className="mt-2.5 flex-shrink-0">{badge}</div>}
@@ -95,7 +91,7 @@ export const BaseCandidateCard: React.FC<BaseCandidateCardProps> = ({
       {showMatchScore && (
         <div className="flex justify-between items-center mt-3 pt-2.5 border-t border-gray-800/60">
           <span className="text-gray-400 text-[11px]">Match Score</span>
-          <span className="text-[#05DC7F] font-bold text-xs">
+          <span className={`font-bold text-xs ${isRejected ? "text-red-400/90" : "text-[#05DC7F]"}`}>
             {candidate.final_score || candidate.match_score ? `${(candidate.final_score || candidate.match_score).toFixed(1)}%` : "Evaluating..."}
           </span>
         </div>

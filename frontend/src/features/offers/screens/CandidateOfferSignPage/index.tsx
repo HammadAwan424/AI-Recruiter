@@ -1,15 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
-import {
-  FaShieldAlt,
-  FaCheckCircle,
-  FaTimesCircle,
-  FaPrint,
-  FaPen,
-  FaFont,
-  FaUndo,
-  FaBuilding,
-} from "react-icons/fa";
+import { FaShieldAlt, FaCheckCircle, FaTimesCircle, FaPrint, FaPen, FaFont, FaUndo, FaBuilding } from "react-icons/fa";
+import { getApiBaseUrl } from "../../../../shared/utils/config";
 
 export const CandidateOfferSignPage: React.FC = () => {
   const { token } = useParams<{ token: string }>();
@@ -36,7 +28,7 @@ export const CandidateOfferSignPage: React.FC = () => {
   const fetchPublicOffer = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:8000/offers/public/${token}`);
+      const res = await fetch(`${getApiBaseUrl()}/offers/public/${token}`);
       if (res.ok) {
         const data = await res.json();
         setOffer(data);
@@ -115,7 +107,7 @@ export const CandidateOfferSignPage: React.FC = () => {
 
     setSubmitting(true);
     try {
-      const res = await fetch(`http://localhost:8000/offers/public/${token}/sign`, {
+      const res = await fetch(`${getApiBaseUrl()}/offers/public/${token}/sign`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -143,7 +135,7 @@ export const CandidateOfferSignPage: React.FC = () => {
     if (!declineReason.trim()) return alert("Please provide a reason.");
 
     try {
-      const res = await fetch(`http://localhost:8000/offers/public/${token}/decline`, {
+      const res = await fetch(`${getApiBaseUrl()}/offers/public/${token}/decline`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ decline_reason: declineReason }),

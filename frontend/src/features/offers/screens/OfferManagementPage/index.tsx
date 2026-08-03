@@ -17,11 +17,17 @@ import { useOffers } from "../../hooks/useOffers";
 import { useOfferMutations } from "../../hooks/useOfferMutations";
 import { useGetJobsQuery } from "../../../jobs/api";
 import { OfferItem, OfferCreatePayload } from "../../../../shared/types/offer.types";
+import { usePermission } from "../../../../shared/hooks/usePermission";
+import { OFFER_PERMISSIONS } from "../../permissions";
 
 export const OfferManagementPage: React.FC = () => {
   const { offers, templates, isLoading } = useOffers();
   const { data: jobsData } = useGetJobsQuery();
   const jobs = jobsData?.jobs || [];
+
+  const { hasPermission } = usePermission();
+  const canGenerateOffer = hasPermission(OFFER_PERMISSIONS.GENERATE);
+  const canApproveOffer = hasPermission(OFFER_PERMISSIONS.APPROVE);
 
   const { createOffer, submitOfferApproval, approveOfferAction, sendOffer } = useOfferMutations();
 
@@ -158,12 +164,14 @@ export const OfferManagementPage: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#05DC7F] text-black font-semibold hover:bg-[#04b869] transition duration-300 shadow-[0_0_15px_rgba(5,220,127,0.4)]"
-        >
-          <FaPlus /> Create Offer Letter
-        </button>
+        {canGenerateOffer && (
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#05DC7F] text-black font-semibold hover:bg-[#04b869] transition duration-300 shadow-[0_0_15px_rgba(5,220,127,0.4)]"
+          >
+            <FaPlus /> Create Offer Letter
+          </button>
+        )}
       </div>
 
       {/* Metrics Row */}
@@ -267,7 +275,7 @@ export const OfferManagementPage: React.FC = () => {
                         <FaEye /> View
                       </button>
 
-                      {offer.status === "DRAFT" && (
+                      {offer.status === "DRAFT" && canGenerateOffer && (
                         <button
                           onClick={() => handleSubmitApproval(offer.id)}
                           className="px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs transition"
@@ -276,7 +284,7 @@ export const OfferManagementPage: React.FC = () => {
                         </button>
                       )}
 
-                      {offer.status === "APPROVED" && (
+                      {offer.status === "APPROVED" && canGenerateOffer && (
                         <button
                           onClick={() => handleSendOffer(offer.id)}
                           className="px-3 py-1.5 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/40 text-xs transition inline-flex items-center gap-1"
@@ -465,7 +473,7 @@ export const OfferManagementPage: React.FC = () => {
               </div>
             </div>
 
-            {selectedOffer.status === "PENDING_APPROVAL" && (
+            {selectedOffer.status === "PENDING_APPROVAL" && canApproveOffer && (
               <div className="bg-amber-500/10 border border-amber-500/30 p-4 rounded-xl space-y-3">
                 <p className="text-sm font-semibold text-amber-300 flex items-center gap-2">
                   <FaClock /> Executive Approval Action

@@ -8,6 +8,7 @@ export interface JobPost {
   experience: string;
   salary_range: string;
   skills: string;
+  status?: string;
   description?: string;
   full_description?: string;
   additional_info?: string;
@@ -28,7 +29,13 @@ export interface JobCreatePayload {
   experience: string;
   salary_range: string;
   skills: string;
+  status?: string;
+  full_description?: string;
+  keywords?: string;
   additional_info?: string;
+  hiring_manager_id?: number | null;
+  recruiter_ids?: number[];
+  interviewer_ids?: number[];
 }
 
 export interface JobsListResponse {

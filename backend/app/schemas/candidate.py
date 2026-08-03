@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from backend.app.models.candidate import Candidate
+from app.models.candidate import Candidate
 
 
 class CandidateSummary(BaseModel):

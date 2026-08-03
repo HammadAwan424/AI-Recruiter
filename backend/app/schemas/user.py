@@ -49,6 +49,7 @@ class UserRoleUpdate(BaseModel):
 # Role Permission Update Schema
 class RolePermissionUpdate(BaseModel):
     permission_keys: List[str]
+    job_scope: Optional[str] = None  # "own" | "all"
 
 
 # User Response Schema

@@ -5,7 +5,7 @@ import {
 import { useUpdateRolePermissionsMutation } from "../../../shared/api/rolesApi";
 import { UserCreatePayload } from "../../../shared/types/user.types";
 import { UserRole } from "../../../shared/types/auth.types";
-import { PermissionKey } from "../../../shared/types/role.types";
+import { PermissionKey, JobScope } from "../../../shared/types/role.types";
 
 export const useUserMutations = () => {
   const [createUserApi, { isLoading: isCreating }] = useCreateCompanyUserMutation();
@@ -20,8 +20,15 @@ export const useUserMutations = () => {
     return await updateRoleApi({ userId, payload: { role } }).unwrap();
   };
 
-  const updateRolePermissions = async (roleId: number, permissionKeys: PermissionKey[]) => {
-    return await updatePermissionsApi({ roleId, payload: { permission_keys: permissionKeys } }).unwrap();
+  const updateRolePermissions = async (
+    roleId: number,
+    permissionKeys: PermissionKey[],
+    jobScope?: JobScope
+  ) => {
+    return await updatePermissionsApi({
+      roleId,
+      payload: { permission_keys: permissionKeys, job_scope: jobScope },
+    }).unwrap();
   };
 
   return {

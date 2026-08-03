@@ -7,7 +7,7 @@ export const interviewRoutes = [
   {
     path: "/interviews",
     element: (
-      <RequirePermission permission={INTERVIEW_PERMISSIONS.CREATE}>
+      <RequirePermission permission="interview:">
         <InterviewManagementPage />
       </RequirePermission>
     ),

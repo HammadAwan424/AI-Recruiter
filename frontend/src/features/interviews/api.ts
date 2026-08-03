@@ -1,5 +1,13 @@
 import { baseApi } from "../../shared/api/baseApi";
-import { InterviewItem, InterviewSlot, SlotCreatePayload } from "../../shared/types/interview.types";
+import {
+  InterviewItem,
+  InterviewSlot,
+  SlotCreatePayload,
+  InterviewerDetail,
+  InterviewCreateRequest,
+  InterviewPublicSlotResponse,
+  InterviewerSlotAssignment,
+} from "../../shared/types/interview.types";
 
 export const interviewsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -11,6 +19,10 @@ export const interviewsApi = baseApi.injectEndpoints({
       query: () => "/interviews/slots",
       providesTags: ["Interviews"],
     }),
+    getInterviewersWithSlots: builder.query<InterviewerDetail[], number | void>({
+      query: (jobId) => (jobId ? `/interviews/interviewers?job_id=${jobId}` : "/interviews/interviewers"),
+      providesTags: ["Interviews"],
+    }),
     createSlot: builder.mutation<InterviewSlot, SlotCreatePayload>({
       query: (payload) => ({
         url: "/interviews/slots",
@@ -19,14 +31,38 @@ export const interviewsApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ["Interviews"],
     }),
-    scheduleInterview: builder.mutation<
-      InterviewItem,
-      { application_id: number; scheduled_date: string; scheduled_time: string; interviewer_ids?: number[] }
-    >({
-      query: (payload) => ({
+    updateSlot: builder.mutation<InterviewSlot, { slotId: number; payload: SlotCreatePayload }>({
+      query: ({ slotId, payload }) => ({
+        url: `/interviews/slots/${slotId}`,
+        method: "PUT",
+        body: payload,
+      }),
+      invalidatesTags: ["Interviews"],
+    }),
+    deleteSlot: builder.mutation<{ message: string }, number>({
+      query: (slotId) => ({
+        url: `/interviews/slots/${slotId}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["Interviews"],
+    }),
+    scheduleInterview: builder.mutation<InterviewItem, InterviewCreateRequest>({
+      query: (request) => ({
         url: "/interviews",
         method: "POST",
-        body: payload,
+        body: request,
+      }),
+      invalidatesTags: ["Interviews", "Applications"],
+    }),
+    getPublicScheduleSlots: builder.query<InterviewPublicSlotResponse, string>({
+      query: (token) => `/interviews/public/slots/${token}`,
+      providesTags: ["Interviews"],
+    }),
+    confirmCandidateSchedule: builder.mutation<InterviewItem, { token: string; assignments: InterviewerSlotAssignment[] }>({
+      query: ({ token, assignments }) => ({
+        url: `/interviews/public/schedule/${token}`,
+        method: "POST",
+        body: { assignments },
       }),
       invalidatesTags: ["Interviews", "Applications"],
     }),
@@ -65,8 +101,14 @@ export const interviewsApi = baseApi.injectEndpoints({
 export const {
   useGetInterviewsQuery,
   useGetInterviewSlotsQuery,
+  useGetInterviewersWithSlotsQuery,
+  useLazyGetInterviewersWithSlotsQuery,
   useCreateSlotMutation,
+  useUpdateSlotMutation,
+  useDeleteSlotMutation,
   useScheduleInterviewMutation,
+  useGetPublicScheduleSlotsQuery,
+  useConfirmCandidateScheduleMutation,
   useAssignInterviewerMutation,
   useSubmitInterviewFeedbackMutation,
   useGenerateSelfScheduleLinkMutation,

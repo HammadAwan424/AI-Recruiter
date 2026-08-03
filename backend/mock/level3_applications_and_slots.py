@@ -1,4 +1,4 @@
-from datetime import date, time, timedelta
+from datetime import date, time, datetime, timedelta
 from app.models.application import Application
 from app.models.interview import InterviewSlot
 
@@ -47,27 +47,29 @@ def seed_applications_and_slots(db, users_context, jobs):
         applications.append(app)
 
     # 2. Availability Slots
-    slot1 = db.query(InterviewSlot).filter(InterviewSlot.slot_date == date.today() + timedelta(days=1)).first()
+    dt_slot1_start = datetime.combine(date.today() + timedelta(days=1), time(10, 0))
+    dt_slot1_end = datetime.combine(date.today() + timedelta(days=1), time(11, 0))
+    slot1 = db.query(InterviewSlot).filter(InterviewSlot.schedule_start == dt_slot1_start).first()
     if not slot1:
         slot1 = InterviewSlot(
             interviewer_id=users_context["interviewer"].id,
             job_id=job_fs.id,
-            slot_date=date.today() + timedelta(days=1),
-            start_time=time(10, 0),
-            end_time=time(11, 0),
+            schedule_start=dt_slot1_start,
+            schedule_end=dt_slot1_end,
             is_booked=True,
             created_by=ceo_user.id
         )
         db.add(slot1)
 
-    slot2 = db.query(InterviewSlot).filter(InterviewSlot.slot_date == date.today() + timedelta(days=2)).first()
+    dt_slot2_start = datetime.combine(date.today() + timedelta(days=2), time(14, 0))
+    dt_slot2_end = datetime.combine(date.today() + timedelta(days=2), time(15, 0))
+    slot2 = db.query(InterviewSlot).filter(InterviewSlot.schedule_start == dt_slot2_start).first()
     if not slot2:
         slot2 = InterviewSlot(
             interviewer_id=users_context["interviewer"].id,
             job_id=job_ai.id,
-            slot_date=date.today() + timedelta(days=2),
-            start_time=time(14, 0),
-            end_time=time(15, 0),
+            schedule_start=dt_slot2_start,
+            schedule_end=dt_slot2_end,
             is_booked=False,
             created_by=ceo_user.id
         )

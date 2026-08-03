@@ -1,12 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
 
+from typing import Optional
+from pydantic import BaseModel
 from app.database import get_db
 from app.models.user import User
 from app.models.rbac.user_job_scope import UserJobScope
 from app.schemas.user import CEOSignup, LoginSchema, UserDetail
 from app.crud.user import create_ceo, get_user_by_email
-from app.utils.security import verify_password, create_access_token, get_current_user, get_user_permissions
+from app.utils.security import verify_password, create_access_token, get_current_user, get_user_permissions, hash_password
 
 router = APIRouter(
     prefix="/auth",
@@ -79,6 +81,12 @@ def login(data: LoginSchema, db: Session = Depends(get_db)):
     }
 
 
+class SelfUpdatePayload(BaseModel):
+    full_name: Optional[str] = None
+    company_name: Optional[str] = None
+    password: Optional[str] = None
+
+
 @router.get("/me", response_model=UserDetail)
 def get_current_user_detail(
     current_user_dict: dict = Depends(get_current_user),
@@ -95,6 +103,32 @@ def get_current_user_detail(
     if not user:
         raise HTTPException(status_code=404, detail="User account not found")
 
-    permissions = get_user_permissions(db, user.id, user.role)
+    permissions = get_user_permissions(db, user.role, user.company_id)
     user.permissions = permissions
     return user
+
+
+@router.put("/me")
+def update_current_user_detail(
+    data: SelfUpdatePayload,
+    current_user_dict: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    user = db.query(User).filter(User.id == current_user_dict["user_id"]).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User account not found")
+
+    if data.full_name:
+        user.full_name = data.full_name
+    if data.password:
+        user.password = hash_password(data.password)
+
+    db.commit()
+    db.refresh(user)
+
+    return {
+        "message": "Settings updated successfully",
+        "full_name": user.full_name,
+        "email": user.email,
+        "company_name": user.company.name if user.company else ""
+    }

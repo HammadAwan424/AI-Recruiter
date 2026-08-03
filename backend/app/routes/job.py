@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Query, Session, joinedload
 from typing import Dict, Any, List
 from pydantic import BaseModel
 
@@ -11,12 +11,12 @@ from app.models.job_distribution import JobDistribution
 from app.models.interview import InterviewModel, InterviewFeedback
 from app.models.application import Application
 from app.models.rbac import UserJobScope
-from app.schemas.recruitment import JobCreate
-from app.schemas.job import JobDetail
+from app.schemas.job import JobDetail, JobCreate, JobUpdate
 from app.utils.security import (
     get_current_user,
     require_permissions,
-    scoped_jobs_query,
+    get_scoped_jobs_query,
+    get_job_scope,
     get_job_or_403
 )
 from app.agents.jd_generator import generate_job_description
@@ -85,18 +85,37 @@ def create_job(
     db.add(new_job)
     db.flush()
 
-    # Automatically assign the job creator to UserJobScope
-    existing_scope = db.query(UserJobScope).filter_by(
-        user_id=current_user["user_id"],
-        job_id=new_job.id
-    ).first()
-    if not existing_scope:
-        creator_scope = UserJobScope(
-            user_id=current_user["user_id"],
-            job_id=new_job.id,
-            created_by=current_user["user_id"]
-        )
-        db.add(creator_scope)
+    # Automatically assign creator, hiring manager, and interviewers to UserJobScope
+    hiring_manager_id = getattr(data, "hiring_manager_id", None)
+    recruiter_ids = getattr(data, "recruiter_ids", None) or getattr(data, "interviewer_ids", None)
+    target_scopes: List[int] = [current_user["user_id"]]
+
+    if hiring_manager_id:
+        hm_user = db.query(User).filter_by(id=hiring_manager_id, company_id=company_id).first()
+        if hm_user and hm_user.id not in target_scopes:
+            target_scopes.append(hm_user.id)
+
+    if recruiter_ids:
+        recruiter_users = db.query(User).filter(
+            User.id.in_(recruiter_ids),
+            User.company_id == company_id
+        ).all()
+        for u in recruiter_users:
+            if u.id not in target_scopes:
+                target_scopes.append(u.id)
+
+    for uid in target_scopes:
+        target_user = db.query(User).filter(User.id == uid).first()
+        target_role = target_user.role if target_user else "hiring_manager"
+        if get_job_scope(db, target_role, company_id) != "all":
+            existing_scope = db.query(UserJobScope).filter_by(user_id=uid, job_id=new_job.id).first()
+            if not existing_scope:
+                creator_scope = UserJobScope(
+                    user_id=uid,
+                    job_id=new_job.id,
+                    created_by=current_user["user_id"]
+                )
+                db.add(creator_scope)
 
     db.commit()
     db.refresh(new_job)
@@ -193,12 +212,12 @@ def assign_user_to_job(
 
 
 # ──── Scoped Jobs List ────
-@router.get("")
+@router.get("", dependencies=[Depends(require_permissions(["job:view"]))])
 def get_jobs(
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    jobs_query: Query = Depends(get_scoped_jobs_query)
 ):
-    jobs = scoped_jobs_query(db, current_user).filter(Job.status == "published").all()
+    jobs = jobs_query.filter(Job.status == "published").all()
     results = []
 
     for j in jobs:
@@ -233,7 +252,7 @@ def get_jobs(
 
 
 # ──── Single Scoped Job Detail ────
-@router.get("/{job_id}", response_model=JobDetail)
+@router.get("/{job_id}", response_model=JobDetail, dependencies=[Depends(require_permissions(["job:view"]))])
 def get_job(
     job: Job = Depends(get_job_or_403),
     db: Session = Depends(get_db)
@@ -248,6 +267,65 @@ def get_job(
         .first()
     )
     return job_detail or job
+
+
+# ──── Scoped Job Update ────
+@router.put(
+    "/{job_id}",
+    response_model=JobDetail,
+    dependencies=[Depends(require_permissions(["job:create"]))]
+)
+def update_job(
+    job_id: int,
+    payload: JobUpdate,
+    job: Job = Depends(get_job_or_403),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    update_data = payload.model_dump(exclude_unset=True)
+    hiring_manager_id = update_data.pop("hiring_manager_id", None)
+    recruiter_ids = update_data.pop("recruiter_ids", None) or update_data.pop("interviewer_ids", None)
+
+    for field, val in update_data.items():
+        setattr(job, field, val)
+
+    job.updated_by = current_user["user_id"]
+
+    company_id = current_user.get("company_id")
+    if hiring_manager_id is not None or recruiter_ids is not None:
+        target_scopes: List[int] = []
+
+        if hiring_manager_id:
+            hm_user = db.query(User).filter_by(id=hiring_manager_id, company_id=company_id).first()
+            if hm_user:
+                target_scopes.append(hm_user.id)
+
+        if recruiter_ids:
+            recruiter_users = db.query(User).filter(
+                User.id.in_(recruiter_ids),
+                User.company_id == company_id
+            ).all()
+            for u in recruiter_users:
+                if u.id not in target_scopes:
+                    target_scopes.append(u.id)
+
+        db.query(UserJobScope).filter(UserJobScope.job_id == job.id).delete(synchronize_session=False)
+        for uid in target_scopes:
+            new_scope = UserJobScope(user_id=uid, job_id=job.id, created_by=current_user["user_id"])
+            db.add(new_scope)
+
+    db.commit()
+
+    refreshed_job = (
+        db.query(Job)
+        .options(
+            joinedload(Job.creator),
+            joinedload(Job.job_scopes).joinedload(UserJobScope.user)
+        )
+        .filter(Job.id == job.id)
+        .first()
+    )
+    return refreshed_job or job
 
 
 # ──── Scoped Job Delete ────

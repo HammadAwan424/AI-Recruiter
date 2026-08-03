@@ -37,6 +37,7 @@ export const UserManagementPage: React.FC = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedUserForRole, setSelectedUserForRole] = useState<CompanyUser | null>(null);
 
+  const canInvite = hasPermission(USER_PERMISSIONS.INVITE);
   const canManagePermissions = hasPermission(USER_PERMISSIONS.CHANGE_PERMISSIONS);
 
   const getRoleColor = (roleName: string): "primary" | "secondary" | "success" | "warning" | "info" | "default" => {
@@ -72,7 +73,7 @@ export const UserManagementPage: React.FC = () => {
             </Typography>
           </Stack>
 
-          {canManagePermissions && (
+          {canInvite && (
             <Button
               variant="contained"
               size="medium"
@@ -97,7 +98,7 @@ export const UserManagementPage: React.FC = () => {
       {/* Tabs */}
       <Tabs value={activeTab} onChange={(_, val) => setActiveTab(val)}>
         <Tab label={`Team Members (${totalUsers})`} value="users" />
-        <Tab label="Role Permissions Matrix" value="permissions" />
+        {canManagePermissions && <Tab label="Role Permissions Matrix" value="permissions" />}
       </Tabs>
 
       {/* Tab Content 1: Users Table */}

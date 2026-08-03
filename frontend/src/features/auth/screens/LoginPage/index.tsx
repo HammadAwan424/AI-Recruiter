@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, Link as RouterLink } from "react-router-dom";
 import {
   Stack,
@@ -11,16 +11,28 @@ import {
 } from "@mui/material";
 import { AuthContainer, AuthCardSurface } from "../../styles";
 import { useAuthMutation } from "../../hooks/useAuthMutation";
+import { useAuth } from "../../../../shared/context/AuthContext";
 import { CircuitBackground } from "../../../../shared/components/CircuitBackground";
 import logo from "../../../../images/logo.png";
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
+  const { isAuthenticated, role } = useAuth();
   const { loginUser, isLoading } = useAuthMutation();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      if (role === "superadmin") {
+        navigate("/admin/companies", { replace: true });
+      } else {
+        navigate("/settings", { replace: true });
+      }
+    }
+  }, [isAuthenticated, role, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,7 +49,7 @@ export const LoginPage: React.FC = () => {
       if (res.role === "superadmin") {
         navigate("/admin/companies");
       } else {
-        navigate("/jobs");
+        navigate("/settings");
       }
     } catch (err: any) {
       setErrorMsg(err?.data?.detail || "Invalid credentials. Please try again.");

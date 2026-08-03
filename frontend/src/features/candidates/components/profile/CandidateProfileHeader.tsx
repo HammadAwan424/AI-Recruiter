@@ -65,7 +65,7 @@ export const CandidateProfileHeader: React.FC<CandidateProfileHeaderProps> = ({
           </Stack>
         </Stack>
 
-        {/* Right: Score & Disposition Actions */}
+        {/* Right: Score Display */}
         <Stack spacing={2} sx={{ alignItems: { xs: "flex-start", sm: "flex-end" } }}>
           {detail.final_score !== undefined && (
             <Stack spacing={0} sx={{ alignItems: { xs: "flex-start", sm: "flex-end" } }}>
@@ -75,33 +75,6 @@ export const CandidateProfileHeader: React.FC<CandidateProfileHeaderProps> = ({
               <Typography variant="h4" color="primary.main" sx={{ fontWeight: 800 }}>
                 {detail.final_score.toFixed(1)}%
               </Typography>
-            </Stack>
-          )}
-
-          {canDisposition && !isHired && !isRejected && (
-            <Stack direction="row" spacing={1.5}>
-              {onReject && (
-                <Button
-                  size="small"
-                  variant="outlined"
-                  color="error"
-                  onClick={() => onReject(detail)}
-                  sx={{ borderRadius: 2, fontWeight: 700 }}
-                >
-                  Reject Candidate
-                </Button>
-              )}
-              {onHire && (
-                <Button
-                  size="small"
-                  variant="contained"
-                  color="primary"
-                  onClick={() => onHire(detail)}
-                  sx={{ borderRadius: 2, fontWeight: 700 }}
-                >
-                  Approve & Hire
-                </Button>
-              )}
             </Stack>
           )}
         </Stack>

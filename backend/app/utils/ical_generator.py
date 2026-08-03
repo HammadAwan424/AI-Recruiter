@@ -1,21 +1,17 @@
-from datetime import date, time, datetime, timedelta
+from datetime import datetime
 
 def generate_ical_event(
     title: str,
     description: str,
-    scheduled_date: date,
-    scheduled_time: time,
-    duration_minutes: int,
+    start_time: datetime,
+    end_time: datetime,
     location_url: str,
     organizer_email: str = "hr@agentra.com",
     attendee_email: str = ""
 ) -> str:
     """Generates an RFC 5545 compliant .ics calendar invitation string."""
-    start_dt = datetime.combine(scheduled_date, scheduled_time)
-    end_dt = start_dt + timedelta(minutes=duration_minutes)
-
-    dtstart_str = start_dt.strftime("%Y%m%dT%H%M%SZ")
-    dtend_str = end_dt.strftime("%Y%m%dT%H%M%SZ")
+    dtstart_str = start_time.strftime("%Y%m%dT%H%M%SZ")
+    dtend_str = end_time.strftime("%Y%m%dT%H%M%SZ")
     dtstamp_str = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
 
     ical_content = (
@@ -25,7 +21,7 @@ def generate_ical_event(
         "CALSCALE:GREGORIAN\r\n"
         "METHOD:REQUEST\r\n"
         "BEGIN:VEVENT\r\n"
-        f"UID:interview-{dtstart_str}-{scheduled_date.isoformat()}@agentra.com\r\n"
+        f"UID:interview-{dtstart_str}@agentra.com\r\n"
         f"DTSTAMP:{dtstamp_str}\r\n"
         f"DTSTART:{dtstart_str}\r\n"
         f"DTEND:{dtend_str}\r\n"

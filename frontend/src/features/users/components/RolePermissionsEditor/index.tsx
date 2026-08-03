@@ -12,13 +12,18 @@ import {
   Typography,
   Alert,
   Chip,
+  FormControl,
+  FormLabel,
+  RadioGroup,
+  FormControlLabel,
+  Radio,
 } from "@mui/material";
 import { PermissionMatrixCard } from "../../styles";
-import { Role, PermissionKey } from "../../../../shared/types/role.types";
+import { Role, PermissionKey, JobScope } from "../../../../shared/types/role.types";
 
 interface RolePermissionsEditorProps {
   roles: Role[];
-  onSavePermissions: (roleId: number, permissionKeys: PermissionKey[]) => Promise<any> | any;
+  onSavePermissions: (roleId: number, permissionKeys: PermissionKey[], jobScope?: JobScope) => Promise<any> | any;
   isSubmitting: boolean;
 }
 
@@ -54,6 +59,9 @@ export const RolePermissionsEditor: React.FC<RolePermissionsEditorProps> = ({
   const [activePermissions, setActivePermissions] = useState<PermissionKey[]>(() =>
     roles.length > 0 ? roles[0].permissions || [] : []
   );
+  const [activeJobScope, setActiveJobScope] = useState<JobScope>(() =>
+    roles.length > 0 ? roles[0].job_scope || "own" : "own"
+  );
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -62,6 +70,7 @@ export const RolePermissionsEditor: React.FC<RolePermissionsEditorProps> = ({
   const handleRoleSelect = (role: Role) => {
     setSelectedRoleId(role.id);
     setActivePermissions(role.permissions || []);
+    setActiveJobScope(role.job_scope || "own");
     setSaveSuccessMsg(null);
     setErrorMsg(null);
   };
@@ -81,8 +90,8 @@ export const RolePermissionsEditor: React.FC<RolePermissionsEditorProps> = ({
     setErrorMsg(null);
 
     try {
-      await onSavePermissions(activeRole.id, activePermissions);
-      setSaveSuccessMsg(`Permissions for role '${activeRole.name}' updated successfully!`);
+      await onSavePermissions(activeRole.id, activePermissions, activeJobScope);
+      setSaveSuccessMsg(`Permissions and Job Scope for role '${activeRole.name}' updated successfully!`);
     } catch (err: any) {
       setErrorMsg(err?.data?.detail || "Failed to update role permissions.");
     }
@@ -99,7 +108,7 @@ export const RolePermissionsEditor: React.FC<RolePermissionsEditorProps> = ({
           sx={{ alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}
         >
           <Typography variant="h6" sx={{ fontWeight: 600 }}>
-            Role Permissions Matrix
+            Role Permissions & Job Scope Matrix
           </Typography>
           <Button
             variant="contained"
@@ -138,6 +147,35 @@ export const RolePermissionsEditor: React.FC<RolePermissionsEditorProps> = ({
             />
           ))}
         </Stack>
+
+        {/* Job Scope Selector */}
+        {activeRole && (
+          <FormControl component="fieldset" sx={{ p: 2, background: "rgba(255,255,255,0.03)", borderRadius: 2 }}>
+            <FormLabel component="legend" sx={{ color: "text.primary", fontWeight: 600, mb: 1 }}>
+              Job Access Scope for '{activeRole.name.toUpperCase()}'
+            </FormLabel>
+            <RadioGroup
+              row
+              value={activeJobScope}
+              onChange={(e) => {
+                setSaveSuccessMsg(null);
+                setErrorMsg(null);
+                setActiveJobScope(e.target.value as JobScope);
+              }}
+            >
+              <FormControlLabel
+                value="all"
+                control={<Radio size="small" color="primary" />}
+                label="All Company Jobs (Company-Wide Access)"
+              />
+              <FormControlLabel
+                value="own"
+                control={<Radio size="small" color="primary" />}
+                label="Assigned Jobs Only (Explicit UserJobScope Assignment)"
+              />
+            </RadioGroup>
+          </FormControl>
+        )}
 
         {/* Permission Key Checklist Table */}
         <TableContainer>

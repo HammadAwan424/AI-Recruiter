@@ -10,7 +10,7 @@ from app.models.application import Application
 from app.schemas.application import ScreeningResultResponse
 from app.agents.cv_screening_agent import screen_cv
 from app.utils.ws_manager import ws_manager
-from app.utils.security import get_current_user
+from app.utils.security import get_current_user, get_job_or_403, get_application_or_403
 
 router = APIRouter()
 
@@ -140,14 +140,11 @@ async def _async_screen_application(
 async def screen_job_applications(
     job_id: int,
     only_unscreened: bool = True,
+    job: Job = Depends(get_job_or_403),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    job = db.query(Job).filter(Job.id == job_id).first()
-    if not job:
-        raise HTTPException(status_code=404, detail="Job position not found")
-
-    query = db.query(Application).filter(Application.job_id == job_id)
+    query = db.query(Application).filter(Application.job_id == job.id)
     if only_unscreened:
         query = query.filter(Application.match_score.is_(None))
 
@@ -167,7 +164,7 @@ async def screen_job_applications(
                 candidate_name=cand.full_name if cand else "Candidate",
                 candidate_email=cand.email if cand else "",
                 cv_text=app.cv_text or "",
-                job_id=job_id,
+                job_id=job.id,
                 job_title=job.title,
                 job_description=job.full_description or "",
                 job_keywords=job.keywords or "",
@@ -188,17 +185,11 @@ async def screen_job_applications(
 async def screen_single_application(
     job_id: int,
     application_id: int,
+    app: Application = Depends(get_application_or_403),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    job = db.query(Job).filter(Job.id == job_id).first()
-    if not job:
-        raise HTTPException(status_code=404, detail="Job position not found")
-
-    app = db.query(Application).filter(Application.id == application_id, Application.job_id == job_id).first()
-    if not app:
-        raise HTTPException(status_code=404, detail="Application record not found")
-
+    job = app.job
     cand = app.candidate
     semaphore = asyncio.Semaphore(1)
 

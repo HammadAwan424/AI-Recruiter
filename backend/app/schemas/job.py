@@ -14,6 +14,10 @@ class JobCreate(BaseModel):
     full_description: Optional[str] = None
     keywords: Optional[str] = None
     status: Optional[str] = "published"
+    hiring_manager_id: Optional[int] = None
+    recruiter_ids: Optional[List[int]] = None
+    interviewer_ids: Optional[List[int]] = None
+    boards: Optional[List[str]] = []
 
 
 class JobUpdate(BaseModel):
@@ -26,6 +30,9 @@ class JobUpdate(BaseModel):
     full_description: Optional[str] = None
     keywords: Optional[str] = None
     status: Optional[str] = None
+    hiring_manager_id: Optional[int] = None
+    recruiter_ids: Optional[List[int]] = None
+    interviewer_ids: Optional[List[int]] = None
     updated_by: Optional[int] = None
 
 

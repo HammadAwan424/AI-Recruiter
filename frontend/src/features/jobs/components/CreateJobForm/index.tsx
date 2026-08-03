@@ -10,6 +10,9 @@ import {
   CircularProgress,
 } from "@mui/material";
 import { JobCreatePayload, JobPost } from "../../../../shared/types/job.types";
+import { useGetCompanyUsersQuery } from "../../../users/api";
+import { HiringManagerSelector } from "../HiringManagerSelector";
+import { RecruiterSelector } from "../RecruiterSelector";
 
 interface CreateJobFormProps {
   onSubmit: (payload: JobCreatePayload) => Promise<JobPost>;
@@ -29,6 +32,12 @@ export const CreateJobForm: React.FC<CreateJobFormProps> = ({ onSubmit }) => {
     additional_info: "",
   });
 
+  const [hiringManagerId, setHiringManagerId] = useState<number | null>(null);
+  const [recruiterIds, setRecruiterIds] = useState<number[]>([]);
+
+  const { data: usersData } = useGetCompanyUsersQuery();
+  const companyUsers = usersData?.users || [];
+
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -47,7 +56,13 @@ export const CreateJobForm: React.FC<CreateJobFormProps> = ({ onSubmit }) => {
     setLoading(true);
 
     try {
-      const created = await onSubmit(formData);
+      const payload: JobCreatePayload = {
+        ...formData,
+        hiring_manager_id: hiringManagerId,
+        recruiter_ids: recruiterIds,
+      };
+
+      const created = await onSubmit(payload);
       setSuccessMsg("The job requisition has been created successfully!");
       setGeneratedJob(created);
 
@@ -60,6 +75,8 @@ export const CreateJobForm: React.FC<CreateJobFormProps> = ({ onSubmit }) => {
         skills: "",
         additional_info: "",
       });
+      setHiringManagerId(null);
+      setRecruiterIds([]);
     } catch (err: any) {
       setErrorMsg(err?.data?.detail || "The job requisition could not be created.");
     } finally {
@@ -152,6 +169,20 @@ export const CreateJobForm: React.FC<CreateJobFormProps> = ({ onSubmit }) => {
               fullWidth
             />
           </Stack>
+
+          {/* Role-Filtered Component 1: Hiring Manager Assignment (Max 1) */}
+          <HiringManagerSelector
+            selectedId={hiringManagerId}
+            companyUsers={companyUsers}
+            onChange={setHiringManagerId}
+          />
+
+          {/* Role-Filtered Component 2: Recruiters Assignment */}
+          <RecruiterSelector
+            selectedIds={recruiterIds}
+            companyUsers={companyUsers}
+            onChange={setRecruiterIds}
+          />
 
           <TextField
             label="Additional Benefits & Requirements (Optional)"

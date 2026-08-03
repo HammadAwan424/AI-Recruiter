@@ -1,13 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import {
-  FaCalendarAlt,
-  FaClock,
-  FaCheckCircle,
-  FaVideo,
-  FaExclamationTriangle,
-  FaDownload,
-} from "react-icons/fa";
+import { FaCalendarAlt, FaClock, FaCheckCircle, FaVideo, FaExclamationTriangle } from "react-icons/fa";
+import { getApiBaseUrl } from "../../../../shared/utils/config";
 
 export const CandidateSelfSchedulePage: React.FC = () => {
   const { token } = useParams<{ token: string }>();
@@ -25,7 +19,7 @@ export const CandidateSelfSchedulePage: React.FC = () => {
   const fetchSlots = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`http://127.0.0.1:8000/interviews/public/slots/${token}`);
+      const res = await fetch(`${getApiBaseUrl()}/interviews/public/slots/${token}`);
       if (!res.ok) {
         const errJson = await res.json();
         throw new Error(errJson.detail || "Invalid or expired scheduling link");
@@ -41,12 +35,23 @@ export const CandidateSelfSchedulePage: React.FC = () => {
 
   const handleConfirmBooking = async () => {
     if (!selectedSlotId) return alert("Please select a time slot first.");
+
+    const selectedSlot = data?.available_slots?.find((s: any) => s.id === selectedSlotId);
+    if (!selectedSlot) return alert("Selected slot is invalid.");
+
     setSubmitting(true);
     try {
-      const res = await fetch(`http://127.0.0.1:8000/interviews/public/schedule/${token}`, {
+      const res = await fetch(`${getApiBaseUrl()}/interviews/public/schedule/${token}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slot_id: selectedSlotId }),
+        body: JSON.stringify({
+          assignments: [
+            {
+              interviewer_id: selectedSlot.interviewer_id,
+              slot_id: selectedSlot.id,
+            },
+          ],
+        }),
       });
       if (!res.ok) {
         const errJson = await res.json();
@@ -84,6 +89,10 @@ export const CandidateSelfSchedulePage: React.FC = () => {
   }
 
   if (confirmedInterview) {
+    const startTimeFormatted = confirmedInterview.schedule_start
+      ? new Date(confirmedInterview.schedule_start).toLocaleString()
+      : "Scheduled";
+
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center p-4">
         <div className="max-w-lg w-full p-8 rounded-3xl bg-black/90 border border-[#05DC7F]/50 text-center space-y-4">
@@ -94,19 +103,20 @@ export const CandidateSelfSchedulePage: React.FC = () => {
           </p>
 
           <div className="bg-[#0b2a1f] p-5 rounded-2xl border border-[#05DC7F]/30 text-left space-y-2 text-sm text-gray-200">
-            <p className="flex items-center gap-2"><FaCalendarAlt className="text-[#05DC7F]" /> Date: {confirmedInterview.scheduled_date}</p>
-            <p className="flex items-center gap-2"><FaClock className="text-[#05DC7F]" /> Time: {confirmedInterview.scheduled_time} ({confirmedInterview.duration_minutes}m)</p>
+            <p className="flex items-center gap-2"><FaCalendarAlt className="text-[#05DC7F]" /> Time: {startTimeFormatted}</p>
             <p className="flex items-center gap-2"><FaVideo className="text-[#05DC7F]" /> Video Call: {confirmedInterview.meeting_type}</p>
           </div>
 
-          <a
-            href={confirmedInterview.meeting_link}
-            target="_blank"
-            rel="noreferrer"
-            className="w-full py-3.5 rounded-xl font-bold bg-[#05DC7F] text-black hover:bg-[#04c56f] transition flex items-center justify-center gap-2"
-          >
-            <FaVideo /> Join Video Room
-          </a>
+          {confirmedInterview.meeting_link && (
+            <a
+              href={confirmedInterview.meeting_link}
+              target="_blank"
+              rel="noreferrer"
+              className="w-full py-3.5 rounded-xl font-bold bg-[#05DC7F] text-black hover:bg-[#04c56f] transition flex items-center justify-center gap-2"
+            >
+              <FaVideo /> Join Video Room
+            </a>
+          )}
         </div>
       </div>
     );
@@ -126,6 +136,10 @@ export const CandidateSelfSchedulePage: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {data?.available_slots?.map((slot: any) => {
               const isSelected = selectedSlotId === slot.id;
+              const startFormatted = slot.schedule_start
+                ? new Date(slot.schedule_start).toLocaleString()
+                : "Slot";
+
               return (
                 <button
                   key={slot.id}
@@ -134,8 +148,7 @@ export const CandidateSelfSchedulePage: React.FC = () => {
                     isSelected ? "bg-[#05DC7F]/20 border-[#05DC7F]" : "bg-black/50 border-gray-800"
                   }`}
                 >
-                  <span className="text-white font-bold block">{slot.slot_date}</span>
-                  <span className="text-gray-300 text-sm">{slot.start_time} - {slot.end_time}</span>
+                  <span className="text-white font-bold block">{startFormatted}</span>
                 </button>
               );
             })}

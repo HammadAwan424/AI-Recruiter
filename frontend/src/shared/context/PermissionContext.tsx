@@ -2,55 +2,18 @@ import React, { createContext, useContext, useState, useEffect, useCallback, Rea
 import { useAuth } from "./AuthContext";
 import { useGetCompanyRolesQuery } from "../api/rolesApi";
 import { PermissionKey, Role } from "../types/role.types";
-import { UserRole } from "../types/auth.types";
 
 interface PermissionContextType {
   permissions: PermissionKey[];
   isLoading: boolean;
   hasPermission: (key: PermissionKey) => boolean;
+  hasDomain: (key: PermissionKey) => boolean;
   hasAnyPermission: (keys: PermissionKey[]) => boolean;
   hasAllPermissions: (keys: PermissionKey[]) => boolean;
   refetchPermissions: () => void;
 }
 
 const PermissionContext = createContext<PermissionContextType | null>(null);
-
-const ROLE_PERMISSIONS_FALLBACK: Record<UserRole, PermissionKey[]> = {
-  ceo: [
-    "user:change_permissions", "user:invite", "user:deactivate", "user:view",
-    "job:create", "job:approve", "job:close", "job:assign_recruiter", "job:view",
-    "candidate:view_compensation", "candidate:disposition", "candidate:view",
-    "interview:create", "interview:assign", "interview:submit_feedback", "interview:reschedule",
-    "offer:generate", "offer:approve", "offer:view", "profile:update"
-  ],
-  hr_manager: [
-    "user:change_permissions", "user:invite", "user:deactivate", "user:view",
-    "job:create", "job:close", "job:assign_recruiter", "job:view",
-    "candidate:view_compensation", "candidate:disposition", "candidate:view",
-    "interview:create", "interview:assign", "interview:submit_feedback", "interview:reschedule",
-    "offer:generate", "offer:view", "profile:update"
-  ],
-  recruiter: [
-    "job:create", "job:close", "job:assign_recruiter", "job:view",
-    "candidate:view_compensation", "candidate:disposition", "candidate:view",
-    "interview:create", "interview:assign", "interview:submit_feedback", "interview:reschedule",
-    "offer:generate", "offer:view", "profile:update"
-  ],
-  hiring_manager: [
-    "job:view",
-    "candidate:disposition", "candidate:view",
-    "interview:create", "interview:assign", "interview:submit_feedback", "interview:reschedule",
-    "offer:generate", "offer:approve", "offer:view", "profile:update"
-  ],
-  interviewer: [
-    "job:view",
-    "candidate:view",
-    "interview:submit_feedback",
-    "profile:update"
-  ],
-  employee: [],
-  superadmin: ["*"],
-};
 
 interface PermissionProviderProps {
   children: ReactNode;
@@ -76,21 +39,25 @@ export const PermissionProvider: React.FC<PermissionProviderProps> = ({ children
       if (userRoleObj && Array.isArray(userRoleObj.permissions)) {
         setPermissions(userRoleObj.permissions);
       } else {
-        setPermissions(ROLE_PERMISSIONS_FALLBACK[role] || []);
+        setPermissions([]);
       }
-    } else if (!isRolesLoading) {
-      setPermissions(ROLE_PERMISSIONS_FALLBACK[role] || []);
+    } else {
+      setPermissions([]);
     }
-  }, [role, isAuthenticated, rolesData, isRolesLoading]);
+  }, [role, isAuthenticated, rolesData]);
+
+    const hasDomain = useCallback(
+    (key: PermissionKey): boolean => {
+      if (permissions.includes("*") || permissions.includes(key)) return true;
+      return permissions.some((p) => key.startsWith(p));
+    },
+    [permissions]
+  );
 
   const hasPermission = useCallback(
     (key: PermissionKey): boolean => {
       if (permissions.includes("*") || permissions.includes(key)) return true;
-      if (key.includes(":")) {
-        const domain = key.split(":")[0];
-        if (permissions.includes(`${domain}:*` as PermissionKey)) return true;
-      }
-      return false;
+      return permissions.some((p) => key.startsWith(p));
     },
     [permissions]
   );
@@ -114,6 +81,7 @@ export const PermissionProvider: React.FC<PermissionProviderProps> = ({ children
     isLoading: isRolesLoading,
     hasPermission,
     hasAnyPermission,
+    hasDomain,
     hasAllPermissions,
     refetchPermissions: refetch,
   };

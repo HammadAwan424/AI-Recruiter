@@ -1,6 +1,6 @@
 from datetime import date, datetime
 from typing import Optional, List, Any
-from sqlalchemy import String, Date, DateTime, ForeignKey
+from sqlalchemy import String, Date, DateTime, ForeignKey, and_
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 from sqlalchemy.sql import func
@@ -51,6 +51,19 @@ class User(Base, BaseModelMixin):
         back_populates="user",
         foreign_keys="UserJobScope.user_id",
         cascade="all, delete-orphan"
+    )
+
+    slots = relationship(
+        "InterviewSlot",
+        foreign_keys="InterviewSlot.interviewer_id",
+        back_populates="interviewer"
+    )
+
+    available_slots = relationship(
+        "InterviewSlot",
+        primaryjoin="and_(InterviewSlot.interviewer_id==User.id, InterviewSlot.is_booked==False)",
+        foreign_keys="InterviewSlot.interviewer_id",
+        viewonly=True,
     )
 
     # Association Proxy: Access assigned Job ORM instances directly

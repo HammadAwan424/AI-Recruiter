@@ -46,11 +46,6 @@ function App() {
         <Route path="/offer/sign/:token" element={<CandidateOfferSignPage />} />
         <Route path="/interview/schedule/:token" element={<CandidateSelfSchedulePage />} />
 
-        {/* Legacy Dashboard Redirects */}
-        <Route path="/ceo/dashboard" element={<Navigate to="/jobs" replace />} />
-        <Route path="/employee/dashboard" element={<Navigate to="/jobs" replace />} />
-        <Route path="/admin/dashboard" element={<Navigate to="/admin/companies" replace />} />
-
         {/* Main Application Layout Protected Routes */}
         <Route
           element={
@@ -59,12 +54,12 @@ function App() {
             </ProtectedRoute>
           }
         >
-          <Route path="/admin/companies" element={<CompanyManagementPage />} />
+          <Route path="/admin" element={<CompanyManagementPage />} />
 
           <Route
             path="/users"
             element={
-              <RequirePermission permission={USER_PERMISSIONS.CHANGE_PERMISSIONS}>
+              <RequirePermission permission="user:">
                 <UserManagementPage />
               </RequirePermission>
             }
@@ -72,7 +67,7 @@ function App() {
           <Route
             path="/jobs"
             element={
-              <RequirePermission permission={JOB_PERMISSIONS.CREATE}>
+              <RequirePermission permission="job:">
                 <JobManagementPage />
               </RequirePermission>
             }
@@ -80,7 +75,7 @@ function App() {
           <Route
             path="/candidates"
             element={
-              <RequirePermission permission={CANDIDATE_PERMISSIONS.DISPOSITION}>
+              <RequirePermission permission="candidate:">
                 <CandidatePipelinePage />
               </RequirePermission>
             }
@@ -88,7 +83,7 @@ function App() {
           <Route
             path="/interviews"
             element={
-              <RequirePermission permission={INTERVIEW_PERMISSIONS.CREATE}>
+              <RequirePermission permission="interview:">
                 <InterviewManagementPage />
               </RequirePermission>
             }
@@ -96,7 +91,7 @@ function App() {
           <Route
             path="/offers"
             element={
-              <RequirePermission permission={OFFER_PERMISSIONS.GENERATE}>
+              <RequirePermission permission="offer:">
                 <OfferManagementPage />
               </RequirePermission>
             }

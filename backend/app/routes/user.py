@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, Query
 from typing import List, Dict, Any, Optional
 
 from app.database import get_db
@@ -12,9 +12,12 @@ from app.schemas.user import (
     UserRoleUpdate,
     RolePermissionUpdate
 )
+from app.permissions import normalize_permissions
 from app.utils.security import (
     get_current_user,
     require_permissions,
+    get_user_or_403,
+    get_scoped_users_query,
     hash_password
 )
 
@@ -73,20 +76,16 @@ def create_company_user(
 )
 def get_company_users(
     role: Optional[str] = None,
-    db: Session = Depends(get_db),
+    users_query: Query = Depends(get_scoped_users_query),
     current_user: dict = Depends(get_current_user),
 ):
-    company_id = current_user.get("company_id")
-    if not company_id:
-        raise HTTPException(status_code=400, detail="Account has no associated company")
-
-    query = db.query(User).filter(User.company_id == company_id)
+    query = users_query
     if role:
         query = query.filter(User.role == role)
 
     users = query.all()
     return {
-        "company_id": company_id,
+        "company_id": current_user.get("company_id"),
         "total_users": len(users),
         "users": [
             {
@@ -111,15 +110,10 @@ def get_company_users(
 def update_user_role(
     user_id: int,
     payload: UserRoleUpdate,
+    user: User = Depends(get_user_or_403),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    company_id = current_user.get("company_id")
-
-    user = db.query(User).filter(User.id == user_id, User.company_id == company_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found in your company")
-
     if user.role == "superadmin":
         raise HTTPException(status_code=403, detail="Cannot modify SuperAdmin accounts")
 
@@ -162,6 +156,7 @@ def get_company_roles(
             "name": r.name,
             "company_id": r.company_id,
             "description": r.description,
+            "job_scope": r.job_scope,
             "permissions": perm_keys
         })
 
@@ -193,9 +188,15 @@ def update_role_permissions(
     if role.company_id and role.company_id != company_id:
         raise HTTPException(status_code=403, detail="Access denied: role belongs to another company")
 
+    if payload.job_scope is not None:
+        if payload.job_scope in ("own", "all"):
+            role.job_scope = payload.job_scope
+
+    normalized_keys = normalize_permissions(payload.permission_keys)
+
     db.query(RolePermission).filter(RolePermission.role_id == role_id).delete(synchronize_session=False)
 
-    for perm_key in payload.permission_keys:
+    for perm_key in normalized_keys:
         rp = RolePermission(
             role_id=role_id,
             permission_key=perm_key,
@@ -208,21 +209,22 @@ def update_role_permissions(
     return {
         "message": f"Role '{role.name}' permissions updated successfully!",
         "role_id": role_id,
-        "permissions": payload.permission_keys
+        "job_scope": role.job_scope,
+        "permissions": normalized_keys
     }
 
 
 # ─────────────────────────────────────────────────────────────
-# 3. USER PROFILE MANAGEMENT (REQUIRES profile_update PERMISSION FOR UPDATE)
+# 3. USER PROFILE MANAGEMENT (REQUIRES user:view / profile:update PERMISSIONS)
 # ─────────────────────────────────────────────────────────────
-@router.get("/profile")
-def get_profile(
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+@router.get(
+    "/{user_id}/profile",
+    dependencies=[Depends(require_permissions(["user:view"]))]
+)
+def get_user_profile(
+    user: User = Depends(get_user_or_403),
+    db: Session = Depends(get_db)
 ):
-    user = db.query(User).filter(User.id == current_user["user_id"]).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User profile not found.")
     return {
         "user_id": user.id,
         "full_name": user.full_name,
@@ -234,27 +236,27 @@ def get_profile(
 
 
 @router.put(
-    "/profile",
+    "/{user_id}/profile",
     dependencies=[Depends(require_permissions(["profile:update"]))]
 )
-def update_profile(
+def update_user_profile(
+    user_id: int,
     data: dict,
+    user: User = Depends(get_user_or_403),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    user = db.query(User).filter(User.id == current_user["user_id"]).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User account not found.")
-
     if "full_name" in data and data["full_name"]:
         user.full_name = data["full_name"]
     if "password" in data and data["password"]:
         user.password = hash_password(data["password"])
 
+    user.updated_by = current_user["user_id"]
     db.commit()
 
     return {
-        "message": "Profile updated successfully.",
+        "message": "User profile updated successfully.",
+        "user_id": user.id,
         "full_name": user.full_name,
         "email": user.email,
         "company_name": user.company.name if user.company else "",

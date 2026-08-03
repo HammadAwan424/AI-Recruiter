@@ -57,16 +57,6 @@ class ApplicationResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class ApplicationDetail(ApplicationResponse):
-    interviews: list[InterviewDetail]
-    comments: list[CommentResponse]
-    offer: Optional[OfferResponse] = None
-
-
-class ApplicationListItem(ApplicationResponse):
-    interviews: Optional[list[InterviewResponse]] = None
-
-
 class CommentCreate(BaseModel):
     content: str
 
@@ -80,6 +70,16 @@ class CommentResponse(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class ApplicationDetail(ApplicationResponse):
+    interviews: list[InterviewDetail]
+    comments: list[CommentResponse]
+    offer: Optional[OfferResponse] = None
+
+
+class ApplicationListItem(ApplicationResponse):
+    interviews: Optional[list[InterviewResponse]] = None
 
 
 class ScreeningResultResponse(BaseModel):

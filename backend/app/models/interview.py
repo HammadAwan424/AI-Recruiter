@@ -28,12 +28,11 @@ class InterviewSlot(Base, BaseModelMixin):
     )
     job_id: Mapped[int] = mapped_column(
         ForeignKey("jobs.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
         index=True,
     )
-    slot_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
-    start_time: Mapped[time] = mapped_column(Time, nullable=False)
-    end_time: Mapped[time] = mapped_column(Time, nullable=False)
+    schedule_start: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    schedule_end: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     is_booked: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
 
     # Audit Trail
@@ -51,7 +50,7 @@ class InterviewSlot(Base, BaseModelMixin):
     updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
 
     # ORM Relationships
-    interviewer = relationship("User", foreign_keys=[interviewer_id])
+    interviewer = relationship("User", foreign_keys=[interviewer_id], back_populates="slots")
     job = relationship("Job", foreign_keys=[job_id])
 
 
@@ -65,9 +64,11 @@ class InterviewModel(Base, BaseModelMixin):
         index=True,
     )
 
-    scheduled_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
-    scheduled_time: Mapped[time] = mapped_column(Time, nullable=False)
-    duration_minutes: Mapped[int] = mapped_column(Integer, default=45)
+    round_number: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    round_label: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+
+    schedule_start: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, index=True)
+    schedule_end: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     meeting_type: Mapped[str] = mapped_column(String, default="GOOGLE_MEET")  # GOOGLE_MEET | JITSI | IN_PERSON
     meeting_link: Mapped[str] = mapped_column(String, nullable=False)
@@ -78,7 +79,7 @@ class InterviewModel(Base, BaseModelMixin):
     token_expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     # Restored Interview Status
-    status: Mapped[str] = mapped_column(String, default="SCHEDULED", nullable=False, index=True)  # SCHEDULED | COMPLETED | CANCELLED | RESCHEDULED
+    status: Mapped[str] = mapped_column(String, default="SCHEDULED", nullable=False, index=True)  # AWAITING_SELECTION | SCHEDULED | COMPLETED | CANCELLED | RESCHEDULED
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # Audit Trail

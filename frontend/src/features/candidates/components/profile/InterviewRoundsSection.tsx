@@ -6,7 +6,6 @@ import {
   Chip,
   Link,
   Button,
-  TextField,
   FormControl,
   InputLabel,
   Select,
@@ -16,9 +15,9 @@ import {
   Alert,
   CircularProgress,
 } from "@mui/material";
-import { Calendar, Clock, Video, Users, CheckCircle2, UserPlus, Plus } from "lucide-react";
-import { useGetCompanyUsersQuery } from "../../../users/api";
-import { useScheduleInterviewMutation } from "../../../interviews/api";
+import { Calendar, Clock, Video, Users, CheckCircle2, UserPlus, Plus, Link as LinkIcon, CalendarCheck } from "lucide-react";
+import { useScheduleInterviewMutation, useGetInterviewersWithSlotsQuery } from "../../../interviews/api";
+import { InterviewerDetail, InterviewSlot } from "../../../../shared/types/interview.types";
 
 interface InterviewRoundsSectionProps {
   applicationId: number;
@@ -26,11 +25,11 @@ interface InterviewRoundsSectionProps {
   currentStatus: string;
   interviews?: Array<{
     id: number;
-    scheduled_date?: string;
-    scheduled_time?: string;
-    duration_minutes: number;
+    schedule_start?: string;
+    schedule_end?: string;
     meeting_type: string;
     meeting_link: string;
+    self_schedule_token?: string;
     status: string;
     interviewer_assignments?: Array<{
       interviewer_id: number;
@@ -56,46 +55,98 @@ export const InterviewRoundsSection: React.FC<InterviewRoundsSectionProps> = ({
   currentStatus,
   interviews = [],
 }) => {
-  const { data: interviewerUsersData } = useGetCompanyUsersQuery("interviewer");
-  const { data: allUsersData } = useGetCompanyUsersQuery();
-  const companyUsers = interviewerUsersData?.users?.length
-    ? interviewerUsersData.users
-    : allUsersData?.users || [];
+  // Mode selection: "self_schedule" (Default) vs "custom_slot"
+  const [scheduleMode, setScheduleMode] = useState<"self_schedule" | "custom_slot">("self_schedule");
+
+  // Single unified query returning company interviewers with their available_slots
+  const { data: interviewers = [], isLoading: isLoadingInterviewers } = useGetInterviewersWithSlotsQuery(jobId);
 
   const [scheduleInterview, { isLoading: isScheduling }] = useScheduleInterviewMutation();
 
   const [showScheduleForm, setShowScheduleForm] = useState<boolean>(
-    (interviews.length === 0 && currentStatus === "interview")
+    interviews.length === 0 && currentStatus === "interview"
   );
   const [selectedInterviewerIds, setSelectedInterviewerIds] = useState<number[]>([]);
-  const [scheduledDate, setScheduledDate] = useState<string>(
-    new Date(Date.now() + 86400000).toISOString().split("T")[0]
-  );
-  const [scheduledTime, setScheduledTime] = useState<string>("10:00");
+  const [selectedInterviewerId, setSelectedInterviewerId] = useState<number | "">("");
+  const [selectedSlotId, setSelectedSlotId] = useState<number | "">("");
+  const [scheduledDate, setScheduledDate] = useState<string>("");
+  const [scheduledTime, setScheduledTime] = useState<string>("");
   const [scheduleMsg, setScheduleMsg] = useState<string | null>(null);
+
+  // Currently selected interviewer detail in custom slot mode
+  const currentInterviewerDetail = interviewers.find((u) => u.id === selectedInterviewerId);
+  const availableSlotsForInterviewer: InterviewSlot[] = currentInterviewerDetail?.available_slots || [];
+
+  const handleSelectSlot = (slotId: number) => {
+    setSelectedSlotId(slotId);
+  };
 
   const handleConfirmSchedule = async (e: React.FormEvent) => {
     e.preventDefault();
     setScheduleMsg(null);
 
-    if (selectedInterviewerIds.length === 0) {
-      setScheduleMsg("Please select at least one panel interviewer.");
-      return;
-    }
+    if (scheduleMode === "self_schedule") {
+      if (selectedInterviewerIds.length === 0) {
+        setScheduleMsg("Please select at least one interviewer.");
+        return;
+      }
+      try {
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 7);
 
-    try {
-      await scheduleInterview({
-        application_id: applicationId,
-        scheduled_date: scheduledDate,
-        scheduled_time: scheduledTime,
-        interviewer_ids: selectedInterviewerIds,
-      }).unwrap();
+        await scheduleInterview({
+          payload: {
+            application_id: applicationId,
+            round_number: interviews.length + 1,
+            round_label: `Round ${interviews.length + 1}`,
+            meeting_type: "GOOGLE_MEET",
+            schedule_type: "self_schedule",
+            self_schedule_token_expires_at: expiresAt.toISOString(),
+            interviewer_ids: selectedInterviewerIds,
+          },
+        }).unwrap();
 
-      setScheduleMsg("✅ Interview scheduled & panel assigned successfully!");
-      setShowScheduleForm(false);
-      setSelectedInterviewerIds([]);
-    } catch (err: any) {
-      setScheduleMsg(`⚠️ Could not schedule interview: ${err?.data?.detail || "Error"}`);
+        setScheduleMsg("✅ Self-scheduling link generated! Candidate can select their preferred time slot.");
+        setShowScheduleForm(false);
+        setSelectedInterviewerIds([]);
+      } catch (err: any) {
+        setScheduleMsg(`⚠️ Could not create self-schedule request: ${err?.data?.detail || "Error"}`);
+      }
+    } else {
+      // Custom Slot Mode
+      if (!selectedInterviewerId) {
+        setScheduleMsg("Please select an interviewer.");
+        return;
+      }
+      if (!selectedSlotId) {
+        setScheduleMsg("Please select an available time slot for the interviewer.");
+        return;
+      }
+
+      try {
+        await scheduleInterview({
+          payload: {
+            application_id: applicationId,
+            round_number: interviews.length + 1,
+            round_label: `Round ${interviews.length + 1}`,
+            meeting_type: "GOOGLE_MEET",
+            schedule_type: "fixed",
+            assignments: [
+              {
+                interviewer_id: Number(selectedInterviewerId),
+                slot_id: Number(selectedSlotId),
+              },
+            ],
+          },
+        }).unwrap();
+
+        setScheduleMsg("✅ Custom interview slot booked & assigned successfully!");
+        setShowScheduleForm(false);
+        setSelectedInterviewerId("");
+        setSelectedSlotId("");
+      } catch (err: any) {
+        setScheduleMsg(`⚠️ Could not book custom slot: ${err?.data?.detail || "Error"}`);
+      }
     }
   };
 
@@ -138,185 +189,300 @@ export const InterviewRoundsSection: React.FC<InterviewRoundsSectionProps> = ({
 
       {/* Embedded Form to Schedule & Assign Interviewers */}
       {showScheduleForm && (
-        <Box className="p-4 rounded-xl bg-gray-900/80 border border-[#05DC7F]/40 mb-4 shadow-md">
-          <Typography variant="subtitle2" color="primary.main" sx={{ fontWeight: 700, mb: 2, display: "flex", items: "center", gap: 1 }}>
-            <UserPlus size={16} /> Schedule Round & Assign Panel Interviewers
-          </Typography>
+        <Box className="p-4.5 rounded-xl bg-gray-900/90 border border-[#05DC7F]/40 mb-5 shadow-md">
+          {/* Mode Pill Toggle (Default: Self-Schedule) */}
+          <div className="flex items-center justify-between gap-2 mb-4 pb-3 border-b border-gray-800">
+            <Typography variant="subtitle2" color="primary.main" sx={{ fontWeight: 700, display: "flex", alignItems: "center", gap: 1 }}>
+              <UserPlus size={16} /> Schedule Interview Round
+            </Typography>
 
-          <form onSubmit={handleConfirmSchedule}>
-            <Stack spacing={2}>
-              <FormControl size="small" fullWidth>
-                <InputLabel id="panel-select-label">Assign Panel Interviewers</InputLabel>
-                <Select
-                  labelId="panel-select-label"
-                  multiple
-                  value={selectedInterviewerIds}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setSelectedInterviewerIds(typeof value === "string" ? value.split(",").map(Number) : value);
-                  }}
-                  renderValue={(selected) =>
-                    companyUsers
-                      .filter((u) => selected.includes(u.id))
-                      .map((u) => u.full_name)
-                      .join(", ")
-                  }
-                  label="Assign Panel Interviewers"
-                >
-                  {companyUsers.map((u) => (
-                    <MenuItem key={u.id} value={u.id}>
-                      <Checkbox checked={selectedInterviewerIds.indexOf(u.id) > -1} />
-                      <ListItemText primary={`${u.full_name} (${u.email})`} secondary={u.role} />
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+            <div className="flex items-center bg-black/60 p-1 rounded-lg border border-gray-800 gap-1">
+              <button
+                type="button"
+                onClick={() => setScheduleMode("self_schedule")}
+                className={`px-3 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5 transition ${
+                  scheduleMode === "self_schedule"
+                    ? "bg-[#05DC7F]/20 text-[#05DC7F] border border-[#05DC7F]/40"
+                    : "text-gray-400 hover:text-white"
+                }`}
+              >
+                <LinkIcon size={13} /> Candidate Self-Schedule (Default)
+              </button>
+              <button
+                type="button"
+                onClick={() => setScheduleMode("custom_slot")}
+                className={`px-3 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5 transition ${
+                  scheduleMode === "custom_slot"
+                    ? "bg-[#05DC7F]/20 text-[#05DC7F] border border-[#05DC7F]/40"
+                    : "text-gray-400 hover:text-white"
+                }`}
+              >
+                <CalendarCheck size={13} /> Custom Slot Selection
+              </button>
+            </div>
+          </div>
 
-              <Stack direction="row" spacing={2}>
-                <TextField
-                  type="date"
-                  label="Scheduled Date"
-                  size="small"
-                  fullWidth
-                  slotProps={{ inputLabel: { shrink: true } }}
-                  value={scheduledDate}
-                  onChange={(e) => setScheduledDate(e.target.value)}
-                  required
-                />
-                <TextField
-                  type="time"
-                  label="Scheduled Time"
-                  size="small"
-                  fullWidth
-                  slotProps={{ inputLabel: { shrink: true } }}
-                  value={scheduledTime}
-                  onChange={(e) => setScheduledTime(e.target.value)}
-                  required
-                />
+          {isLoadingInterviewers ? (
+            <div className="flex items-center gap-2 text-xs text-gray-400 p-4">
+              <CircularProgress size={16} /> Loading interviewers list...
+            </div>
+          ) : (
+            <form onSubmit={handleConfirmSchedule}>
+              <Stack spacing={2.5}>
+                {/* ===== MODE 1: SELF-SCHEDULE (DEFAULT) ===== */}
+                {scheduleMode === "self_schedule" && (
+                  <div className="flex flex-col gap-3">
+                    <p className="text-gray-400 text-xs leading-relaxed">
+                      Assign interviewer(s) to this round. The candidate will receive a self-scheduling link to choose a time that works best for them.
+                    </p>
+
+                    <FormControl size="small" fullWidth>
+                      <InputLabel id="panel-select-label">Assign Interviewer(s)</InputLabel>
+                      <Select
+                        labelId="panel-select-label"
+                        multiple
+                        value={selectedInterviewerIds}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setSelectedInterviewerIds(typeof value === "string" ? value.split(",").map(Number) : value);
+                        }}
+                        renderValue={(selected) =>
+                          interviewers
+                            .filter((u) => selected.includes(u.id))
+                            .map((u) => u.full_name)
+                            .join(", ")
+                        }
+                        label="Assign Interviewer(s)"
+                      >
+                        {interviewers.map((u) => (
+                          <MenuItem key={u.id} value={u.id}>
+                            <Checkbox checked={selectedInterviewerIds.indexOf(u.id) > -1} />
+                            <ListItemText primary={`${u.full_name} (${u.email})`} secondary={u.role.toUpperCase()} />
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </div>
+                )}
+
+                {/* ===== MODE 2: CUSTOM SLOT SELECTION ===== */}
+                {scheduleMode === "custom_slot" && (
+                  <div className="flex flex-col gap-3">
+                    <p className="text-gray-400 text-xs leading-relaxed">
+                      Select an interviewer to view their available time slots.
+                    </p>
+
+                    {/* Step 1: Select Interviewer */}
+                    <FormControl size="small" fullWidth>
+                      <InputLabel id="interviewer-slot-label">Select Interviewer</InputLabel>
+                      <Select
+                        labelId="interviewer-slot-label"
+                        value={selectedInterviewerId}
+                        onChange={(e) => {
+                          setSelectedInterviewerId(Number(e.target.value));
+                          setSelectedSlotId("");
+                        }}
+                        label="Select Interviewer"
+                      >
+                        <MenuItem value="">-- Select Interviewer --</MenuItem>
+                        {interviewers.map((interviewer: InterviewerDetail) => (
+                          <MenuItem key={interviewer.id} value={interviewer.id}>
+                            {interviewer.full_name} ({interviewer.available_slots.length} available slots)
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+
+                    {/* Step 2: Display Available Slots for Selected Interviewer */}
+                    {selectedInterviewerId && (
+                      <div>
+                        <label className="text-xs font-bold text-gray-300 block mb-1.5">
+                          Available Time Slots for {currentInterviewerDetail?.full_name}:
+                        </label>
+                        {availableSlotsForInterviewer.length === 0 ? (
+                          <Alert severity="warning" sx={{ py: 0.5, fontSize: 12 }}>
+                            No unbooked slots found for this interviewer.
+                          </Alert>
+                        ) : (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto p-2 bg-black/60 rounded-xl border border-gray-800">
+                            {availableSlotsForInterviewer.map((slot) => {
+                              const isSelected = selectedSlotId === slot.id;
+                              return (
+                                <div
+                                  key={slot.id}
+                                  onClick={() => handleSelectSlot(slot.id)}
+                                  className={`p-2.5 rounded-lg border cursor-pointer transition text-xs flex flex-col gap-1 ${
+                                    isSelected
+                                      ? "bg-[#05DC7F]/20 border-[#05DC7F] text-white"
+                                      : "bg-gray-900/90 border-gray-800 hover:border-gray-700 text-gray-300"
+                                  }`}
+                                >
+                                  <div className="font-semibold flex items-center justify-between">
+                                    <span>{slot.schedule_start ? new Date(slot.schedule_start).toLocaleString() : ""}</span>
+                                  </div>
+                                  <div className="text-[10px] text-gray-400">
+                                    {slot.job ? `Scope: ${slot.job.title}` : "Universal Slot"}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Form Buttons */}
+                <Stack direction="row" spacing={1.5} sx={{ pt: 1, justifyContent: "flex-end" }}>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    color="inherit"
+                    onClick={() => setShowScheduleForm(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    size="small"
+                    variant="contained"
+                    color="primary"
+                    disabled={isScheduling}
+                    startIcon={isScheduling ? <CircularProgress size={14} color="inherit" /> : null}
+                    sx={{ fontWeight: 700 }}
+                  >
+                    {scheduleMode === "self_schedule" ? "Generate Self-Schedule Token" : "Book Selected Slot"}
+                  </Button>
+                </Stack>
               </Stack>
-
-              <Stack direction="row" spacing={1.5} sx={{ pt: 1, justifyContent: "flex-end" }}>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  color="inherit"
-                  onClick={() => setShowScheduleForm(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  size="small"
-                  variant="contained"
-                  color="primary"
-                  disabled={isScheduling}
-                  startIcon={isScheduling ? <CircularProgress size={14} color="inherit" /> : null}
-                  sx={{ fontWeight: 700 }}
-                >
-                  Confirm & Schedule
-                </Button>
-              </Stack>
-            </Stack>
-          </form>
+            </form>
+          )}
         </Box>
       )}
 
-      {/* List of Existing Scheduled / Completed Interview Rounds */}
-      {hasInterviews && (
-        <Stack spacing={3}>
-          {interviews.map((interview, index) => (
-            <div
+      {/* Render Active Interview Rounds */}
+      <Stack spacing={3}>
+        {interviews.map((interview, index) => {
+          const assignments = interview.interviewer_assignments || [];
+          return (
+            <Box
               key={interview.id}
-              className="p-4 rounded-xl bg-gray-900/60 border border-gray-800/90 flex flex-col gap-3"
+              className="p-4 rounded-xl bg-gray-900/60 border border-gray-800 flex flex-col gap-3"
             >
-              {/* Interview Round Header */}
-              <div className="flex justify-between items-center border-b border-gray-800 pb-2.5">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-800/80 pb-2.5">
                 <div className="flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-full bg-[#05DC7F]/20 text-[#05DC7F] font-bold text-xs flex items-center justify-center border border-[#05DC7F]/40">
-                    #{index + 1}
-                  </span>
-                  <span className="text-white font-bold text-sm">Round #{interview.id}</span>
+                  <Chip
+                    label={`Round ${index + 1}`}
+                    size="small"
+                    color="primary"
+                    sx={{ fontWeight: 700, fontSize: 11 }}
+                  />
+                  <Chip
+                    label={interview.status}
+                    size="small"
+                    variant="outlined"
+                    color={interview.status === "COMPLETED" ? "success" : "warning"}
+                    sx={{ fontWeight: 600, fontSize: 10 }}
+                  />
                 </div>
-                <Chip
-                  label={interview.status}
-                  size="small"
-                  className="bg-emerald-950/70 border border-emerald-800/50 text-emerald-400 font-bold uppercase text-[9px]"
-                />
+
+                <div className="flex items-center gap-3 text-xs text-gray-400">
+                  {interview.status === "AWAITING_SELECTION" || interview.self_schedule_token ? (
+                    <span className="flex items-center gap-1 text-amber-400 font-medium">
+                      <Calendar size={13} /> Awaiting Candidate Slot Selection
+                    </span>
+                  ) : (
+                    interview.schedule_start && (
+                      <span className="flex items-center gap-1">
+                        <Calendar size={13} className="text-[#05DC7F]" />
+                        {new Date(interview.schedule_start).toLocaleString()}
+                      </span>
+                    )
+                  )}
+                </div>
               </div>
 
-              {/* Date, Time & Meeting Link */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                <div className="flex items-center gap-2 text-gray-300">
-                  <Calendar size={14} className="text-[#05DC7F]" />
-                  <span>Date: {interview.scheduled_date || "TBD"}</span>
+              {/* Meeting Link or Self-Schedule Token Banner */}
+              {interview.self_schedule_token ? (
+                <div className="p-2.5 rounded-lg bg-black/50 border border-amber-500/30 flex items-center justify-between text-xs">
+                  <span className="text-amber-400 font-semibold flex items-center gap-1.5">
+                    <LinkIcon size={14} /> Self-Scheduling Token Active
+                  </span>
+                  <span className="text-gray-400 font-mono text-[11px]">
+                    Token: {interview.self_schedule_token.substring(0, 16)}...
+                  </span>
                 </div>
-                <div className="flex items-center gap-2 text-gray-300">
-                  <Clock size={14} className="text-[#05DC7F]" />
-                  <span>Time: {interview.scheduled_time || "TBD"} ({interview.duration_minutes}m)</span>
-                </div>
-                {interview.meeting_link && (
-                  <div className="flex items-center gap-2 sm:col-span-2 text-gray-300 pt-1">
+              ) : (
+                interview.meeting_link && (
+                  <div className="flex items-center gap-2 text-xs">
                     <Video size={14} className="text-[#05DC7F]" />
                     <span className="text-gray-400">Meeting:</span>
                     <Link
                       href={interview.meeting_link}
                       target="_blank"
                       rel="noopener noreferrer"
-                      underline="hover"
-                      className="text-[#05DC7F] font-semibold truncate"
+                      className="text-[#05DC7F] underline font-medium hover:text-[#04c56f]"
                     >
                       {interview.meeting_link}
                     </Link>
                   </div>
-                )}
-              </div>
+                )
+              )}
 
-              {/* Interviewer Assignments & Scorecards */}
-              {interview.interviewer_assignments && interview.interviewer_assignments.length > 0 && (
-                <div className="mt-2 pt-2 border-t border-gray-800/60 flex flex-col gap-2">
-                  <div className="flex items-center gap-1.5 text-gray-400 text-xs font-semibold">
-                    <Users size={14} /> Assigned Panel Interviewers ({interview.interviewer_assignments.length}):
-                  </div>
-                  <div className="flex flex-col gap-2 pl-2">
-                    {interview.interviewer_assignments.map((assignment) => (
-                      <div key={assignment.interviewer_id} className="p-2.5 rounded-lg bg-black/40 border border-gray-800/70 text-xs">
-                        <div className="flex justify-between items-center">
-                          <span className="text-white font-medium">{assignment.interviewer.full_name} ({assignment.interviewer.email})</span>
-                          {assignment.feedback ? (
-                            <span className="text-emerald-400 font-bold text-[10px] uppercase flex items-center gap-1">
-                              <CheckCircle2 size={12} /> Feedback Submitted
+              {/* Assigned Interviewers Panel & Scorecards */}
+              <div className="flex flex-col gap-2 pt-1">
+                <Typography variant="caption" className="text-gray-400 uppercase tracking-wider font-bold flex items-center gap-1">
+                  <Users size={12} /> Assigned Panel ({assignments.length})
+                </Typography>
+
+                {assignments.length === 0 ? (
+                  <p className="text-gray-500 text-xs italic">No interviewers assigned to this round yet.</p>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {assignments.map((asgn) => {
+                      const fb = asgn.feedback;
+                      return (
+                        <div
+                          key={asgn.interviewer_id}
+                          className="p-3 rounded-lg bg-black/80 border border-gray-800 flex flex-col gap-1.5"
+                        >
+                          <div className="flex justify-between items-center">
+                            <span className="text-white text-xs font-semibold">
+                              {asgn.interviewer?.full_name || `Interviewer #${asgn.interviewer_id}`}
                             </span>
-                          ) : (
-                            <span className="text-amber-400/80 font-semibold text-[10px] uppercase">Pending Feedback</span>
-                          )}
-                        </div>
-
-                        {assignment.feedback && (
-                          <div className="mt-2 pt-2 border-t border-gray-800/50 flex flex-col gap-1 text-[11px]">
-                            <div className="flex justify-between">
-                              <span className="text-gray-400">Technical Score:</span>
-                              <span className="text-[#05DC7F] font-bold">{assignment.feedback.technical_score} / 10</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-gray-400">Communication Score:</span>
-                              <span className="text-[#05DC7F] font-bold">{assignment.feedback.communication_score} / 10</span>
-                            </div>
-                            {assignment.feedback.notes && (
-                              <p className="text-gray-300 text-[11px] italic mt-1 bg-gray-900/50 p-2 rounded">
-                                "{assignment.feedback.notes}"
-                              </p>
+                            {fb ? (
+                              <span className="text-[#05DC7F] text-[10px] font-bold flex items-center gap-0.5">
+                                <CheckCircle2 size={12} /> Feedback Submitted
+                              </span>
+                            ) : (
+                              <span className="text-amber-400 text-[10px] font-medium">Pending Scorecard</span>
                             )}
                           </div>
-                        )}
-                      </div>
-                    ))}
+
+                          {fb && (
+                            <div className="mt-1 pt-1.5 border-t border-gray-800/80 flex flex-col gap-1 text-xs">
+                              <div className="flex justify-between text-gray-300 font-medium">
+                                <span>Tech: <strong className="text-white">{fb.technical_score}/10</strong></span>
+                                <span>Comm: <strong className="text-white">{fb.communication_score}/10</strong></span>
+                              </div>
+                              {fb.notes && (
+                                <p className="text-gray-400 text-[11px] italic bg-gray-900/80 p-1.5 rounded border border-gray-800 mt-0.5">
+                                  "{fb.notes}"
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
-                </div>
-              )}
-            </div>
-          ))}
-        </Stack>
-      )}
+                )}
+              </div>
+            </Box>
+          );
+        })}
+      </Stack>
     </Box>
   );
 };

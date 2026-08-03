@@ -7,15 +7,7 @@ export const userRoutes = [
   {
     path: "/users",
     element: (
-      <RequirePermission permission={USER_PERMISSIONS.CHANGE_PERMISSIONS}>
-        <UserManagementPage />
-      </RequirePermission>
-    ),
-  },
-  {
-    path: "/ceo/users",
-    element: (
-      <RequirePermission permission={USER_PERMISSIONS.CHANGE_PERMISSIONS}>
+      <RequirePermission permission="user:">
         <UserManagementPage />
       </RequirePermission>
     ),

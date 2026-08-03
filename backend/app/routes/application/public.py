@@ -12,8 +12,17 @@ router = APIRouter()
 public_router = APIRouter()
 
 
-UPLOADS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "uploads", "cvs"))
-os.makedirs(UPLOADS_DIR, exist_ok=True)
+import tempfile
+
+def get_uploads_dir() -> str:
+    default_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "uploads", "cvs"))
+    try:
+        os.makedirs(default_dir, exist_ok=True)
+        return default_dir
+    except OSError:
+        tmp_dir = os.path.join(tempfile.gettempdir(), "uploads", "cvs")
+        os.makedirs(tmp_dir, exist_ok=True)
+        return tmp_dir
 
 
 @public_router.post("/apply")
@@ -57,7 +66,8 @@ def apply_for_job(
         candidate.full_name = full_name
         candidate.phone = phone
 
-    file_path = os.path.join(UPLOADS_DIR, f"candidate_{candidate.id}_job_{job_id}.pdf")
+    uploads_dir = get_uploads_dir()
+    file_path = os.path.join(uploads_dir, f"candidate_{candidate.id}_job_{job_id}.pdf")
     with open(file_path, "wb") as f:
         f.write(pdf_bytes)
 

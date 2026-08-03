@@ -1,5 +1,10 @@
 export type PermissionKey =
   | "*"
+  | "user:"
+  | "job:"
+  | "candidate:"
+  | "interview:"
+  | "offer:"
   | "user:change_permissions"
   | "user:invite"
   | "user:deactivate"
@@ -19,13 +24,17 @@ export type PermissionKey =
   | "offer:generate"
   | "offer:approve"
   | "offer:view"
-  | "profile:update";
+  | "profile:update"
+  | (string & {});
+
+export type JobScope = "own" | "all";
 
 export interface Role {
   id: number;
   name: string;
   company_id: number | null;
   description?: string;
+  job_scope: JobScope;
   permissions: PermissionKey[];
 }
 
@@ -36,4 +45,5 @@ export interface RolesListResponse {
 
 export interface RolePermissionUpdatePayload {
   permission_keys: PermissionKey[];
+  job_scope?: JobScope;
 }
