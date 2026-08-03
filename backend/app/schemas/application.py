@@ -46,6 +46,7 @@ class ApplicationResponse(BaseModel):
     match_score: Optional[float] = None
     skill_gap: Optional[str] = None
     summary: Optional[str] = None
+    parsed_profile: Optional[str] = None
     final_score: Optional[float] = None
     created_by: Optional[int] = None
     updated_by: Optional[int] = None

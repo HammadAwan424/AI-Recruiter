@@ -17,6 +17,11 @@ from app.agents.job_distribution_agent import distribute_job
 router = APIRouter(prefix="/recruitment", tags=["Jobs"])
 
 
+# ──── Supported distribution boards ────
+@router.get("/boards")
+def get_supported_boards():
+    return {"boards": SUPPORTED_BOARDS}
+
 def require_ceo(current_user: dict = Depends(get_current_user)):
     if current_user["role"] != "ceo":
         raise HTTPException(status_code=403, detail="Sirf CEO yeh kaam kar sakta hai")
@@ -104,6 +109,16 @@ def create_job(data: JobCreate, db: Session = Depends(get_db), current_user: dic
     }
 
 
+def _distributions_for(db: Session, job_id: int) -> list[dict]:
+    records = db.query(JobDistribution).filter(JobDistribution.job_id == job_id).all()
+    return [{
+        "board": d.board,
+        "status": d.status,
+        "external_ref": d.external_ref,
+        "error": d.error
+    } for d in records]
+
+
 # ──── Jobs list ────
 @router.get("/jobs")
 def get_jobs(db: Session = Depends(get_db), current_user: dict = Depends(require_ceo)):
@@ -121,7 +136,8 @@ def get_jobs(db: Session = Depends(get_db), current_user: dict = Depends(require
             "salary_range": j.salary_range,
             "full_description": j.full_description,
             "status": j.status,
-            "created_at": j.created_at
+            "created_at": j.created_at,
+            "distributions": _distributions_for(db, j.id)
         } for j in jobs]
     }
 
@@ -143,7 +159,8 @@ def get_job(job_id: int, db: Session = Depends(get_db)):
         "full_description": job.full_description,
         "company_name": job.company.name if job.company else "",
         "status": job.status,
-        "created_at": job.created_at
+        "created_at": job.created_at,
+        "distributions": _distributions_for(db, job.id)
     }
 
 

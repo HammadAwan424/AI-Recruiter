@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.database import engine, SessionLocal
@@ -27,6 +28,12 @@ application.Base.metadata.create_all(bind=engine)
 offer.Base.metadata.create_all(bind=engine)
 interview.Base.metadata.create_all(bind=engine)
 job_distribution.Base.metadata.create_all(bind=engine)
+
+# ──── Lightweight column migrations (no Alembic in this project) ────
+with engine.begin() as conn:
+    conn.execute(text(
+        "ALTER TABLE applications ADD COLUMN IF NOT EXISTS parsed_profile TEXT"
+    ))
 
 
 # SUPER ADMIN CREATE FUNCTION

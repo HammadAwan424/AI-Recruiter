@@ -1,8 +1,10 @@
 import asyncio
+import json
 from app.database import SessionLocal
 from app.models.application import Application
 from app.schemas.application import ScreeningTaskPayload
 from app.agents.cv_screening_agent import screen_cv
+from app.agents.resume_parser_agent import parse_resume
 from app.utils.ws_manager import ws_manager
 
 
@@ -29,6 +31,7 @@ def screen_candidate_background(payload: ScreeningTaskPayload):
         job_experience=payload.job_experience or "",
         job_skills=payload.job_skills or ""
     )
+    profile = parse_resume(payload.cv_text)
 
     db = SessionLocal()
     try:
@@ -47,6 +50,7 @@ def screen_candidate_background(payload: ScreeningTaskPayload):
             app.match_score = score
             app.skill_gap = result["skill_gap"]
             app.summary = result["summary"]
+            app.parsed_profile = json.dumps(profile)
 
             if score > 85:
                 app.current_status = "screening"

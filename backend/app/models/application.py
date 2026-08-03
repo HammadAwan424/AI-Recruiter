@@ -35,6 +35,9 @@ class Application(Base, BaseModelMixin):
     skill_gap: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     summary: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
+    # ──── AI Structured Resume Profile (JSON-encoded string) ────
+    parsed_profile: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
     # ──── Combined Final Score ────
     final_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 

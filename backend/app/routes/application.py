@@ -1,4 +1,5 @@
 import os
+import json
 import fitz
 import sys
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, WebSocket, WebSocketDisconnect, BackgroundTasks
@@ -12,7 +13,7 @@ from app.models.candidate import Candidate
 from app.models.application import Application
 from app.models.interview import InterviewModel, InterviewFeedback
 from app.crud.application import get_or_create_application, update_application_status
-from app.schemas.application import ApplicationResponse, ApplicationUpdate
+from app.schemas.application import ApplicationResponse, ApplicationUpdate, ScreeningTaskPayload
 from app.utils.security import get_current_user
 from app.utils.ws_manager import ws_manager
 from app.utils.background_workers import screen_candidate_background
@@ -49,6 +50,7 @@ async def recruitment_websocket_endpoint(websocket: WebSocket):
 @router.post("/apply/{job_id}")
 def apply_for_job(
     job_id: int,
+    background_tasks: BackgroundTasks,
     full_name: str = Form(...),
     email: str = Form(...),
     phone: str = Form(""),
@@ -98,8 +100,25 @@ def apply_for_job(
 
     db.commit()
 
+    background_tasks.add_task(
+        screen_candidate_background,
+        payload=ScreeningTaskPayload(
+            application_id=app.id,
+            candidate_id=candidate.id,
+            job_id=job_id,
+            candidate_name=candidate.full_name,
+            candidate_email=candidate.email,
+            cv_text=cv_text,
+            job_title=job.title,
+            job_description=job.full_description or "",
+            job_keywords=job.keywords or "",
+            job_experience=job.experience or "",
+            job_skills=job.skills or ""
+        )
+    )
+
     return {
-        "message": "Application submitted successfully!",
+        "message": "Application submitted successfully! Our AI is screening your resume.",
         "application_id": app.id,
         "candidate_id": candidate.id,
         "candidate_name": candidate.full_name,
@@ -129,6 +148,7 @@ def get_applications(job_id: int, db: Session = Depends(get_db), current_user: d
             "match_score": app.match_score,
             "skill_gap": app.skill_gap,
             "summary": app.summary,
+            "parsed_profile": json.loads(app.parsed_profile) if app.parsed_profile else None,
             "applied_at": app.created_at
         })
     return {"job_id": job_id, "total": len(result), "applications": result}
@@ -184,6 +204,27 @@ def get_cv_pdf(application_id: int, db: Session = Depends(get_db)):
     if not app or not app.cv_pdf_path or not os.path.exists(app.cv_pdf_path):
         raise HTTPException(status_code=404, detail="CV PDF file not found on server")
     return FileResponse(app.cv_pdf_path, media_type="application/pdf")
+
+
+# ──── Download Candidate CV PDF (alias used by frontend tabs) ────
+@router.get("/download-cv/{application_id}")
+def download_cv(application_id: int, db: Session = Depends(get_db)):
+    return get_cv_pdf(application_id, db)
+
+
+# ──── Shortlist Application ────
+@router.put("/shortlist/{application_id}")
+def shortlist_application(application_id: int, db: Session = Depends(get_db), current_user: dict = Depends(require_ceo)):
+    app = db.query(Application).filter(Application.id == application_id).first()
+    if not app:
+        raise HTTPException(status_code=404, detail="Application not found")
+
+    app.current_status = "shortlisted"
+    app.disposition = "active"
+    app.updated_by = current_user["user_id"]
+    db.commit()
+
+    return {"message": "Candidate shortlisted successfully!", "application_id": application_id}
 
 
 # ──── Ranked Candidates ────

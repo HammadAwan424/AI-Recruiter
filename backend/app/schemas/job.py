@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 
 
@@ -13,6 +13,7 @@ class JobCreate(BaseModel):
     full_description: Optional[str] = None
     keywords: Optional[str] = None
     status: Optional[str] = "published"
+    boards: Optional[List[str]] = []
 
 
 class JobUpdate(BaseModel):
