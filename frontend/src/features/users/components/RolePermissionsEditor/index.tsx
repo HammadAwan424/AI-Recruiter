@@ -55,17 +55,21 @@ export const RolePermissionsEditor: React.FC<RolePermissionsEditorProps> = ({
   onSavePermissions,
   isSubmitting,
 }) => {
-  const [selectedRoleId, setSelectedRoleId] = useState<number | null>(() => (roles.length > 0 ? roles[0].id : null));
+  const editableRoles = roles.filter((r) => r.name.toLowerCase() !== "superadmin");
+
+  const [selectedRoleId, setSelectedRoleId] = useState<number | null>(() =>
+    editableRoles.length > 0 ? editableRoles[0].id : null
+  );
   const [activePermissions, setActivePermissions] = useState<PermissionKey[]>(() =>
-    roles.length > 0 ? roles[0].permissions || [] : []
+    editableRoles.length > 0 ? editableRoles[0].permissions || [] : []
   );
   const [activeJobScope, setActiveJobScope] = useState<JobScope>(() =>
-    roles.length > 0 ? roles[0].job_scope || "own" : "own"
+    editableRoles.length > 0 ? editableRoles[0].job_scope || "own" : "own"
   );
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const activeRole = roles.find((r) => r.id === selectedRoleId) || roles[0];
+  const activeRole = editableRoles.find((r) => r.id === selectedRoleId) || editableRoles[0];
 
   const handleRoleSelect = (role: Role) => {
     setSelectedRoleId(role.id);
@@ -97,7 +101,7 @@ export const RolePermissionsEditor: React.FC<RolePermissionsEditorProps> = ({
     }
   };
 
-  if (!roles || roles.length === 0) return null;
+  if (!editableRoles || editableRoles.length === 0) return null;
 
   return (
     <PermissionMatrixCard>
@@ -135,7 +139,7 @@ export const RolePermissionsEditor: React.FC<RolePermissionsEditorProps> = ({
 
         {/* Role Selector Tabs */}
         <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
-          {roles.map((r) => (
+          {editableRoles.map((r) => (
             <Chip
               key={r.id}
               label={r.name.toUpperCase()}

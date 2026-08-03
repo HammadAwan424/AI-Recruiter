@@ -1,9 +1,6 @@
 from pydantic import BaseModel, EmailStr, ConfigDict
 from datetime import date
-from typing import Optional, List, TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from app.schemas.job import JobResponse
+from typing import Optional, List
 
 
 # CEO Signup Schema
@@ -67,7 +64,10 @@ class UserResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+from app.schemas.job import JobResponse
+
+
 # User Detail Schema (for /auth/me or user detail views)
 class UserDetail(UserResponse):
     permissions: List[str] = []
-    assigned_jobs: List["JobResponse"] = []
+    assigned_jobs: List[JobResponse] = []

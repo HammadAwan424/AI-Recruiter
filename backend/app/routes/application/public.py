@@ -85,23 +85,6 @@ def _process_job_application(
 
     db.commit()
 
-    background_tasks.add_task(
-        screen_candidate_background,
-        payload=ScreeningTaskPayload(
-            application_id=app.id,
-            candidate_id=candidate.id,
-            job_id=job_id,
-            candidate_name=candidate.full_name,
-            candidate_email=candidate.email,
-            cv_text=cv_text,
-            job_title=job.title,
-            job_description=job.full_description or "",
-            job_keywords=job.keywords or "",
-            job_experience=job.experience or "",
-            job_skills=job.skills or ""
-        )
-    )
-
     return {
         "message": "Application submitted successfully! Our AI is screening your resume.",
         "application_id": app.id,
@@ -113,19 +96,6 @@ def _process_job_application(
 
 @public_router.post("/apply")
 def apply_for_job_query(
-    job_id: int,
-    background_tasks: BackgroundTasks,
-    full_name: str = Form(...),
-    email: str = Form(...),
-    phone: str = Form(""),
-    cv_file: UploadFile = File(...),
-    db: Session = Depends(get_db)
-):
-    return _process_job_application(job_id, full_name, email, phone, cv_file, background_tasks, db)
-
-
-@router.post("/apply/{job_id}")
-def apply_for_job_path(
     job_id: int,
     background_tasks: BackgroundTasks,
     full_name: str = Form(...),

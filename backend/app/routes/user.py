@@ -143,7 +143,7 @@ def get_company_roles(
     company_id = current_user.get("company_id")
 
     roles = db.query(Role).filter(
-        (Role.company_id == company_id) | (Role.company_id.is_(None))
+        (Role.company_id == company_id) & (Role.name != "superadmin")
     ).all()
 
     results = []

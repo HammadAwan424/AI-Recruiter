@@ -24,27 +24,57 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   onSelectCandidate,
   onDropCandidate,
 }) => {
-  const [draggedCandidateId, setDraggedCandidateId] = useState<number | null>(null);
+  const [draggedCandidateInfo, setDraggedCandidateInfo] = useState<{ id: number; sourceStageKey: string } | null>(null);
   const [dragOverStage, setDragOverStage] = useState<string | null>(null);
 
   const activeStages = stages.filter((s) => visibleStageKeys.includes(s.key));
 
-  const handleDragStart = (e: React.DragEvent, candidateId: number, isDraggable: boolean) => {
+  const isAdjacentStage = (sourceKey: string, targetKey: string) => {
+    const sourceIdx = stages.findIndex((s) => s.key === sourceKey);
+    const targetIdx = stages.findIndex((s) => s.key === targetKey);
+    if (sourceIdx === -1 || targetIdx === -1) return false;
+    return Math.abs(targetIdx - sourceIdx) === 1;
+  };
+
+  const handleDragStart = (
+    e: React.DragEvent,
+    candidateId: number,
+    sourceStageKey: string,
+    isDraggable: boolean
+  ) => {
     if (!isDraggable) {
       e.preventDefault();
       return;
     }
-    setDraggedCandidateId(candidateId);
+    setDraggedCandidateInfo({ id: candidateId, sourceStageKey });
     e.dataTransfer.setData("candidateId", candidateId.toString());
+    e.dataTransfer.setData("sourceStageKey", sourceStageKey);
     e.dataTransfer.setData("text/plain", candidateId.toString());
-    e.dataTransfer.setData("application/json", JSON.stringify({ candidateId }));
+    e.dataTransfer.setData("application/json", JSON.stringify({ candidateId, sourceStageKey }));
     e.dataTransfer.effectAllowed = "move";
   };
 
-  const handleDragOver = (e: React.DragEvent, stageKey: string) => {
-    e.preventDefault();
-    if (dragOverStage !== stageKey) {
-      setDragOverStage(stageKey);
+  const handleDragEnd = () => {
+    setDraggedCandidateInfo(null);
+    setDragOverStage(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent, targetStageKey: string) => {
+    if (!draggedCandidateInfo) return;
+
+    const isAdjacent = isAdjacentStage(draggedCandidateInfo.sourceStageKey, targetStageKey);
+
+    if (isAdjacent) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      if (dragOverStage !== targetStageKey) {
+        setDragOverStage(targetStageKey);
+      }
+    } else {
+      e.dataTransfer.dropEffect = "none";
+      if (dragOverStage === targetStageKey) {
+        setDragOverStage(null);
+      }
     }
   };
 
@@ -55,6 +85,9 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   const handleDrop = (e: React.DragEvent, targetStageKey: string) => {
     e.preventDefault();
     setDragOverStage(null);
+
+    const sourceStageKey =
+      draggedCandidateInfo?.sourceStageKey || e.dataTransfer.getData("sourceStageKey");
 
     let candidateIdStr = e.dataTransfer.getData("candidateId") || e.dataTransfer.getData("text/plain");
     if (!candidateIdStr) {
@@ -67,13 +100,14 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
       } catch (err) {}
     }
 
-    if (!candidateIdStr) return;
+    setDraggedCandidateInfo(null);
+
+    if (!candidateIdStr || !sourceStageKey) return;
     const candidateId = parseInt(candidateIdStr, 10);
 
-    if (candidateId) {
+    if (candidateId && isAdjacentStage(sourceStageKey, targetStageKey)) {
       onDropCandidate(candidateId, targetStageKey);
     }
-    setDraggedCandidateId(null);
   };
 
   const getGridColsClass = (count: number) => {
@@ -122,7 +156,26 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
           if (status === "rejected" && stage.key === "applied") return true;
           return false;
         });
-        const isColumnActiveTarget = dragOverStage === stage.key;
+
+        const isDraggingActive = Boolean(draggedCandidateInfo);
+        const isSourceColumn = draggedCandidateInfo?.sourceStageKey === stage.key;
+        const isAdjacentTarget = draggedCandidateInfo ? isAdjacentStage(draggedCandidateInfo.sourceStageKey, stage.key) : false;
+        const isColumnActiveTarget = dragOverStage === stage.key && isAdjacentTarget;
+
+        let columnStyles = "border-gray-800/80 bg-black/40";
+
+        if (isDraggingActive) {
+          if (isColumnActiveTarget) {
+            columnStyles = "border-[#05DC7F] bg-[#05DC7F]/10 shadow-[0_0_20px_rgba(5,220,127,0.3)] ring-2 ring-[#05DC7F]/50 scale-[1.01]";
+          } else if (isAdjacentTarget) {
+            columnStyles = "border-[#05DC7F]/50 border-dashed bg-[#05DC7F]/5 shadow-[0_0_12px_rgba(5,220,127,0.15)]";
+          } else if (isSourceColumn) {
+            columnStyles = "border-blue-500/40 bg-blue-500/5";
+          } else {
+            columnStyles = "border-gray-800/40 bg-black/20 opacity-40";
+          }
+        }
+
         const evaluateDraggable = getDraggableEvaluator(stage.key);
 
         return (
@@ -131,11 +184,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
             onDragOver={(e) => handleDragOver(e, stage.key)}
             onDragLeave={handleDragLeave}
             onDrop={(e) => handleDrop(e, stage.key)}
-            className={`flex flex-col rounded-2xl bg-black/40 border p-3.5 min-h-[500px] transition-all duration-300 ${
-              isColumnActiveTarget
-                ? "border-[#05DC7F] bg-[#05DC7F]/5 shadow-[0_0_20px_rgba(5,220,127,0.2)]"
-                : "border-gray-800/80"
-            }`}
+            className={`flex flex-col rounded-2xl border p-3.5 min-h-[500px] transition-all duration-300 ${columnStyles}`}
           >
             {/* Column Header */}
             <div className="flex justify-between items-center pb-3 mb-3 border-b border-gray-800/80">
@@ -152,7 +201,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
             <div className="flex flex-col gap-3 flex-1 overflow-y-auto pr-0.5">
               {stageCandidates.length === 0 ? (
                 <div className="flex flex-col items-center justify-center flex-1 text-gray-600 text-xs italic py-8 border border-dashed border-gray-800/50 rounded-xl">
-                  Drag candidates here
+                  {isAdjacentTarget ? "Drop candidate here" : "No candidates"}
                 </div>
               ) : (
                 stageCandidates.map((candidate: any) => {
@@ -164,7 +213,8 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                     <div
                       key={candId}
                       draggable={isDraggable}
-                      onDragStart={(e) => handleDragStart(e, candId, isDraggable)}
+                      onDragStart={(e) => handleDragStart(e, candId, stage.key, isDraggable)}
+                      onDragEnd={handleDragEnd}
                       className={isDraggable ? "cursor-grab active:cursor-grabbing" : "cursor-default"}
                     >
                       {renderCardVariant(candidate, stage, isDraggable)}

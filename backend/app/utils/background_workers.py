@@ -7,7 +7,7 @@ from app.agents.cv_screening_agent import screen_cv
 from app.agents.resume_parser_agent import parse_resume
 from app.utils.ws_manager import ws_manager
 
-
+### DEPRECATED, not being used anywhere
 def screen_candidate_background(payload: ScreeningTaskPayload):
     """
     Pure AI screening background worker.

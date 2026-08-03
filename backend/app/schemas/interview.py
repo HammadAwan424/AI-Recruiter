@@ -48,66 +48,6 @@ class InterviewSlotDetail(InterviewSlotResponse):
     job: Optional[JobResponse] = None
 
 
-class InterviewerDetail(UserResponse):
-    available_slots: Optional[List[InterviewSlotDetail]] = []
-
-class InterviewDetail(InterviewResponse):
-    class _InterviewerAssignment(BaseModel):
-        model_config = ConfigDict(from_attributes=True)
-        interviewer_id: int
-        interviewer: UserResponse
-        feedback: Optional["InterviewFeedbackResponse"] = None
-    interviewer_assignments: List[_InterviewerAssignment] = []
-
-class InterviewPublicSlotResponse(BaseModel):
-    candidate_name: str
-    job_title: str
-    company_name: str
-    available_slots: List[InterviewSlotResponse]
-
-
-
-
-# This handles the interview create request payloads:
-# 1) FixedScheduleInterview when the recruiter manually selects the slot
-# 2) SelfScheduleInterview, no slot is provided, the candidate selects it
-class InterviewCreateBase(BaseModel):
-    application_id: int
-    round_number: int = 1
-    round_label: str | None = None
-    meeting_type: str
-    notes: Optional[str] = None
-
-# Type 1
-class InterviewerSlotAssignment(BaseModel):
-    interviewer_id: int
-    slot_id: int
-class FixedScheduleInterview(InterviewCreateBase):
-    schedule_type: Literal["fixed"] = "fixed"
-    assignments: List[InterviewerSlotAssignment] = []
-
-# Type 2
-class SelfScheduleInterview(InterviewCreateBase):
-    schedule_type: Literal["self_schedule"] = "self_schedule"
-    self_schedule_token_expires_at: datetime
-    interviewer_ids: List[int]
-
-InterviewCreate = Union[FixedScheduleInterview, SelfScheduleInterview]
-
-# Request interfaces for fastapi
-class InterviewCreateRequest(BaseModel):
-    payload: InterviewCreate = Field(discriminator="schedule_type")
-
-class InterviewRescheduleRequest(BaseModel):
-    assignments: list[InterviewerSlotAssignment] 
-
-class InterviewMetadataUpdate(BaseModel):
-    meeting_type: Optional[str] = None
-    notes: Optional[str] = None
-
-
-
-
 class InterviewFeedbackResponse(BaseModel):
     id: int
     interview_interviewer_id: int
@@ -122,6 +62,73 @@ class InterviewFeedbackResponse(BaseModel):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class InterviewerDetail(UserResponse):
+    available_slots: Optional[List[InterviewSlotDetail]] = []
+
+
+class InterviewDetail(InterviewResponse):
+    class _InterviewerAssignment(BaseModel):
+        model_config = ConfigDict(from_attributes=True)
+        interviewer_id: int
+        interviewer: UserResponse
+        feedback: Optional[InterviewFeedbackResponse] = None
+    interviewer_assignments: List[_InterviewerAssignment] = []
+
+
+class InterviewPublicSlotResponse(BaseModel):
+    candidate_name: str
+    job_title: str
+    company_name: str
+    available_slots: List[InterviewSlotResponse]
+
+
+# This handles the interview create request payloads:
+# 1) FixedScheduleInterview when the recruiter manually selects the slot
+# 2) SelfScheduleInterview, no slot is provided, the candidate selects it
+class InterviewCreateBase(BaseModel):
+    application_id: int
+    round_number: int = 1
+    round_label: str | None = None
+    meeting_type: str
+    notes: Optional[str] = None
+
+
+# Type 1
+class InterviewerSlotAssignment(BaseModel):
+    interviewer_id: int
+    slot_id: int
+
+
+class FixedScheduleInterview(InterviewCreateBase):
+    schedule_type: Literal["fixed"] = "fixed"
+    assignments: List[InterviewerSlotAssignment] = []
+
+
+# Type 2
+class SelfScheduleInterview(InterviewCreateBase):
+    schedule_type: Literal["self_schedule"] = "self_schedule"
+    self_schedule_token_expires_at: datetime
+    interviewer_ids: List[int]
+
+
+InterviewCreate = Union[FixedScheduleInterview, SelfScheduleInterview]
+
+
+# Request interfaces for fastapi
+class InterviewCreateRequest(BaseModel):
+    payload: InterviewCreate = Field(discriminator="schedule_type")
+
+
+class InterviewRescheduleRequest(BaseModel):
+    assignments: list[InterviewerSlotAssignment] 
+
+
+class InterviewMetadataUpdate(BaseModel):
+    meeting_type: Optional[str] = None
+    notes: Optional[str] = None
+
 
 class InterviewFeedbackCreate(BaseModel):
     interview_id: int
