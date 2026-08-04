@@ -50,6 +50,20 @@ const ALL_PERMISSION_KEYS: { key: PermissionKey; description: string }[] = [
   { key: "profile:update", description: "Update Profile Info & Password" },
 ];
 
+const expandPermissions = (perms: PermissionKey[]): PermissionKey[] => {
+  const result = new Set<PermissionKey>();
+  for (const p of perms) {
+    if (p === "*") {
+      ALL_PERMISSION_KEYS.forEach((item) => result.add(item.key));
+    } else if (p.endsWith(":")) {
+      ALL_PERMISSION_KEYS.filter((item) => item.key.startsWith(p)).forEach((item) => result.add(item.key));
+    } else {
+      result.add(p);
+    }
+  }
+  return Array.from(result);
+};
+
 export const RolePermissionsEditor: React.FC<RolePermissionsEditorProps> = ({
   roles,
   onSavePermissions,
@@ -61,7 +75,7 @@ export const RolePermissionsEditor: React.FC<RolePermissionsEditorProps> = ({
     editableRoles.length > 0 ? editableRoles[0].id : null
   );
   const [activePermissions, setActivePermissions] = useState<PermissionKey[]>(() =>
-    editableRoles.length > 0 ? editableRoles[0].permissions || [] : []
+    editableRoles.length > 0 ? expandPermissions(editableRoles[0].permissions || []) : []
   );
   const [activeJobScope, setActiveJobScope] = useState<JobScope>(() =>
     editableRoles.length > 0 ? editableRoles[0].job_scope || "own" : "own"
@@ -71,9 +85,20 @@ export const RolePermissionsEditor: React.FC<RolePermissionsEditorProps> = ({
 
   const activeRole = editableRoles.find((r) => r.id === selectedRoleId) || editableRoles[0];
 
+  React.useEffect(() => {
+    const currentRole = editableRoles.find((r) => r.id === selectedRoleId) || editableRoles[0];
+    if (currentRole) {
+      if (!selectedRoleId) {
+        setSelectedRoleId(currentRole.id);
+      }
+      setActivePermissions(expandPermissions(currentRole.permissions || []));
+      setActiveJobScope(currentRole.job_scope || "own");
+    }
+  }, [roles, selectedRoleId]);
+
   const handleRoleSelect = (role: Role) => {
     setSelectedRoleId(role.id);
-    setActivePermissions(role.permissions || []);
+    setActivePermissions(expandPermissions(role.permissions || []));
     setActiveJobScope(role.job_scope || "own");
     setSaveSuccessMsg(null);
     setErrorMsg(null);

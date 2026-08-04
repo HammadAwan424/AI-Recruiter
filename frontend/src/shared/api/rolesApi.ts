@@ -16,7 +16,7 @@ export const rolesApi = baseApi.injectEndpoints({
         method: "PUT",
         body: payload,
       }),
-      invalidatesTags: ["Roles"],
+      invalidatesTags: ["Roles", "Users"],
     }),
   }),
 });

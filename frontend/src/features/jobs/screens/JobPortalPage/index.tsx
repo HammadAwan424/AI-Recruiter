@@ -69,7 +69,7 @@ export const JobPortalPage: React.FC = () => {
 
       {/* Navbar */}
       <nav className="relative z-20 flex justify-between items-center px-4 sm:px-8 py-4 border-b border-white/10 backdrop-blur-sm bg-black/20">
-        <img src={logo} alt="Agentra" className="w-24 sm:w-32" />
+        <img src={logo} alt="AI Recruiter" className="w-24 sm:w-32" />
         <div className="flex items-center gap-3">
           <span className="hidden sm:block text-gray-400 text-sm">
             {jobs.length} open positions

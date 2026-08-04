@@ -61,3 +61,6 @@ from app.schemas.user import UserResponse
 class JobDetail(JobResponse):
     creator: Optional[UserResponse] = None
     assigned_users: List[UserResponse] = []
+
+
+JobDetail.model_rebuild()

@@ -1,1 +1,1 @@
-# Mock data generator package for Agentra AI Recruiter database levels
+# Mock data generator package for AI Recruiter database levels

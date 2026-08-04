@@ -73,13 +73,13 @@ export const LoginPage: React.FC = () => {
                 boxShadow: "0 0 20px rgba(5, 220, 127, 0.4)",
               }}
             >
-              <img src={logo} alt="AGENTRA" style={{ width: 48, height: 48, objectFit: "contain" }} />
+              <img src={logo} alt="AI Recruiter" style={{ width: 48, height: 48, objectFit: "contain" }} />
             </Box>
             <Typography variant="h5" color="text.primary" sx={{ fontWeight: 700 }}>
               Welcome Back
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Sign in to your AGENTRA Recruitment Portal
+              Sign in to your AI Recruiter Portal
             </Typography>
           </Stack>
 

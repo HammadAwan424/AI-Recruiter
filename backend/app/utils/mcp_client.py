@@ -74,7 +74,7 @@ async def call_mcp_tools(
     except Exception as e:
         print(f"MCP error: {e}")
         unique_id = str(uuid.uuid4())[:8].upper()
-        meet_link = f"https://meet.jit.si/Agentra-{unique_id}"
+        meet_link = f"https://meet.jit.si/AIRecruiter-{unique_id}"
         email_sent = False
 
     return meet_link, email_sent

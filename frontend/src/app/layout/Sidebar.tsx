@@ -23,6 +23,7 @@ interface SidebarProps {
 }
 
 export const NAV_ITEMS: NavItemConfig[] = [
+  { name: "Company Management", path: "/admin/companies", icon: <FaUserShield size={20} />, permission: "superadmin" },
   { name: "Team & Permissions", path: "/users", icon: <FaUserShield size={20} />, permission: "user:" },
   { name: "Job Requisitions", path: "/jobs", icon: <FaBriefcase size={20} />, permission: "job:" },
   { name: "Candidate Pipeline", path: "/candidates", icon: <MdTouchIcon size={20} />, permission: "candidate:" },

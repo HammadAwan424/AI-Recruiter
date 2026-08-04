@@ -6,7 +6,7 @@ def generate_ical_event(
     start_time: datetime,
     end_time: datetime,
     location_url: str,
-    organizer_email: str = "hr@agentra.com",
+    organizer_email: str = "hr@airecruiter.com",
     attendee_email: str = ""
 ) -> str:
     """Generates an RFC 5545 compliant .ics calendar invitation string."""
@@ -17,18 +17,18 @@ def generate_ical_event(
     ical_content = (
         "BEGIN:VCALENDAR\r\n"
         "VERSION:2.0\r\n"
-        "PRODID:-//Agentra AI Recruiter//Interview Scheduling Engine//EN\r\n"
+        "PRODID:-//AI Recruiter//Interview Scheduling Engine//EN\r\n"
         "CALSCALE:GREGORIAN\r\n"
         "METHOD:REQUEST\r\n"
         "BEGIN:VEVENT\r\n"
-        f"UID:interview-{dtstart_str}@agentra.com\r\n"
+        f"UID:interview-{dtstart_str}@airecruiter.com\r\n"
         f"DTSTAMP:{dtstamp_str}\r\n"
         f"DTSTART:{dtstart_str}\r\n"
         f"DTEND:{dtend_str}\r\n"
         f"SUMMARY:{title}\r\n"
         f"DESCRIPTION:{description} Join Video Call: {location_url}\r\n"
         f"LOCATION:{location_url}\r\n"
-        f"ORGANIZER;CN=Agentra HR:mailto:{organizer_email}\r\n"
+        f"ORGANIZER;CN=AI Recruiter HR:mailto:{organizer_email}\r\n"
     )
 
     if attendee_email:

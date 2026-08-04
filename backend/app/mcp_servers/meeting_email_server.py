@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-server = Server("agentra-meeting-email")
+server = Server("airecruiter-meeting-email")
 
 
 @server.list_tools()
@@ -169,7 +169,7 @@ async def call_tool(name: str, arguments: dict):
 
             event = {
                 'summary': title,
-                'description': 'Interview scheduled via Agentra HR System',
+                'description': 'Interview scheduled via AI Recruiter System',
                 'start': {'dateTime': start_time, 'timeZone': 'Asia/Karachi'},
                 'end': {'dateTime': end_time, 'timeZone': 'Asia/Karachi'},
                 'attendees': [{'email': email} for email in attendees],
@@ -191,14 +191,14 @@ async def call_tool(name: str, arguments: dict):
             meet_link = event.get('hangoutLink', '')
             if not meet_link:
                 unique_id = str(uuid.uuid4())[:8].upper()
-                meet_link = f"https://meet.jit.si/Agentra-{unique_id}"
+                meet_link = f"https://meet.jit.si/AIRecruiter-{unique_id}"
 
             return [types.TextContent(type="text", text=meet_link)]
 
         except Exception as e:
             print(f"Calendar error: {e}")
             unique_id = str(uuid.uuid4())[:8].upper()
-            meet_link = f"https://meet.jit.si/Agentra-{unique_id}"
+            meet_link = f"https://meet.jit.si/AIRecruiter-{unique_id}"
             return [types.TextContent(type="text", text=meet_link)]
 
     # ──── Tool 2: Interview Email ────

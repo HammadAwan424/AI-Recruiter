@@ -423,7 +423,7 @@ def download_interview_ical(
 
     ical_data = generate_ical_event(
         title=f"Interview: {app.job.title} — {app.candidate.full_name}",
-        description=f"Job Interview for {app.job.title} at Agentra.",
+        description=f"Job Interview for {app.job.title} at AI Recruiter.",
         start_time=interview.schedule_start,
         end_time=interview.schedule_end,
         location_url=interview.meeting_link,

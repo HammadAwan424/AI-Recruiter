@@ -11,9 +11,9 @@ def seed_users_and_candidates(db):
     print("🔹 [Level 1] Generating Root Company, RBAC Users & Candidates...")
 
     # 1. Company
-    company = db.query(Company).filter(Company.name == "Agentra AI").first()
+    company = db.query(Company).filter(Company.name == "AI Recruiter").first()
     if not company:
-        company = Company(name="Agentra AI")
+        company = Company(name="AI Recruiter")
         db.add(company)
         db.commit()
         db.refresh(company)
@@ -37,11 +37,11 @@ def seed_users_and_candidates(db):
         db.commit()
 
     # 3. Users Across All Roles
-    admin = db.query(User).filter(User.email == "admin@agentra.com").first()
+    admin = db.query(User).filter(User.email == "admin@airecruiter.com").first()
     if not admin:
         admin = User(
             full_name="Super Admin",
-            email="admin@agentra.com",
+            email="admin@airecruiter.com",
             password=hash_password("admin123"),
             role="superadmin",
             status="active"
@@ -49,11 +49,11 @@ def seed_users_and_candidates(db):
         db.add(admin)
         db.commit()
 
-    ceo = db.query(User).filter(User.email == "ceo@agentra.com").first()
+    ceo = db.query(User).filter(User.email == "ceo@airecruiter.com").first()
     if not ceo:
         ceo = User(
             full_name="Sarah Jenkins (CEO)",
-            email="ceo@agentra.com",
+            email="ceo@airecruiter.com",
             password=hash_password("ceo123"),
             role="ceo",
             company_id=company.id,
@@ -62,11 +62,11 @@ def seed_users_and_candidates(db):
         db.add(ceo)
         db.commit()
 
-    recruiter = db.query(User).filter(User.email == "recruiter@agentra.com").first()
+    recruiter = db.query(User).filter(User.email == "recruiter@airecruiter.com").first()
     if not recruiter:
         recruiter = User(
             full_name="Rachel Vance (Lead Recruiter)",
-            email="recruiter@agentra.com",
+            email="recruiter@airecruiter.com",
             password=hash_password("recruiter123"),
             role="recruiter",
             company_id=company.id,
@@ -75,11 +75,11 @@ def seed_users_and_candidates(db):
         db.add(recruiter)
         db.commit()
 
-    hm = db.query(User).filter(User.email == "hm@agentra.com").first()
+    hm = db.query(User).filter(User.email == "hm@airecruiter.com").first()
     if not hm:
         hm = User(
             full_name="Henry Miller (Hiring Manager)",
-            email="hm@agentra.com",
+            email="hm@airecruiter.com",
             password=hash_password("hm123"),
             role="hiring_manager",
             company_id=company.id,
@@ -88,11 +88,11 @@ def seed_users_and_candidates(db):
         db.add(hm)
         db.commit()
 
-    interviewer = db.query(User).filter(User.email == "interviewer@agentra.com").first()
+    interviewer = db.query(User).filter(User.email == "interviewer@airecruiter.com").first()
     if not interviewer:
         interviewer = User(
             full_name="Ian Thorne (Lead Tech Interviewer)",
-            email="interviewer@agentra.com",
+            email="interviewer@airecruiter.com",
             password=hash_password("interviewer123"),
             role="interviewer",
             company_id=company.id,

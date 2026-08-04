@@ -19,6 +19,7 @@ export interface SignupPayload {
   company_name: string;
   email: string;
   password: string;
+  confirm_password: string;
   full_name: string;
 }
 

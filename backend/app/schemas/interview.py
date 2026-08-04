@@ -77,6 +77,10 @@ class InterviewDetail(InterviewResponse):
     interviewer_assignments: List[_InterviewerAssignment] = []
 
 
+InterviewerDetail.model_rebuild()
+InterviewDetail.model_rebuild()
+
+
 class InterviewPublicSlotResponse(BaseModel):
     candidate_name: str
     job_title: str

@@ -34,7 +34,7 @@ def seed_offers(db, users_context, applications, jobs):
             bonus_equity="10% Annual Bonus + 5,000 Options",
             start_date=date.today() + timedelta(days=14),
             expiry_date=date.today() + timedelta(days=7),
-            offer_letter_text="Dear David Kim,\n\nWe are thrilled to offer you the position of Senior Full Stack Engineer at Agentra AI.",
+            offer_letter_text="Dear David Kim,\n\nWe are thrilled to offer you the position of Senior Full Stack Engineer at AI Recruiter.",
             secure_token=token,
             token_expires_at=datetime.utcnow() + timedelta(days=7),
             created_by=ceo_user.id
@@ -55,7 +55,7 @@ def seed_offers(db, users_context, applications, jobs):
             bonus_equity="15% Performance Bonus + 2,500 Options",
             start_date=date.today() + timedelta(days=21),
             expiry_date=date.today() + timedelta(days=7),
-            offer_letter_text="Dear Elena Rostova,\n\nWe are pleased to offer you the position of AI / ML Engineer at Agentra AI.",
+            offer_letter_text="Dear Elena Rostova,\n\nWe are pleased to offer you the position of AI / ML Engineer at AI Recruiter.",
             created_by=ceo_user.id
         )
         db.add(offer2)

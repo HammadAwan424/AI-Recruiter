@@ -83,6 +83,10 @@ class ApplicationListItem(ApplicationResponse):
     interviews: Optional[list[InterviewResponse]] = None
 
 
+ApplicationDetail.model_rebuild()
+ApplicationListItem.model_rebuild()
+
+
 class ScreeningResultResponse(BaseModel):
     application_id: int
     candidate_id: int

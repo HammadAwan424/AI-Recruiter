@@ -3,6 +3,7 @@ import { useLocation, useNavigate, Outlet } from "react-router-dom";
 import { FaSignOutAlt } from "react-icons/fa";
 import { Sidebar, NAV_ITEMS } from "./Sidebar";
 import { HRChatbot } from "../../shared/components/HRChatbot";
+import { useAuth } from "../../shared/context/AuthContext";
 import logo from "../../images/logo.png";
 
 interface AppLayoutProps {
@@ -12,6 +13,7 @@ interface AppLayoutProps {
 export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   // Real user name & role from localStorage
@@ -27,12 +29,8 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const activeTitle = currentNavItem ? currentNavItem.name : "Job Requisitions";
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("role");
-    localStorage.removeItem("company_id");
-    localStorage.removeItem("user_id");
-    localStorage.removeItem("full_name");
-    navigate("/");
+    logout();
+    navigate("/", { replace: true });
   };
 
   return (
@@ -70,7 +68,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
           <div className="w-28 h-28 rounded-full flex items-center justify-center shadow-[0_0_18px_rgba(5,220,127,0.35)] hover:scale-105 transition-transform duration-300">
             <img
               src={logo}
-              alt="AGENTRA Logo"
+              alt="AI Recruiter Logo"
               className="w-24 h-24 object-contain"
             />
           </div>
@@ -83,7 +81,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
 
         {/* FOOTER */}
         <div className="h-12 flex items-center justify-center border-t border-[#05DC7F]/25 text-[#05DC7F]/45 text-xs font-semibold tracking-wider">
-          © 2026 AGENTRA AI
+          © 2026 AI RECRUITER
         </div>
       </aside>
 
@@ -97,7 +95,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
           <div className="w-28 h-28 rounded-full flex items-center justify-center shadow-[0_0_18px_rgba(5,220,127,0.35)] hover:scale-105 transition-transform duration-300">
             <img
               src={logo}
-              alt="AGENTRA Logo"
+              alt="AI Recruiter Logo"
               className="w-28 h-28 object-contain"
             />
           </div>
@@ -108,7 +106,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         </div>
 
         <div className="h-12 flex items-center justify-center border-t border-[#05DC7F]/25 text-[#05DC7F]/45 text-xs font-semibold">
-          © 2026 AGENTRA AI
+          © 2026 AI RECRUITER
         </div>
       </aside>
 

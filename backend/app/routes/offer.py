@@ -216,7 +216,7 @@ def get_public_offer(token: str, db: Session = Depends(get_db)):
         candidate_name=candidate.full_name if candidate else "Candidate",
         candidate_email=candidate.email if candidate else "",
         job_title=job.title if job else "Position",
-        company_name=job.company.name if (job and job.company) else "Agentra AI",
+        company_name=job.company.name if (job and job.company) else "AI Recruiter",
         signed_at=offer.signed_at,
         decline_reason=offer.decline_reason
     )
@@ -283,7 +283,7 @@ def sign_public_offer(
         candidate_name=candidate.full_name if candidate else "Candidate",
         candidate_email=candidate.email if candidate else "",
         job_title=job.title if job else "Position",
-        company_name=job.company.name if (job and job.company) else "Agentra AI",
+        company_name=job.company.name if (job and job.company) else "AI Recruiter",
         signed_at=offer.signed_at,
         decline_reason=offer.decline_reason
     )
@@ -325,7 +325,7 @@ def decline_public_offer(
         candidate_name=candidate.full_name if candidate else "Candidate",
         candidate_email=candidate.email if candidate else "",
         job_title=job.title if job else "Position",
-        company_name=job.company.name if (job and job.company) else "Agentra AI",
+        company_name=job.company.name if (job and job.company) else "AI Recruiter",
         signed_at=offer.signed_at,
         decline_reason=offer.decline_reason
     )

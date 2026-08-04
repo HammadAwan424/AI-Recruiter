@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import { useAuth } from "./AuthContext";
-import { useGetCompanyRolesQuery } from "../api/rolesApi";
-import { PermissionKey, Role } from "../types/role.types";
+import { useGetMeQuery } from "../../features/users/api";
+import { PermissionKey } from "../types/role.types";
 
 interface PermissionContextType {
   permissions: PermissionKey[];
@@ -20,36 +20,31 @@ interface PermissionProviderProps {
 }
 
 export const PermissionProvider: React.FC<PermissionProviderProps> = ({ children }) => {
-  const { role, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
 
-  const { data: rolesData, isLoading: isRolesLoading, refetch } = useGetCompanyRolesQuery(undefined, {
-    skip: !isAuthenticated || !role,
+  const { data: meData, isLoading: isMeLoading, refetch } = useGetMeQuery(undefined, {
+    skip: !isAuthenticated,
   });
 
   const [permissions, setPermissions] = useState<PermissionKey[]>([]);
 
   useEffect(() => {
-    if (!isAuthenticated || !role) {
+    if (!isAuthenticated) {
       setPermissions([]);
       return;
     }
 
-    if (rolesData && Array.isArray(rolesData.roles)) {
-      const userRoleObj = rolesData.roles.find((r: Role) => r.name === role);
-      if (userRoleObj && Array.isArray(userRoleObj.permissions)) {
-        setPermissions(userRoleObj.permissions);
-      } else {
-        setPermissions([]);
-      }
+    if (meData && Array.isArray(meData.permissions)) {
+      setPermissions(meData.permissions);
     } else {
       setPermissions([]);
     }
-  }, [role, isAuthenticated, rolesData]);
+  }, [isAuthenticated, meData]);
 
-    const hasDomain = useCallback(
+  const hasDomain = useCallback(
     (key: PermissionKey): boolean => {
       if (permissions.includes("*") || permissions.includes(key)) return true;
-      return permissions.some((p) => key.startsWith(p));
+      return permissions.some((p) => key.startsWith(p) || p.startsWith(key));
     },
     [permissions]
   );
@@ -57,7 +52,7 @@ export const PermissionProvider: React.FC<PermissionProviderProps> = ({ children
   const hasPermission = useCallback(
     (key: PermissionKey): boolean => {
       if (permissions.includes("*") || permissions.includes(key)) return true;
-      return permissions.some((p) => key.startsWith(p));
+      return permissions.some((p) => key.startsWith(p) || p.startsWith(key));
     },
     [permissions]
   );
@@ -78,7 +73,7 @@ export const PermissionProvider: React.FC<PermissionProviderProps> = ({ children
 
   const value: PermissionContextType = {
     permissions,
-    isLoading: isRolesLoading,
+    isLoading: isMeLoading,
     hasPermission,
     hasAnyPermission,
     hasDomain,

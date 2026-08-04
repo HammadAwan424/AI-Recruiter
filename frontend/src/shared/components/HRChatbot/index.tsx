@@ -41,7 +41,7 @@ export const HRChatbot: React.FC = () => {
     {
       id: 1,
       type: "bot",
-      text: "Hello! 👋 I am your AGENTRA HR Assistant. How can I help you today?",
+      text: "Hello! 👋 I am your AI Recruiter Assistant. How can I help you today?",
       time: getTime(),
       quickReplies: ["Leave Balance", "Payroll", "Attendance"],
     },

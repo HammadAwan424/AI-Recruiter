@@ -26,10 +26,13 @@ import { CANDIDATE_PERMISSIONS } from "./features/candidates/permissions";
 import { INTERVIEW_PERMISSIONS } from "./features/interviews/permissions";
 import { OFFER_PERMISSIONS } from "./features/offers/permissions";
 
+import { useAuth } from "./shared/context/AuthContext";
+
 // Protected Route Guard
 function ProtectedRoute({ children }) {
+  const { isAuthenticated } = useAuth();
   const token = localStorage.getItem("token");
-  if (!token) return <Navigate to="/" replace />;
+  if (!isAuthenticated || !token) return <Navigate to="/" replace />;
   return children;
 }
 
@@ -55,6 +58,7 @@ function App() {
           }
         >
           <Route path="/admin" element={<CompanyManagementPage />} />
+          <Route path="/admin/companies" element={<CompanyManagementPage />} />
 
           <Route
             path="/users"

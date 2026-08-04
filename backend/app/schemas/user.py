@@ -71,3 +71,6 @@ from app.schemas.job import JobResponse
 class UserDetail(UserResponse):
     permissions: List[str] = []
     assigned_jobs: List[JobResponse] = []
+
+
+UserDetail.model_rebuild()

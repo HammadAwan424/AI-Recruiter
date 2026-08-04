@@ -30,7 +30,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
       <div className="absolute inset-0 bg-gradient-to-br from-[#1F1F1F]/90 via-[#1F1F1F]/80 to-[#1F1F1F]/90" />
       <div className="relative z-10 flex items-center justify-center h-full px-4">
         <div className="flex items-center justify-center w-40 h-40 rounded-full bg-black/20 backdrop-blur-xl shadow-[0_0_160px_rgba(0,255,170,1)]">
-          <img src={logo} alt="Agentra Logo" className="w-28 object-contain" />
+          <img src={logo} alt="AI Recruiter Logo" className="w-28 object-contain" />
         </div>
       </div>
     </div>

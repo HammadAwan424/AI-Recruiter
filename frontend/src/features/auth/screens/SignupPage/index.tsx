@@ -22,16 +22,21 @@ export const SignupPage: React.FC = () => {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [isPendingApproval, setIsPendingApproval] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
-    setSuccessMsg(null);
 
-    if (!companyName.trim() || !fullName.trim() || !email.trim() || !password.trim()) {
+    if (!companyName.trim() || !fullName.trim() || !email.trim() || !password.trim() || !confirmPassword.trim()) {
       setErrorMsg("All fields are required.");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setErrorMsg("Passwords do not match.");
       return;
     }
 
@@ -41,16 +46,67 @@ export const SignupPage: React.FC = () => {
         full_name: fullName.trim(),
         email: email.trim(),
         password,
+        confirm_password: confirmPassword,
       });
 
-      setSuccessMsg("Company account registered successfully! Redirecting to login...");
-      setTimeout(() => {
-        navigate("/");
-      }, 1500);
+      setIsPendingApproval(true);
     } catch (err: any) {
       setErrorMsg(err?.data?.detail || "Registration failed. Email may already be in use.");
     }
   };
+
+  if (isPendingApproval) {
+    return (
+      <AuthContainer>
+        <CircuitBackground />
+        <AuthCardSurface>
+          <Stack spacing={3} sx={{ alignItems: "center", textAlign: "center" }}>
+            <Box
+              sx={{
+                width: 64,
+                height: 64,
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                boxShadow: "0 0 20px rgba(5, 220, 127, 0.4)",
+              }}
+            >
+              <img src={logo} alt="AI Recruiter" style={{ width: 48, height: 48, objectFit: "contain" }} />
+            </Box>
+
+            <Typography variant="h5" color="text.primary" sx={{ fontWeight: 700 }}>
+              Registration Submitted!
+            </Typography>
+
+            <Alert severity="warning" sx={{ width: "100%", textAlign: "left" }}>
+              Your company registration for <strong>{companyName}</strong> has been submitted.
+              <br />
+              Account Status: <strong>PENDING SUPERADMIN APPROVAL</strong>
+            </Alert>
+
+            <Typography variant="body2" color="text.secondary">
+              Our SuperAdmin team will review your organization request shortly. Once approved, you can sign in to access your recruitment workspace.
+            </Typography>
+
+            <Button
+              variant="contained"
+              size="large"
+              fullWidth
+              onClick={() => navigate("/")}
+              sx={{
+                height: 48,
+                fontWeight: 700,
+                fontSize: "1rem",
+              }}
+            >
+              Return to Sign In
+            </Button>
+          </Stack>
+        </AuthCardSurface>
+      </AuthContainer>
+    );
+  }
 
   return (
     <AuthContainer>
@@ -69,18 +125,17 @@ export const SignupPage: React.FC = () => {
                 boxShadow: "0 0 20px rgba(5, 220, 127, 0.4)",
               }}
             >
-              <img src={logo} alt="AGENTRA" style={{ width: 48, height: 48, objectFit: "contain" }} />
+              <img src={logo} alt="AI Recruiter" style={{ width: 48, height: 48, objectFit: "contain" }} />
             </Box>
             <Typography variant="h5" color="text.primary" sx={{ fontWeight: 700 }}>
               Register Company
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Create your organization on AGENTRA Platform
+              Create your organization on AI Recruiter Platform
             </Typography>
           </Stack>
 
           {errorMsg && <Alert severity="error">{errorMsg}</Alert>}
-          {successMsg && <Alert severity="success">{successMsg}</Alert>}
 
           <form onSubmit={handleSubmit}>
             <Stack spacing={2}>
@@ -117,6 +172,16 @@ export const SignupPage: React.FC = () => {
                 fullWidth
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                autoComplete="new-password"
+              />
+
+              <TextField
+                label="Confirm Password"
+                type="password"
+                required
+                fullWidth
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
                 autoComplete="new-password"
               />
 

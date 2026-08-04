@@ -7,7 +7,7 @@ def generate_video_meeting_link(meeting_type: str = "GOOGLE_MEET", title: str = 
     
     if clean_type == "JITSI":
         unique_id = str(uuid.uuid4())[:8].upper()
-        return f"https://meet.jit.si/Agentra-{unique_id}"
+        return f"https://meet.jit.si/AIRecruiter-{unique_id}"
     
     # Try Google Calendar API meeting link generation
     try:
@@ -25,7 +25,7 @@ def generate_video_meeting_link(meeting_type: str = "GOOGLE_MEET", title: str = 
             service = build('calendar', 'v3', credentials=creds)
             event = {
                 'summary': f"AI Recruiter Interview — {title}",
-                'description': 'Interview scheduled via Agentra AI Recruiter Platform',
+                'description': 'Interview scheduled via AI Recruiter Platform',
                 'start': {'dateTime': '2026-07-29T10:00:00Z', 'timeZone': 'UTC'},
                 'end': {'dateTime': '2026-07-29T11:00:00Z', 'timeZone': 'UTC'},
                 'conferenceData': {
@@ -43,4 +43,4 @@ def generate_video_meeting_link(meeting_type: str = "GOOGLE_MEET", title: str = 
     
     # Instant Jitsi fallback link
     unique_id = str(uuid.uuid4())[:8].upper()
-    return f"https://meet.jit.si/Agentra-{unique_id}"
+    return f"https://meet.jit.si/AIRecruiter-{unique_id}"

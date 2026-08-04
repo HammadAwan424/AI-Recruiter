@@ -8,7 +8,7 @@ The **Automated Interview Scheduling** module delivers end-to-end management for
 
 ### Key Deliverables:
 1. **Candidate Self-Scheduling Portal**: A tokenized public page (`/interview/schedule/:token`) where candidates select from available interviewer time slots.
-2. **Instant Video Meeting Link Generation**: Automatic Google Meet link creation with seamless Jitsi fallback (`https://meet.jit.si/Agentra-...`), with click-to-join and copy meeting link controls.
+2. **Instant Video Meeting Link Generation**: Automatic Google Meet link creation with seamless Jitsi fallback (`https://meet.jit.si/AIRecruiter-...`), with click-to-join and copy meeting link controls.
 3. **Calendar Sync & iCal (`.ics`) Invite Generator**: Downloadable and emailable `.ics` calendar invitation payloads allowing 1-click import into Google Calendar, Apple Calendar, and Outlook.
 4. **Interactive Dashboard Calendar View (`InterviewsTab.jsx`)**: Month / Week / Day agenda calendar view showing scheduled interviews, interviewer availability, quick join buttons, and slot management.
 
@@ -132,7 +132,7 @@ class Interview(Base, BaseModelMixin):
 
 1. **Video Link Generation Utility (`utils/meeting_generator.py`)**:
    - Primary: Google Calendar API integration.
-   - Fallback: Auto-generated unique Jitsi room link (`https://meet.jit.si/Agentra-{uuid}`).
+   - Fallback: Auto-generated unique Jitsi room link (`https://meet.jit.si/AIRecruiter-{uuid}`).
 2. **iCal (`.ics`) Calendar Invite Generator (`utils/ical_generator.py`)**:
    - Generates RFC 5545 compliant `.ics` text string.
    - Includes `SUMMARY`, `LOCATION` (Meeting Link), `DESCRIPTION`, `START`, `END`, and `ATTENDEES`.

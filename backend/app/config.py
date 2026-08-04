@@ -6,7 +6,7 @@ load_dotenv()
 APP_ENV = os.getenv("APP_ENV", "development")
 
 # Database
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:12345@localhost:5432/agentra")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:12345@localhost:5432/airecruiter")
 
 # Security
 SECRET_KEY = os.getenv("SECRET_KEY", "mysecretkey")

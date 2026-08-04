@@ -12,52 +12,56 @@ export interface CompanyUser {
 export const superadminApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getApprovedCeos: builder.query<CompanyUser[], void>({
-      query: () => "/admin/approved-ceos",
+      query: () => "/admin/ceos?status=active",
       providesTags: ["Users"],
     }),
     getPendingCeos: builder.query<CompanyUser[], void>({
-      query: () => "/admin/pending-ceos",
+      query: () => "/admin/ceos?status=pending",
       providesTags: ["Users"],
     }),
     getInactiveCeos: builder.query<CompanyUser[], void>({
-      query: () => "/admin/inactive-ceos",
+      query: () => "/admin/ceos?status=inactive",
       providesTags: ["Users"],
     }),
     getRejectedCeos: builder.query<CompanyUser[], void>({
-      query: () => "/admin/rejected-ceos",
+      query: () => "/admin/ceos?status=rejected",
       providesTags: ["Users"],
     }),
     approveCeo: builder.mutation<void, number>({
       query: (id) => ({
-        url: `/admin/approve-ceo/${id}`,
+        url: `/admin/ceos/${id}/status`,
         method: "PUT",
+        body: { status: "active" },
       }),
       invalidatesTags: ["Users"],
     }),
     rejectCeo: builder.mutation<void, number>({
       query: (id) => ({
-        url: `/admin/reject-ceo/${id}`,
+        url: `/admin/ceos/${id}/status`,
         method: "PUT",
+        body: { status: "rejected" },
       }),
       invalidatesTags: ["Users"],
     }),
     deactivateCeo: builder.mutation<void, number>({
       query: (id) => ({
-        url: `/admin/deactivate-ceo/${id}`,
+        url: `/admin/ceos/${id}/status`,
         method: "PUT",
+        body: { status: "inactive" },
       }),
       invalidatesTags: ["Users"],
     }),
     activateCeo: builder.mutation<void, number>({
       query: (id) => ({
-        url: `/admin/activate-ceo/${id}`,
+        url: `/admin/ceos/${id}/status`,
         method: "PUT",
+        body: { status: "active" },
       }),
       invalidatesTags: ["Users"],
     }),
     deleteCeo: builder.mutation<void, number>({
       query: (id) => ({
-        url: `/admin/delete-ceo/${id}`,
+        url: `/admin/ceos/${id}`,
         method: "DELETE",
       }),
       invalidatesTags: ["Users"],

@@ -45,6 +45,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     localStorage.removeItem("role");
     localStorage.removeItem("company_id");
     localStorage.removeItem("user_id");
+    localStorage.removeItem("full_name");
   };
 
   const value: AuthContextType = {

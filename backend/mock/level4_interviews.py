@@ -22,7 +22,7 @@ def seed_interviews(db, users_context, applications):
             schedule_start=start_1,
             schedule_end=end_1,
             meeting_type="GOOGLE_MEET",
-            meeting_link="https://meet.jit.si/Agentra-MOCK1001",
+            meeting_link="https://meet.jit.si/AIRecruiter-MOCK1001",
             status="COMPLETED",
             created_by=ceo_user.id
         )
@@ -68,7 +68,7 @@ def seed_interviews(db, users_context, applications):
             schedule_start=start_2,
             schedule_end=end_2,
             meeting_type="GOOGLE_MEET",
-            meeting_link="https://meet.jit.si/Agentra-MOCK1002",
+            meeting_link="https://meet.jit.si/AIRecruiter-MOCK1002",
             status="COMPLETED",
             created_by=ceo_user.id
         )
@@ -104,7 +104,7 @@ def seed_interviews(db, users_context, applications):
             schedule_start=start_3,
             schedule_end=end_3,
             meeting_type="GOOGLE_MEET",
-            meeting_link="https://meet.jit.si/Agentra-MOCK1003",
+            meeting_link="https://meet.jit.si/AIRecruiter-MOCK1003",
             status="COMPLETED",
             created_by=ceo_user.id
         )
