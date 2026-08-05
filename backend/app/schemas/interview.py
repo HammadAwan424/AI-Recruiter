@@ -1,8 +1,8 @@
 from pydantic import BaseModel, ConfigDict, Field
 from datetime import date, time, datetime
 from typing import Literal, Optional, List, Union
-from app.schemas.user import UserResponse
 from app.schemas.job import JobResponse
+
 
 class InterviewResponse(BaseModel):
     id: int
@@ -28,10 +28,12 @@ class InterviewResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+
 class InterviewSlotCreate(BaseModel):
     job_id: Optional[int] = None
     schedule_start: datetime
     schedule_end: datetime
+
 
 class InterviewSlotResponse(BaseModel):
     id: int
@@ -43,6 +45,7 @@ class InterviewSlotResponse(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
 
 class InterviewSlotDetail(InterviewSlotResponse):
     job: Optional[JobResponse] = None
@@ -62,23 +65,6 @@ class InterviewFeedbackResponse(BaseModel):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
-
-
-class InterviewerDetail(UserResponse):
-    available_slots: Optional[List[InterviewSlotDetail]] = []
-
-
-class InterviewDetail(InterviewResponse):
-    class _InterviewerAssignment(BaseModel):
-        model_config = ConfigDict(from_attributes=True)
-        interviewer_id: int
-        interviewer: UserResponse
-        feedback: Optional[InterviewFeedbackResponse] = None
-    interviewer_assignments: List[_InterviewerAssignment] = []
-
-
-InterviewerDetail.model_rebuild()
-InterviewDetail.model_rebuild()
 
 
 class InterviewPublicSlotResponse(BaseModel):
@@ -126,7 +112,7 @@ class InterviewCreateRequest(BaseModel):
 
 
 class InterviewRescheduleRequest(BaseModel):
-    assignments: list[InterviewerSlotAssignment] 
+    assignments: list[InterviewerSlotAssignment]
 
 
 class InterviewMetadataUpdate(BaseModel):

@@ -53,14 +53,3 @@ class JobResponse(BaseModel):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
-
-
-from app.schemas.user import UserResponse
-
-
-class JobDetail(JobResponse):
-    creator: Optional[UserResponse] = None
-    assigned_users: List[UserResponse] = []
-
-
-JobDetail.model_rebuild()

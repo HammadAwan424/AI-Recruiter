@@ -7,11 +7,8 @@ from app.database import get_db
 from app.models.application import Application
 from app.models.job import Job
 from app.models.interview import InterviewModel, InterviewInterviewers
-from app.schemas.application import (
-    ApplicationListItem,
-    ApplicationDetail,
-    ApplicationUpdate,
-)
+from app.schemas.application import ApplicationUpdate
+from app.schemas.composite import ApplicationDetail, ApplicationListItem
 from app.utils.security import get_current_user, get_job_or_403, get_application_or_403
 from app.models.candidate import Candidate
 from app.crud.application import get_or_create_application

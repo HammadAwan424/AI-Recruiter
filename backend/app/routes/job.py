@@ -11,7 +11,8 @@ from app.models.job_distribution import JobDistribution
 from app.models.interview import InterviewModel, InterviewFeedback
 from app.models.application import Application
 from app.models.rbac import UserJobScope
-from app.schemas.job import JobDetail, JobCreate, JobUpdate
+from app.schemas.job import JobCreate, JobUpdate
+from app.schemas.composite import JobDetail
 from app.utils.security import (
     get_current_user,
     require_permissions,

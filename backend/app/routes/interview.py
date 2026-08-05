@@ -19,12 +19,12 @@ from app.schemas.interview import (
     InterviewSlotCreate,
     InterviewSlotResponse,
     InterviewSlotDetail,
-    InterviewerDetail,
     InterviewPublicSlotResponse,
     InterviewRescheduleRequest,
     InterviewFeedbackCreate,
     InterviewFeedbackResponse,
 )
+from app.schemas.composite import InterviewerDetail, InterviewDetail
 from app.crud.interview import create_interview, create_interview_feedback
 from app.utils.security import (
     get_current_user,

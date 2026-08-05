@@ -62,15 +62,3 @@ class UserResponse(BaseModel):
     status: str
 
     model_config = ConfigDict(from_attributes=True)
-
-
-from app.schemas.job import JobResponse
-
-
-# User Detail Schema (for /auth/me or user detail views)
-class UserDetail(UserResponse):
-    permissions: List[str] = []
-    assigned_jobs: List[JobResponse] = []
-
-
-UserDetail.model_rebuild()

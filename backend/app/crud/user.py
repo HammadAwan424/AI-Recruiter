@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from app.models.user import User
 from app.models.company import Company
 from app.utils.security import hash_password
+from app.utils.security_seeder import seed_default_roles
 import secrets
 import string
 
@@ -17,6 +18,9 @@ def create_ceo(db: Session, data):
         db.add(company)
         db.commit()
         db.refresh(company)
+
+    # Seed default roles (ceo, recruiter, hiring_manager, interviewer) & permissions for the company
+    seed_default_roles(db, company_id=company.id)
 
     new_user = User(
         full_name=data.full_name,

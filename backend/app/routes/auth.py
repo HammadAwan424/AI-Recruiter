@@ -6,7 +6,8 @@ from pydantic import BaseModel
 from app.database import get_db
 from app.models.user import User
 from app.models.rbac.user_job_scope import UserJobScope
-from app.schemas.user import CEOSignup, LoginSchema, UserDetail
+from app.schemas.user import CEOSignup, LoginSchema
+from app.schemas.composite import UserDetail
 from app.crud.user import create_ceo, get_user_by_email
 from app.utils.security import verify_password, create_access_token, get_current_user, get_user_permissions, hash_password
 
