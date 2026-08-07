@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Recruiter — User Guide</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0b0f19;
+            --card-bg: #111827;
+            --text-primary: #f3f4f6;
+            --text-secondary: #9ca3af;
+            --accent: #05dc7f;
+            --border-color: rgba(255, 255, 255, 0.1);
+        }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.7;
+            margin: 0;
+            padding: 40px 20px;
+        }
+        .container {
+            max-width: 860px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 48px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+        }
+        h1 {
+            font-size: 2.25rem;
+            font-weight: 700;
+            color: #ffffff;
+            border-bottom: 2px solid var(--accent);
+            padding-bottom: 12px;
+            margin-top: 0;
+        }
+        h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--accent);
+            margin-top: 36px;
+            margin-bottom: 16px;
+        }
+        h3 {
+            font-size: 1.15rem;
+            font-weight: 600;
+            color: #ffffff;
+            margin-top: 24px;
+            margin-bottom: 12px;
+        }
+        p, li {
+            color: var(--text-secondary);
+            font-size: 1rem;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        strong {
+            color: #ffffff;
+        }
+        hr {
+            border: none;
+            border-top: 1px solid var(--border-color);
+            margin: 32px 0;
+        }
+        code {
+            background: rgba(255,255,255,0.08);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            color: #34d399;
+        }
+        ol, ul {
+            padding-left: 24px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 id="user-guide-ai-recruiter-platform">User Guide: AI Recruiter Platform</h1>
+<h2 id="1-overview">1. Overview</h2>
+<p>AI Recruiter is an end-to-end recruitment platform designed to help hiring teams manage job openings, review applicants, schedule interviews, and extend job offers in one central workspace. Built for executive leaders, recruiters, hiring managers, and technical interviewers, the platform streamlines the entire hiring process—from publishing job requisitions and screening candidate resumes to conducting multi-round interviews and collecting digital signatures on offer letters.</p>
+<hr />
+<h2 id="2-getting-started">2. Getting Started</h2>
+<h3 id="company-registration-account-approval">Company Registration &amp; Account Approval</h3>
+<p>For new organization leaders, navigate to the sign-up page, enter your Full Name, Email, Company Name, and Password, and click <strong>Create Account</strong>. Your registration request will be submitted for platform administrator review. Once approved by an admin, your company account becomes active, default roles and permissions are automatically set up, and you can sign in to invite your hiring team.</p>
+<h3 id="logging-in">Logging In</h3>
+<p>To sign in to the platform, navigate to the web portal login page, enter your registered email address and password, and click <strong>Sign In</strong>. Once authenticated, you will be redirected to the platform interface and see only the navigation items and screens assigned to your account role.</p>
+<h3 id="navigation-overview">Navigation Overview</h3>
+<p>The left-hand sidebar gives you access to the main areas of the platform (depending on what your account role permits):</p>
+<ul>
+<li><strong>Company Management</strong>: View and manage company registrations across the platform (visible to platform administrators).</li>
+<li><strong>Team &amp; Permissions</strong>: Invite new team members to your organization and manage user roles and permissions.</li>
+<li><strong>Job Requisitions</strong>: Create, review, and manage open job positions and hiring team assignments.</li>
+<li><strong>Candidate Pipeline</strong>: Track applicants through recruitment stages, review resumes, and manage candidate decisions.</li>
+<li><strong>Interviews</strong>: Set up interviewer time slots, coordinate candidate interview scheduling, and submit evaluation feedback.</li>
+<li><strong>Offer Letters</strong>: Draft offer templates, generate candidate offer letters, route offers for approval, and track signatures.</li>
+<li><strong>Settings</strong>: View and update your personal account settings and profile information.</li>
+</ul>
+<hr />
+<h2 id="3-role-specific-capabilities">3. Role-Specific Capabilities</h2>
+<p>Access within the platform is tailored to your assigned role in the company. Below is a breakdown of what each role can see and do:</p>
+<h3 id="platform-super-admin">Platform Super Admin</h3>
+<ul>
+<li><strong>Company Registration Approvals</strong>: Review pending company sign-up requests from organization leaders.</li>
+<li><strong>Account Status Control</strong>: Approve, activate, deactivate, or decline company accounts across the platform.</li>
+<li><strong>Platform Maintenance</strong>: Delete inactive or rejected organization accounts when necessary.</li>
+</ul>
+<hr />
+<h3 id="ceo-executive-admin">CEO / Executive Admin</h3>
+<ul>
+<li><strong>Full Organizational Access</strong>: Complete access across Team &amp; Permissions, Job Requisitions, Candidate Pipeline, and Interviews.</li>
+<li><strong>Team Management</strong>: Invite new team members to your organization and manage their assigned roles and permissions.</li>
+<li><strong>Requisition Oversight</strong>: Create new job requisitions, assign recruiters and hiring managers to openings, and monitor hiring progress company-wide.</li>
+<li><strong>Pipeline Oversight</strong>: View all candidates across all positions, review compensation details, and manage candidate hiring decisions.</li>
+<li><strong>Interview &amp; Offer Approvals</strong>: Oversee interview schedules, review interviewer feedback scorecards, create offer letter templates, and grant final approval on candidate offer packages.</li>
+</ul>
+<hr />
+<h3 id="lead-recruiter">Lead Recruiter</h3>
+<ul>
+<li><strong>Requisition Management</strong>: Draft, edit, publish, and close job requisitions. Assign hiring managers and co-recruiters to specific job openings.</li>
+<li><strong>Candidate Sourcing &amp; Screening</strong>: View all job applicants, review AI-assisted resume match analysis, inspect candidate compensation details, and manage candidate advancement or rejection.</li>
+<li><strong>Interview Coordination</strong>: Manage interviewer availability slots, schedule fixed interview rounds, send candidate self-scheduling links, and review interview feedback.</li>
+<li><strong>Offer Generation</strong>: Draft candidate offer letters using company templates and submit offers for internal approval. Once approved, the system automatically sends the offer package to the candidate.</li>
+</ul>
+<hr />
+<h3 id="hiring-manager">Hiring Manager</h3>
+<ul>
+<li><strong>Assigned Job Visibility</strong>: View and track hiring progress for job requisitions where you are assigned as the Hiring Manager.</li>
+<li><strong>Candidate Review &amp; Decision-Making</strong>: Review applicant profiles and resume summaries for your open roles, and mark candidates as active or rejected.</li>
+<li><strong>Interview Evaluation</strong>: Participate in interview scheduling and review feedback scorecards from technical interviewers.</li>
+<li><strong>Offer Review &amp; Approval</strong>: Review drafted offer letters for your assigned positions and grant approval (or request changes). Upon approval, the system sends the offer package to the candidate.</li>
+</ul>
+<hr />
+<h3 id="tech-interviewer">Tech Interviewer</h3>
+<ul>
+<li><strong>Assigned Candidate Review</strong>: View candidate profiles, resumes, and job details for candidates assigned to you for evaluation.</li>
+<li><strong>Schedule Coordination</strong>: View your assigned interview times and meeting details.</li>
+<li><strong>Feedback Submission</strong>: Submit structured interview evaluation scorecards rating candidate technical skills, communication abilities, and written feedback notes.</li>
+</ul>
+<hr />
+<h2 id="4-core-workflows">4. Core Workflows</h2>
+<h3 id="workflow-1-creating-and-publishing-a-job-requisition">Workflow 1: Creating and Publishing a Job Requisition</h3>
+<ol>
+<li>Navigate to <strong>Job Requisitions</strong> in the sidebar.</li>
+<li>Click the <strong>Create Job</strong> tab or button at the top of the page.</li>
+<li>Fill in the position details: Job Title, Department, Employment Type (Full-time, Part-time, Contract), Experience Level, Salary Range, and Skills.</li>
+<li><em>(Optional)</em> Click <strong>Generate with AI</strong> to automatically draft a comprehensive job description and key skill requirements based on your job title and parameters.</li>
+<li>In the <strong>Hiring Team</strong> section, select the assigned <strong>Hiring Manager</strong> and one or more <strong>Recruiters</strong> using the dropdown selectors.</li>
+<li>Select any target distribution job boards (e.g. LinkedIn, Indeed, Glassdoor).</li>
+<li>Click <strong>Create &amp; Publish Job</strong>. The job opening will appear on your internal requisition list and public job portal.</li>
+</ol>
+<hr />
+<h3 id="workflow-2-managing-candidates-pipeline-progression">Workflow 2: Managing Candidates &amp; Pipeline Progression</h3>
+<ol>
+<li>Navigate to <strong>Candidate Pipeline</strong> in the sidebar.</li>
+<li>Review the Kanban pipeline columns representing the 6 sequential hiring stages:</li>
+<li><strong>Applied</strong>: New applications received from candidates.</li>
+<li><strong>Screening</strong>: AI resume parsing and match score evaluation.</li>
+<li><strong>Interview</strong>: Candidates undergoing active interview rounds.</li>
+<li><strong>Offer Approval</strong>: Candidates selected for an offer undergoing internal review.</li>
+<li><strong>Offer Sent</strong>: Candidates who have received an official offer letter.</li>
+<li><strong>Hired</strong>: Candidates who have signed and accepted their offer package.</li>
+<li><strong>Advancing Candidates</strong>: Drag a candidate’s card from their current stage column and drop it into the next stage column as they progress.</li>
+<li><strong>Reviewing Candidate Details</strong>: Click any candidate card to open their profile drawer. Here you can inspect extracted resume text, AI skill match breakdown, interview history, and compensation details (if permitted by your role).</li>
+<li><strong>Dispositioning Candidates</strong>: To reject a candidate, click <strong>Reject Candidate</strong> in their profile drawer or card menu. The candidate remains recorded in their current pipeline stage with a clear <strong>Rejected</strong> status tag, keeping historical context intact.</li>
+</ol>
+<hr />
+<h3 id="workflow-3-setting-up-availability-conducting-interviews">Workflow 3: Setting Up Availability &amp; Conducting Interviews</h3>
+<ol>
+<li>Navigate to <strong>Interviews</strong> in the sidebar.</li>
+<li><strong>Adding Interviewer Availability</strong>: Technical interviewers set up their available times by clicking <strong>+ Add Time Slot</strong>. Select the date, start time, end time, and optional job requisition, then click <strong>Save Slot</strong>.</li>
+<li><strong>Scheduling an Interview</strong>:</li>
+<li><em>Manual Booking</em>: Select a candidate in the Interview stage, choose an available time slot from the assigned interviewer, set the round number (e.g., Round 1), round label (e.g., Technical Deep Dive), and meeting type (Video Call or In-Person), then click <strong>Schedule Interview</strong>.</li>
+<li><em>Candidate Self-Scheduling</em>: Click <strong>Copy Self-Schedule Link</strong> to send the candidate a secure link where they can pick from available interviewer slots on their own.</li>
+<li><strong>Adding to Calendar</strong>: Click <strong>Download .ics Calendar Invite</strong> on any scheduled interview to export the meeting directly to your personal calendar application (Outlook, Google Calendar, Apple Calendar).</li>
+<li><strong>Submitting Interview Scorecards</strong>: After completing the interview, click <strong>Submit Feedback</strong> on the interview card. Rate the candidate's technical competency and communication skills, enter detailed written feedback notes, and save the scorecard.</li>
+</ol>
+<hr />
+<h3 id="workflow-4-drafting-approving-and-extending-offer-letters">Workflow 4: Drafting, Approving, and Extending Offer Letters</h3>
+<ol>
+<li>Navigate to <strong>Offer Letters</strong> in the sidebar.</li>
+<li><strong>Creating an Offer Template</strong>: Click <strong>+ New Template</strong>. Enter a template title, department, and letter body text with candidate placeholders, then save.</li>
+<li><strong>Drafting an Offer</strong>: Select a candidate in the <em>Offer Approval</em> stage and click <strong>Create Offer</strong>. Choose an offer template, specify base salary, bonus/equity terms, start date, and offer expiration date, then click <strong>Generate Offer</strong>.</li>
+<li><strong>Internal Approval</strong>: The candidate moves to the <em>Offer Approval</em> stage on the candidate pipeline board. Designated approvers (CEO or Hiring Manager) review the compensation terms and letter text, then click <strong>Approve Offer</strong>.</li>
+<li><strong>System Notification &amp; Candidate E-Signature</strong>: Upon approval, the system automatically advances the candidate to the <em>Offer Sent</em> stage and sends the candidate a secure digital signing link.</li>
+<li><strong>Offer Acceptance</strong>: The candidate opens their personalized link, reviews the offer letter, signs using their preferred method (drawing on the signature pad or typing their legal name), checks the legal consent box, and clicks <strong>Sign &amp; Accept Offer</strong>. Upon completion, the candidate automatically advances to <strong>Hired</strong>.</li>
+</ol>
+<hr />
+<h2 id="5-key-screens-reference">5. Key Screens Reference</h2>
+<ul>
+<li><strong>Company Management Screen</strong>: A management dashboard for platform administrators to view, approve, activate, deactivate, or decline registered company accounts.</li>
+<li><strong>Team &amp; Permissions Screen</strong>: The user management workspace where authorized administrators can invite team members to the organization and configure user role permission matrices.</li>
+<li><strong>Job Requisitions Screen</strong>: The central requisition hub listing all active and closed job openings. Includes controls to create positions, launch the AI Job Description Generator, assign hiring managers and recruiters, and manage distribution job boards.</li>
+<li><strong>Candidate Pipeline Screen</strong>: An interactive Kanban board tracking candidates through the 6 hiring stages (<em>Applied $\rightarrow$ Screening $\rightarrow$ Interview $\rightarrow$ Offer Approval $\rightarrow$ Offer Sent $\rightarrow$ Hired</em>). Clicking any candidate card opens a slide-out drawer containing extracted resume text, AI skill match scores, interview history, and disposition controls.</li>
+<li><strong>Interview Management Screen</strong>: The interview scheduling workspace featuring interviewer availability slot builders, interview round creation modals, candidate self-scheduling link generators, downloadable <code>.ics</code> calendar invites, and multi-interviewer scorecard feedback forms.</li>
+<li><strong>Offer Letters Screen</strong>: The offer creation workspace containing offer letter template builders, offer package drafting forms, internal approval workflow queues, and candidate digital signature tracking.</li>
+<li><strong>Candidate Self-Scheduling Portal</strong>: A public candidate page where applicants choose their preferred interview time slot from available interviewer times.</li>
+<li><strong>Candidate Digital Offer Signing Portal</strong>: A public candidate page where selected candidates review their formal offer letter, select a signature method (drawing canvas or typed name), agree to terms, and submit their signed acceptance.</li>
+</ul>
+    </div>
+</body>
+</html>
