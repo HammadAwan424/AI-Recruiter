@@ -8,12 +8,12 @@ export const offersApi = baseApi.injectEndpoints({
       providesTags: ["Offers"],
     }),
     getOfferTemplates: builder.query<OfferTemplate[], void>({
-      query: () => "/offers/templates",
+      query: () => "/templates",
       providesTags: ["OfferTemplates"],
     }),
     createOfferTemplate: builder.mutation<OfferTemplate, { title: string; department?: string; content: string }>({
       query: (payload) => ({
-        url: "/offers/templates",
+        url: "/templates",
         method: "POST",
         body: payload,
       }),
@@ -21,7 +21,7 @@ export const offersApi = baseApi.injectEndpoints({
     }),
     updateOfferTemplate: builder.mutation<OfferTemplate, { id: number; title: string; department?: string; content: string }>({
       query: ({ id, ...payload }) => ({
-        url: `/offers/templates/${id}`,
+        url: `/templates/${id}`,
         method: "PUT",
         body: payload,
       }),
@@ -35,25 +35,10 @@ export const offersApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ["Offers", "Applications"],
     }),
-    submitOfferApproval: builder.mutation<{ message: string }, number>({
+    deleteOffer: builder.mutation<{ message: string }, number>({
       query: (offerId) => ({
-        url: `/offers/${offerId}/approvals`,
-        method: "POST",
-      }),
-      invalidatesTags: ["Offers", "Applications"],
-    }),
-    approveOfferAction: builder.mutation<{ message: string }, { offerId: number; action?: "APPROVE" | "REJECT"; comments?: string }>({
-      query: ({ offerId, action, comments }) => ({
-        url: `/offers/${offerId}/approvals/decision`,
-        method: "POST",
-        body: { action, comments },
-      }),
-      invalidatesTags: ["Offers", "Applications"],
-    }),
-    sendOffer: builder.mutation<{ message: string; secure_token: string }, number>({
-      query: (offerId) => ({
-        url: `/offers/${offerId}/dispatch`,
-        method: "POST",
+        url: `/offers/${offerId}`,
+        method: "DELETE",
       }),
       invalidatesTags: ["Offers", "Applications"],
     }),
@@ -66,7 +51,5 @@ export const {
   useCreateOfferTemplateMutation,
   useUpdateOfferTemplateMutation,
   useCreateOfferMutation,
-  useSubmitOfferApprovalMutation,
-  useApproveOfferActionMutation,
-  useSendOfferMutation,
+  useDeleteOfferMutation,
 } = offersApi;

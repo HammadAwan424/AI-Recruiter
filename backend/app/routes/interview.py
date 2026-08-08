@@ -256,7 +256,7 @@ def candidate_confirm_schedule(
 @router.post(
     "",
     response_model=InterviewResponse,
-    dependencies=[Depends(require_permissions(["interview:assign"]))]
+    dependencies=[Depends(require_permissions(["interview:create"]))]
 )
 def schedule_interview(
     request: InterviewCreateRequest,
@@ -294,12 +294,19 @@ def schedule_interview(
     return interview
 
 
-@router.get("", response_model=List[InterviewResponse], dependencies=[Depends(require_permissions(["interview:create"]))])
+@router.get("", response_model=List[InterviewDetail], dependencies=[Depends(require_permissions(["interview:view"]))])
 def list_interviews(
     db: Session = Depends(get_db),
     interviews_query: Query = Depends(get_scoped_interviews_query)
 ):
-    interviews = interviews_query.order_by(InterviewModel.schedule_start.desc()).all()
+    interviews = (
+        interviews_query
+        .options(
+            joinedload(InterviewModel.interviewer_assignments).joinedload(InterviewInterviewers.interviewer)
+        )
+        .order_by(InterviewModel.schedule_start.desc())
+        .all()
+    )
 
     for item in interviews:
         app = item.application
@@ -377,7 +384,11 @@ def submit_interview_feedback(
 # ─────────────────────────────────────────────────────────────
 # 5. DYNAMIC PATH PARAMETER ROUTES (MUST COME LAST)
 # ─────────────────────────────────────────────────────────────
-@router.get("/{interview_id}", response_model=InterviewResponse)
+@router.get(
+    "/{interview_id}",
+    response_model=InterviewResponse,
+    dependencies=[Depends(require_permissions(["interview:view"]))]
+)
 def get_interview_detail(
     interview: InterviewModel = Depends(get_interview_or_403)
 ):
@@ -392,7 +403,7 @@ def get_interview_detail(
 @router.post(
     "/{interview_id}/self-schedule-link",
     response_model=InterviewResponse,
-    dependencies=[Depends(require_permissions(["create_interview"]))]
+    dependencies=[Depends(require_permissions(["interview:create"]))]
 )
 def create_candidate_self_schedule_link(
     interview: InterviewModel = Depends(get_interview_or_403),

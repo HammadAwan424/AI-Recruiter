@@ -18,7 +18,8 @@ from app.utils.security import (
     require_permissions,
     get_user_or_403,
     get_scoped_users_query,
-    hash_password
+    hash_password,
+    verify_password
 )
 
 router = APIRouter(
@@ -248,7 +249,12 @@ def update_user_profile(
 ):
     if "full_name" in data and data["full_name"]:
         user.full_name = data["full_name"]
+
     if "password" in data and data["password"]:
+        old_password = data.get("old_password")
+        if old_password:
+            if not verify_password(old_password, user.password):
+                raise HTTPException(status_code=400, detail="Current password is incorrect.")
         user.password = hash_password(data["password"])
 
     user.updated_by = current_user["user_id"]

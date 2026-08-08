@@ -40,8 +40,8 @@ const ALL_PERMISSION_KEYS: { key: PermissionKey; description: string }[] = [
   { key: "candidate:view_compensation", description: "View Candidate Compensation & Salary Data" },
   { key: "candidate:disposition", description: "Reject Candidates / Applications" },
   { key: "candidate:view", description: "View Candidate Applications" },
-  { key: "interview:create", description: "Schedule Interviews" },
-  { key: "interview:assign", description: "Assign Interviewers to Interview Rounds" },
+  { key: "interview:view", description: "View Scheduled Interviews" },
+  { key: "interview:create", description: "Schedule Interviews & Assign Interviewers" },
   { key: "interview:submit_feedback", description: "Conduct Interviews & Submit Scorecards" },
   { key: "interview:reschedule", description: "Reschedule Interviews" },
   { key: "offer:generate", description: "Generate & Send Offer Letters" },
@@ -195,12 +195,12 @@ export const RolePermissionsEditor: React.FC<RolePermissionsEditorProps> = ({
               <FormControlLabel
                 value="all"
                 control={<Radio size="small" color="primary" />}
-                label="All Company Jobs (Company-Wide Access)"
+                label="All Job Postings"
               />
               <FormControlLabel
                 value="own"
                 control={<Radio size="small" color="primary" />}
-                label="Assigned Jobs Only (Explicit UserJobScope Assignment)"
+                label="Assigned Only"
               />
             </RadioGroup>
           </FormControl>

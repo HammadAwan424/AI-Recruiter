@@ -190,6 +190,12 @@ def update_application_stage(
         raise HTTPException(status_code=404, detail="Application record not found")
 
     if payload.current_status:
+        ALLOWED_INITIAL_STAGES = {"applied", "screening", "interview"}
+        if payload.current_status not in ALLOWED_INITIAL_STAGES:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Direct stage change to '{payload.current_status}' is not permitted. Post-interview stages must be managed through the /offers or /decisions workflow."
+            )
         app.current_status = payload.current_status
     if payload.disposition:
         app.disposition = payload.disposition

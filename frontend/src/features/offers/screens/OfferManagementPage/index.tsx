@@ -19,12 +19,11 @@ import { useGetApplicationsQuery } from "../../../candidates/api";
 import { OfferItem, OfferTemplate } from "../../../../shared/types/offer.types";
 import { usePermission } from "../../../../shared/hooks/usePermission";
 import { OFFER_PERMISSIONS } from "../../permissions";
-import { isDraggableInterviewCandidate, isPendingApprovalOffer } from "../../../../shared/utils/candidateEvaluation";
+import { getDraggableEvaluator } from "../../../../shared/utils/candidateEvaluation";
 import { InterviewCandidateCard } from "../../../candidates/components/cards/InterviewCandidateCard";
 import { RequestOfferApprovalModal } from "../../../../shared/components/RequestOfferApprovalModal";
 import { CandidateProfile } from "../../../../shared/components/CandidateProfile";
 import { OfferTemplateEditor } from "../../components/OfferTemplateEditor";
-import { useUpdateOfferTemplateMutation } from "../../api";
 
 export const OfferManagementPage: React.FC = () => {
   const { offers, templates, isLoading } = useOffers();
@@ -32,9 +31,18 @@ export const OfferManagementPage: React.FC = () => {
   const jobs = jobsData?.jobs || [];
 
   // Selected job filter for candidate queries
-  const [selectedJobId, setSelectedJobId] = useState<number>(jobs[0]?.id || 1);
-  const { data: applicationsData, isLoading: isAppsLoading } = useGetApplicationsQuery(selectedJobId, {
-    skip: !selectedJobId,
+  const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
+
+  React.useEffect(() => {
+    if (!selectedJobId && jobs.length > 0) {
+      setSelectedJobId(jobs[0].id);
+    }
+  }, [jobs, selectedJobId]);
+
+  const activeJobId = selectedJobId || jobs[0]?.id || 1;
+
+  const { data: applicationsData, isLoading: isAppsLoading } = useGetApplicationsQuery(activeJobId, {
+    skip: !activeJobId,
   });
 
   const applications = Array.isArray(applicationsData) ? applicationsData : [];
@@ -66,17 +74,32 @@ export const OfferManagementPage: React.FC = () => {
 
   const [approvalComments, setApprovalComments] = useState("");
 
-  // Centralized candidate & offer filtering logic mapping directly to Kanban columns
-  const interviewedCandidates = applications.filter((app) => isDraggableInterviewCandidate(app));
+  // 1. Source for Offer Creation Tab: Candidates in 'interview' column with completed interview
+  const interviewedCandidates = applications.filter((app) => getDraggableEvaluator(app, "interview", hasPermission));
 
-  const pendingApprovalOffers = offers.filter((o) => {
-    const isPending = isPendingApprovalOffer(o);
-    if (!isPending) return false;
-    // Map offer to active requisition (selectedJobId)
-    const appId = o.application_id;
-    const app = applications.find((a) => a.id === appId);
-    if (app) return app.job_id === selectedJobId;
-    return o.job_id === selectedJobId || !selectedJobId;
+  // 2. Source for Offer Approvals Tab: Candidates in 'offer_approval' column (Awaiting Approval in Kanban Board)
+  const awaitingApprovalApps = applications.filter(
+    (app) => app.current_status === "offer_approval" || app.stage === "offer_approval"
+  );
+
+  const pendingApprovalOffers: OfferItem[] = awaitingApprovalApps.map((app) => {
+    const matchedOffer = offers.find((o) => o.application_id === app.id || (app.offer && o.id === app.offer.id));
+    if (matchedOffer) return matchedOffer;
+
+    return {
+      id: app.offer?.id || app.id,
+      application_id: app.id,
+      candidate_id: app.candidate_id,
+      candidate_name: app.candidate?.full_name || "Candidate",
+      job_id: app.job_id,
+      job_title: app.job?.title || "Position",
+      department: app.job?.department || "Engineering",
+      base_salary: app.offer?.base_salary || 0,
+      bonus_equity: app.offer?.bonus_equity || "None",
+      start_date: app.offer?.start_date || "Pending",
+      offer_letter_text: app.offer?.offer_letter_text || "Offer package awaiting executive review.",
+      status: "PENDING_APPROVAL",
+    };
   });
 
   const handleTabSelect = (tab: "CREATION" | "APPROVAL") => {
@@ -274,7 +297,7 @@ export const OfferManagementPage: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-white/50">Filter Job:</span>
                   <select
-                    value={selectedJobId}
+                    value={activeJobId}
                     onChange={(e) => setSelectedJobId(Number(e.target.value))}
                     className="bg-[#1F2937] border border-white/10 rounded-lg p-2 text-xs text-white outline-none focus:border-[#05DC7F]"
                   >

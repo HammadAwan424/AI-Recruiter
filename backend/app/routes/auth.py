@@ -85,6 +85,7 @@ def login(data: LoginSchema, db: Session = Depends(get_db)):
 class SelfUpdatePayload(BaseModel):
     full_name: Optional[str] = None
     company_name: Optional[str] = None
+    old_password: Optional[str] = None
     password: Optional[str] = None
 
 
@@ -96,6 +97,7 @@ def get_current_user_detail(
     user = (
         db.query(User)
         .options(
+            joinedload(User.company),
             joinedload(User.job_scopes).joinedload(UserJobScope.job)
         )
         .filter(User.id == current_user_dict["user_id"])
@@ -121,7 +123,17 @@ def update_current_user_detail(
 
     if data.full_name:
         user.full_name = data.full_name
+
+    if data.company_name and user.company:
+        if user.role in ("ceo"):
+            user.company.name = data.company_name
+        else:
+            raise HTTPException(status_code=403, detail="Only company administrators can modify the company name.")
+
     if data.password:
+        if data.old_password:
+            if not verify_password(data.old_password, user.password):
+                raise HTTPException(status_code=400, detail="Current password is incorrect.")
         user.password = hash_password(data.password)
 
     db.commit()

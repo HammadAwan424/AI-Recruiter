@@ -26,8 +26,8 @@ class Permission(str, Enum):
     CANDIDATE_DISPOSITION = "candidate:disposition"
 
     # Interview Management
+    INTERVIEW_VIEW = "interview:view"
     INTERVIEW_CREATE = "interview:create"
-    INTERVIEW_ASSIGN = "interview:assign"
     INTERVIEW_RESCHEDULE = "interview:reschedule"
     INTERVIEW_SUBMIT_FEEDBACK = "interview:submit_feedback"
 
@@ -74,6 +74,7 @@ DEFAULT_ROLE_PERMISSIONS: Dict[str, List[str]] = {
     "interviewer": [
         Permission.JOB_VIEW.value,
         Permission.CANDIDATE_VIEW.value,
+        Permission.INTERVIEW_VIEW.value,
         Permission.INTERVIEW_SUBMIT_FEEDBACK.value,
         Permission.PROFILE_UPDATE.value,
     ],

@@ -12,6 +12,7 @@ import {
 import { ModalSurface } from "../../styles";
 import { UserCreatePayload } from "../../../../shared/types/user.types";
 import { UserRole } from "../../../../shared/types/auth.types";
+import { PasswordInput } from "../../../../shared/components/PasswordInput";
 
 interface UserCreateModalProps {
   open: boolean;
@@ -46,20 +47,21 @@ export const UserCreateModal: React.FC<UserCreateModalProps> = ({
     setErrorMsg(null);
 
     if (!fullName.trim() || !email.trim() || !password.trim()) {
-      setErrorMsg("Full Name, Email, and Password are required.");
+      setErrorMsg("Full name, email, and password are required.");
       return;
     }
 
     try {
       await onSubmit({
-        full_name: fullName.trim(),
-        email: email.trim(),
+        full_name: fullName,
+        email,
         password,
         role,
-        department: department.trim() || undefined,
-        phone: phone.trim() || undefined,
+        department: department || undefined,
+        phone: phone || undefined,
       });
 
+      // Reset form
       setFullName("");
       setEmail("");
       setPassword("");
@@ -68,16 +70,17 @@ export const UserCreateModal: React.FC<UserCreateModalProps> = ({
       setPhone("");
       onClose();
     } catch (err: any) {
-      setErrorMsg(err?.data?.detail || "Failed to create user. Please check input.");
+      setErrorMsg(err?.data?.detail || "Failed to create user");
     }
   };
 
   return (
-    <ModalSurface open={open} onClose={onClose} fullWidth maxWidth="sm">
+    <ModalSurface open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle sx={{ fontWeight: 700 }}>Add New Team Member</DialogTitle>
+
       <form onSubmit={handleSubmit}>
-        <DialogTitle sx={{ fontWeight: 600 }}>Invite New Team Member</DialogTitle>
         <DialogContent dividers>
-          <Stack spacing={2} sx={{ mt: 1 }}>
+          <Stack spacing={2}>
             {errorMsg && <Alert severity="error">{errorMsg}</Alert>}
 
             <TextField
@@ -97,9 +100,8 @@ export const UserCreateModal: React.FC<UserCreateModalProps> = ({
               onChange={(e) => setEmail(e.target.value)}
             />
 
-            <TextField
+            <PasswordInput
               label="Initial Password"
-              type="password"
               required
               fullWidth
               value={password}
@@ -121,28 +123,28 @@ export const UserCreateModal: React.FC<UserCreateModalProps> = ({
               ))}
             </TextField>
 
-            <Stack direction="row" spacing={2}>
-              <TextField
-                label="Department (Optional)"
-                fullWidth
-                value={department}
-                onChange={(e) => setDepartment(e.target.value)}
-              />
-              <TextField
-                label="Phone (Optional)"
-                fullWidth
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-              />
-            </Stack>
+            <TextField
+              label="Department (Optional)"
+              fullWidth
+              value={department}
+              onChange={(e) => setDepartment(e.target.value)}
+            />
+
+            <TextField
+              label="Phone Number (Optional)"
+              fullWidth
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+            />
           </Stack>
         </DialogContent>
+
         <DialogActions sx={{ p: 2 }}>
           <Button onClick={onClose} color="inherit">
             Cancel
           </Button>
           <Button type="submit" variant="contained" disabled={isSubmitting}>
-            Create User
+            {isSubmitting ? "Creating..." : "Create User"}
           </Button>
         </DialogActions>
       </form>

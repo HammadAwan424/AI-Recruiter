@@ -16,6 +16,7 @@ import {
   FaTrashAlt,
   FaGlobe,
   FaBriefcase,
+  FaUserCheck,
 } from "react-icons/fa";
 import { useInterviews } from "../../hooks/useInterviews";
 import { useInterviewMutations } from "../../hooks/useInterviewMutations";
@@ -24,6 +25,7 @@ import { InterviewItem, InterviewSlot } from "../../../../shared/types/interview
 import { usePermission } from "../../../../shared/hooks/usePermission";
 import { INTERVIEW_PERMISSIONS } from "../../permissions";
 import { getApiBaseUrl } from "../../../../shared/utils/config";
+import { useAuth } from "../../../../shared/context/AuthContext";
 
 function SlotBuilderModal({
   initialSlot,
@@ -44,8 +46,7 @@ function SlotBuilderModal({
   const [endTime, setEndTime] = useState(
     initialSlot?.schedule_end ? new Date(initialSlot.schedule_end).toTimeString().substring(0, 5) : "11:00"
   );
-  
-  // Toggle Switch State: Universal Slot (All Jobs) vs Specific Job Requisition
+
   const [isUniversal, setIsUniversal] = useState<boolean>(
     initialSlot ? initialSlot.job_id === null || initialSlot.job_id === undefined : true
   );
@@ -94,9 +95,8 @@ function SlotBuilderModal({
         <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
           <FaPlus className="text-[#05DC7F]" /> {isEditing ? "Edit Availability Slot" : "Add Availability Slot"}
         </h3>
-        
+
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          {/* Universal / Job Scoping Interactive Pill Toggle Switch */}
           <div className="p-4 rounded-xl bg-gray-900/90 border border-gray-800 flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <div className="flex flex-col">
@@ -110,7 +110,6 @@ function SlotBuilderModal({
                 </span>
               </div>
 
-              {/* Custom Sleek Toggle Switch */}
               <button
                 type="button"
                 role="switch"
@@ -134,7 +133,6 @@ function SlotBuilderModal({
               </button>
             </div>
 
-            {/* Dropdown for Selecting Specific Job Requisition */}
             {!isUniversal && (
               <div className="pt-3 border-t border-gray-800/80">
                 <label className="text-xs text-gray-300 mb-1.5 block font-medium flex items-center gap-1.5">
@@ -231,6 +229,11 @@ function DetailsModal({ data, onClose }: { data: InterviewItem; onClose: () => v
     }
   };
 
+  const assignedNames = data.interviewer_assignments
+    ?.map((a) => a.interviewer?.full_name)
+    .filter(Boolean)
+    .join(", ");
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
       <div className="w-full max-w-lg rounded-2xl bg-black/90 border border-[#05DC7F]/40 p-6 sm:p-8 shadow-[0_0_25px_rgba(5,220,127,0.4)] relative">
@@ -259,7 +262,7 @@ function DetailsModal({ data, onClose }: { data: InterviewItem; onClose: () => v
           </p>
           <p className="flex items-center gap-2">
             <FaUsers className="text-[#05DC7F]" />
-            Interviewers: Assigned Panel
+            Interviewers: {assignedNames || "Assigned Panel"}
           </p>
           <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-gray-800">
             {data.meeting_link && (
@@ -284,7 +287,7 @@ function DetailsModal({ data, onClose }: { data: InterviewItem; onClose: () => v
               <a
                 href={`${getApiBaseUrl()}/interviews/${data.id}/ical`}
                 download
-                className="flex-1 py-2.5 rounded-xl border border-[#05DC7F]/40 text-white hover:bg-[#05DC7F]/10 transition flex items-center justify-center gap-2"
+                className="flex-1 py-2.5 rounded-xl border border-[#05DC7F]/40 text-white hover:bg-[#05DC7F]/10 transition flex items-center justify-center gap-2 text-sm"
               >
                 <FaDownload className="text-[#05DC7F]" /> Download .ics Calendar Invite
               </a>
@@ -303,18 +306,94 @@ function DetailsModal({ data, onClose }: { data: InterviewItem; onClose: () => v
   );
 }
 
+function InterviewCard({
+  item,
+  isMyInterview,
+  onSelect,
+}: {
+  item: InterviewItem;
+  isMyInterview: boolean;
+  onSelect: (item: InterviewItem) => void;
+}) {
+  return (
+    <div
+      className={`p-5 rounded-2xl border ${
+        isMyInterview
+          ? "border-[#05DC7F]/50 bg-[#0b2a1f]/80 shadow-[0_0_20px_rgba(5,220,127,0.15)]"
+          : "border-gray-800 bg-black/50"
+      } backdrop-blur-md flex flex-col md:flex-row justify-between items-start md:items-center gap-4 transition hover:border-[#05DC7F]/70`}
+    >
+      <div className="flex flex-col gap-1.5">
+        <div className="flex items-center gap-2">
+          <span className="text-[#05DC7F] text-xs font-semibold uppercase tracking-wider">
+            {item.status}
+          </span>
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-black/60 text-gray-300 border border-gray-800 font-medium">
+            {item.job_title ? `💼 ${item.job_title}` : "🌐 Universal (All Jobs)"}
+          </span>
+          {isMyInterview && (
+            <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-[#05DC7F]/20 text-[#05DC7F] border border-[#05DC7F]/40 font-bold flex items-center gap-1">
+              <FaUserCheck size={10} /> You (Assigned)
+            </span>
+          )}
+        </div>
+        <h3 className="text-white text-lg font-bold flex items-center gap-2">
+          {item.candidate_name || "Candidate"}
+        </h3>
+        <span className="flex items-center gap-1.5 text-xs text-gray-300">
+          <FaCalendarAlt className="text-[#05DC7F]" />{" "}
+          {item.schedule_start ? new Date(item.schedule_start).toLocaleString() : "Awaiting Selection"}
+        </span>
+      </div>
+
+      <div className="flex items-center gap-3 w-full md:w-auto">
+        {item.meeting_link && (
+          <a
+            href={item.meeting_link}
+            target="_blank"
+            rel="noreferrer"
+            className="flex-1 md:flex-none px-5 py-2.5 rounded-xl font-semibold bg-[#05DC7F] text-black hover:bg-[#04c56f] transition flex items-center justify-center gap-2 text-sm"
+          >
+            <FaVideo /> Join Call
+          </a>
+        )}
+        <button
+          onClick={() => onSelect(item)}
+          className="flex-1 md:flex-none px-4 py-2.5 rounded-xl font-semibold border border-[#05DC7F]/40 text-white hover:bg-[#05DC7F]/10 transition flex items-center justify-center gap-2 text-sm"
+        >
+          <FaCalendarAlt /> Details
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export const InterviewManagementPage: React.FC = () => {
+  const { userId } = useAuth();
   const { interviews, slots, isLoading, refetch } = useInterviews();
   const { deleteSlot } = useInterviewMutations();
   const { hasPermission } = usePermission();
 
-  const canCreateSlot = hasPermission(INTERVIEW_PERMISSIONS.CREATE);
+  const canManageSlots = hasPermission(INTERVIEW_PERMISSIONS.SUBMIT_FEEDBACK);
   const canEditSlot = hasPermission(INTERVIEW_PERMISSIONS.RESCHEDULE);
 
   const [viewMode, setViewMode] = useState<"Agenda" | "Slots">("Agenda");
   const [selected, setSelected] = useState<InterviewItem | null>(null);
   const [showSlotModal, setShowSlotModal] = useState(false);
   const [editingSlot, setEditingSlot] = useState<InterviewSlot | null>(null);
+
+  const activeViewMode = canManageSlots ? viewMode : "Agenda";
+
+  // Clean, strongly-typed partition
+  const myInterviews = interviews.filter((item) => {
+    if (!userId) return false;
+    const isAssigned = item.interviewer_assignments?.some(
+      (a) => a.interviewer_id === userId
+    );
+    return isAssigned || item.created_by === userId;
+  });
+
+  const teamInterviews = interviews.filter((item) => !myInterviews.includes(item));
 
   const handleDeleteSlot = async (slotId: number) => {
     if (!window.confirm("Are you sure you want to delete this availability slot?")) return;
@@ -339,22 +418,25 @@ export const InterviewManagementPage: React.FC = () => {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex bg-black/60 rounded-xl p-1 border border-[#05DC7F]/20">
-            {(["Agenda", "Slots"] as const).map((mode) => (
-              <button
-                key={mode}
-                onClick={() => setViewMode(mode)}
-                className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition ${
-                  viewMode === mode
-                    ? "bg-[#05DC7F] text-black"
-                    : "text-gray-400 hover:text-white"
-                }`}
-              >
-                {mode}
-              </button>
-            ))}
-          </div>
-          {canCreateSlot && (
+          {canManageSlots && (
+            <div className="flex bg-black/60 rounded-xl p-1 border border-[#05DC7F]/20">
+              {(["Agenda", "Slots"] as const).map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => setViewMode(mode)}
+                  className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition ${
+                    activeViewMode === mode
+                      ? "bg-[#05DC7F] text-black"
+                      : "text-gray-400 hover:text-white"
+                  }`}
+                >
+                  {mode}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {canManageSlots && (
             <button
               onClick={() => {
                 setEditingSlot(null);
@@ -368,64 +450,75 @@ export const InterviewManagementPage: React.FC = () => {
         </div>
       </div>
 
-      {/* AGENDA VIEW */}
-      {viewMode === "Agenda" && (
-        <div className="grid grid-cols-1 gap-4">
+      {/* AGENDA VIEW WITH DUAL HEADINGS */}
+      {activeViewMode === "Agenda" && (
+        <div className="flex flex-col gap-8">
           {isLoading ? (
             <div className="text-center py-10 text-[#05DC7F]">Loading interviews...</div>
           ) : interviews.length === 0 ? (
             <div className="text-center py-10 text-gray-400 bg-black/30 rounded-2xl border border-gray-800">
-              No interviews scheduled yet. Click "Add Slot" or schedule one!
+              No interviews scheduled yet.
             </div>
           ) : (
-            interviews.map((item) => (
-              <div
-                key={item.id}
-                className="p-5 rounded-2xl border border-[#05DC7F]/40 bg-[#0b2a1f]/80 backdrop-blur-md shadow-[0_0_20px_rgba(5,220,127,0.15)] flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
-              >
-                <div className="flex flex-col gap-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[#05DC7F] text-xs font-semibold uppercase tracking-wider">
-                      {item.status}
-                    </span>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-black/60 text-gray-300 border border-gray-800 font-medium">
-                      {item.job_title ? `💼 ${item.job_title}` : "🌐 Universal (All Jobs)"}
-                    </span>
+            <>
+              {/* SECTION 1: YOUR ASSIGNED INTERVIEWS */}
+              {myInterviews.length > 0 && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2.5 border-b border-[#05DC7F]/30 pb-3">
+                    <FaUserTie className="text-[#05DC7F] text-lg" />
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                      Your Assigned Interviews
+                      <span className="text-xs px-2.5 py-0.5 rounded-full bg-[#05DC7F]/20 text-[#05DC7F] font-semibold border border-[#05DC7F]/30">
+                        {myInterviews.length}
+                      </span>
+                    </h3>
                   </div>
-                  <h3 className="text-white text-lg font-bold">
-                    {item.candidate_name || "Candidate"}
-                  </h3>
-                    <span className="flex items-center gap-1.5">
-                      <FaCalendarAlt className="text-[#05DC7F]" />{" "}
-                      {item.schedule_start ? new Date(item.schedule_start).toLocaleString() : "Awaiting Selection"}
-                    </span>
+
+                  <div className="grid grid-cols-1 gap-4">
+                    {myInterviews.map((item) => (
+                      <InterviewCard
+                        key={item.id}
+                        item={item}
+                        isMyInterview={true}
+                        onSelect={(i) => setSelected(i)}
+                      />
+                    ))}
+                  </div>
                 </div>
-                <div className="flex items-center gap-3 w-full md:w-auto">
-                  {item.meeting_link && (
-                    <a
-                      href={item.meeting_link}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex-1 md:flex-none px-5 py-2.5 rounded-xl font-semibold bg-[#05DC7F] text-black hover:bg-[#04c56f] transition flex items-center justify-center gap-2 text-sm"
-                    >
-                      <FaVideo /> Join Call
-                    </a>
-                  )}
-                  <button
-                    onClick={() => setSelected(item)}
-                    className="flex-1 md:flex-none px-4 py-2.5 rounded-xl font-semibold border border-[#05DC7F]/40 text-white hover:bg-[#05DC7F]/10 transition flex items-center justify-center gap-2 text-sm"
-                  >
-                    <FaCalendarAlt /> Details
-                  </button>
+              )}
+
+              {/* SECTION 2: TEAM INTERVIEWS */}
+              {teamInterviews.length > 0 && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2.5 border-b border-white/10 pb-3">
+                    <FaUsers className="text-[#05DC7F] text-lg" />
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                      Team Interviews
+                      <span className="text-xs px-2.5 py-0.5 rounded-full bg-white/10 text-white/70 font-semibold border border-white/10">
+                        {teamInterviews.length}
+                      </span>
+                    </h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4">
+                    {teamInterviews.map((item) => (
+                      <InterviewCard
+                        key={item.id}
+                        item={item}
+                        isMyInterview={false}
+                        onSelect={(i) => setSelected(i)}
+                      />
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))
+              )}
+            </>
           )}
         </div>
       )}
 
       {/* SLOTS VIEW */}
-      {viewMode === "Slots" && (
+      {activeViewMode === "Slots" && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {slots.length === 0 ? (
             <div className="col-span-full text-center py-10 text-gray-400 bg-black/30 rounded-2xl border border-gray-800">
@@ -461,7 +554,6 @@ export const InterviewManagementPage: React.FC = () => {
                     </span>
                   </div>
 
-                  {/* Job Scope Display (Shows Exact Job Title from Nested Job Object) */}
                   <div className="pt-2 border-t border-gray-800/80 flex items-center justify-between text-xs">
                     <span className="flex items-center gap-1.5 text-gray-300 font-medium truncate max-w-[200px]">
                       {isUniversalSlot ? (
@@ -472,8 +564,7 @@ export const InterviewManagementPage: React.FC = () => {
                       <span className="truncate">{jobTitleDisplay}</span>
                     </span>
 
-                    {/* Edit & Delete Action Buttons (For Unbooked Slots) */}
-                    {!s.is_booked && (canEditSlot || canCreateSlot) && (
+                    {!s.is_booked && (canEditSlot || canManageSlots) && (
                       <div className="flex items-center gap-2">
                         {canEditSlot && (
                           <button
@@ -487,7 +578,7 @@ export const InterviewManagementPage: React.FC = () => {
                             <FaEdit size={13} />
                           </button>
                         )}
-                        {canCreateSlot && (
+                        {canManageSlots && (
                           <button
                             onClick={() => handleDeleteSlot(s.id)}
                             className="p-1.5 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition"
@@ -521,3 +612,5 @@ export const InterviewManagementPage: React.FC = () => {
     </div>
   );
 };
+
+export default InterviewManagementPage;

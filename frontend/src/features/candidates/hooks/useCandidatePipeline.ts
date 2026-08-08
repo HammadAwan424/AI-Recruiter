@@ -6,6 +6,7 @@ import { useGetCompanyUsersQuery } from "../../users/api";
 import { usePermission } from "../../../shared/hooks/usePermission";
 import { CANDIDATE_PERMISSIONS } from "../permissions";
 import { OFFER_PERMISSIONS } from "../../offers/permissions";
+import { useApproveOfferActionMutation } from "../../offers/api";
 import {
   useFetchNewCVsMutation,
   useScreenApplicationsMutation,
@@ -16,6 +17,8 @@ import {
   useAssignInterviewerMutation,
   useSubmitInterviewFeedbackMutation,
 } from "../../interviews/api";
+import { useApproveOfferActionMutation } from "../../../shared/api/approvalApi";
+import { useDeleteOfferMutation } from "../../offers/api";
 
 export interface PipelineStageConfig {
   key: string;
@@ -28,7 +31,7 @@ export const STAGES: PipelineStageConfig[] = [
   { key: "applied", label: "Applied", color: "#3B82F6", nextStage: "screening" },
   { key: "screening", label: "Screened", color: "#8B5CF6", nextStage: "interview" },
   { key: "interview", label: "Interview", color: "#F59E0B", nextStage: "offer_approval" },
-  { key: "offer_approval", label: "Offer Approval", color: "#EC4899", nextStage: "offer_sent" },
+  { key: "offer_approval", label: "Awaiting Approval", color: "#EC4899", nextStage: "offer_sent" },
   { key: "offer_sent", label: "Offer Sent", color: "#10B981", nextStage: "hired" },
   { key: "hired", label: "Hired", color: "#05DC7F" },
 ];
@@ -75,6 +78,8 @@ export const useCandidatePipeline = () => {
   const [scheduleInterview, { isLoading: isScheduling }] = useScheduleInterviewMutation();
   const [assignInterviewer] = useAssignInterviewerMutation();
   const [submitInterviewFeedback, { isLoading: isSubmittingScorecard }] = useSubmitInterviewFeedbackMutation();
+  const [approveOfferAction] = useApproveOfferActionMutation();
+  const [deleteOffer] = useDeleteOfferMutation();
 
   const { data: interviewerUsersData } = useGetCompanyUsersQuery("interviewer");
   const { data: allUsersData } = useGetCompanyUsersQuery();
@@ -154,9 +159,66 @@ export const useCandidatePipeline = () => {
       return;
     }
 
-    // Intercept dropping onto offer_approval or offer_sent to launch RequestOfferApprovalModal
-    if (targetStageKey === "offer_approval" || targetStageKey === "offer_sent") {
+    // 1. Intercept dropping onto offer_approval (Awaiting Approval column) -> Launch RequestOfferApprovalModal
+    if (targetStageKey === "offer_approval") {
       setOfferModalCandidate(candidate);
+      return;
+    }
+
+    // 2. Intercept dropping onto offer_sent -> Execute Executive Approval & Dispatch Email (Same as Offer Approvals tab action)
+    if (targetStageKey === "offer_sent") {
+      const offerId = candidate.offer?.id || candidate.offer_id;
+      setPipelineAlertMsg(null);
+
+      if (offerId) {
+        try {
+          await approveOfferAction({
+            offerId,
+            payload: { decision: "approved", comments: "Approved via Kanban drag & drop" },
+          }).unwrap();
+          setPipelineAlertMsg("✅ Offer approved & email dispatched to candidate! Stage updated to Offer Sent.");
+        } catch (err: any) {
+          setPipelineAlertMsg(`⚠️ Executive offer approval failed: ${err?.data?.detail || "Error"}`);
+        }
+      } else {
+        try {
+          await updateApplicationStage({
+            jobId: activeJobId,
+            applicationId: appId,
+            currentStatus: "offer_sent",
+          }).unwrap();
+          setPipelineAlertMsg(`Application #${appId} stage successfully updated to 'OFFER SENT'.`);
+        } catch (err: any) {
+          setPipelineAlertMsg(`⚠️ Stage update failed: ${err?.data?.detail || "Error"}`);
+        }
+      }
+      return;
+    }
+
+    // 3. Intercept dragging backwards from offer_approval -> interview: Delete offer + approval & revert application stage
+    if (currentStatus === "offer_approval" && targetStageKey === "interview") {
+      const offerId = candidate.offer?.id || candidate.offer_id;
+      setPipelineAlertMsg(null);
+
+      if (offerId) {
+        try {
+          await deleteOffer(offerId).unwrap();
+          setPipelineAlertMsg("✅ Offer & approval deleted! Candidate reverted to Interview stage.");
+        } catch (err: any) {
+          setPipelineAlertMsg(`⚠️ Failed to delete offer: ${err?.data?.detail || "Error"}`);
+        }
+      } else {
+        try {
+          await updateApplicationStage({
+            jobId: activeJobId,
+            applicationId: appId,
+            currentStatus: "interview",
+          }).unwrap();
+          setPipelineAlertMsg(`Application #${appId} stage updated to 'INTERVIEW'.`);
+        } catch (err: any) {
+          setPipelineAlertMsg(`⚠️ Stage update failed: ${err?.data?.detail || "Error"}`);
+        }
+      }
       return;
     }
 

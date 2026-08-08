@@ -1,7 +1,7 @@
 import React from "react";
 import { PermissionKey } from "../types/role.types";
 import { usePermission } from "../hooks/usePermission";
-import { Box, Typography, Button, Paper } from "@mui/material";
+import { Box, Typography, Button, Paper, Skeleton } from "@mui/material";
 import { FaLock } from "react-icons/fa";
 
 interface RequirePermissionProps {
@@ -18,7 +18,24 @@ export const RequirePermission: React.FC<RequirePermissionProps> = ({
   const { hasPermission, isLoading } = usePermission();
 
   if (isLoading) {
-    return null;
+    return (
+      <Box className="w-full min-h-[420px] p-6 flex flex-col gap-6 bg-black/20 rounded-2xl border border-gray-800/80 animate-pulse">
+        <Box className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-black/40 p-4 rounded-2xl border border-gray-800/80">
+          <Skeleton variant="rectangular" width={220} height={36} sx={{ bgcolor: "rgba(255,255,255,0.05)", borderRadius: "12px" }} />
+          <Skeleton variant="rectangular" width={280} height={36} sx={{ bgcolor: "rgba(255,255,255,0.05)", borderRadius: "12px" }} />
+        </Box>
+
+        <Box className="p-6 rounded-2xl bg-black/40 border border-gray-800/80 flex flex-col gap-4">
+          <Skeleton variant="rectangular" width="30%" height={28} sx={{ bgcolor: "rgba(255,255,255,0.05)", borderRadius: "8px" }} />
+          <Skeleton variant="rectangular" width="100%" height={160} sx={{ bgcolor: "rgba(255,255,255,0.03)", borderRadius: "14px" }} />
+          <Box className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+            <Skeleton variant="rectangular" height={80} sx={{ bgcolor: "rgba(255,255,255,0.04)", borderRadius: "12px" }} />
+            <Skeleton variant="rectangular" height={80} sx={{ bgcolor: "rgba(255,255,255,0.04)", borderRadius: "12px" }} />
+            <Skeleton variant="rectangular" height={80} sx={{ bgcolor: "rgba(255,255,255,0.04)", borderRadius: "12px" }} />
+          </Box>
+        </Box>
+      </Box>
+    );
   }
 
   if (hasPermission(permission)) {

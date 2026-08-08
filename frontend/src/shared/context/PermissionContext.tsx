@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
+import React, { createContext, useContext, useCallback, ReactNode } from "react";
 import { useAuth } from "./AuthContext";
 import { useGetMeQuery } from "../../features/users/api";
 import { PermissionKey } from "../types/role.types";
@@ -26,20 +26,12 @@ export const PermissionProvider: React.FC<PermissionProviderProps> = ({ children
     skip: !isAuthenticated,
   });
 
-  const [permissions, setPermissions] = useState<PermissionKey[]>([]);
+  // Derive permissions synchronously from meData to eliminate initial render state lag
+  const permissions: PermissionKey[] = (isAuthenticated && meData?.permissions && Array.isArray(meData.permissions))
+    ? meData.permissions
+    : [];
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      setPermissions([]);
-      return;
-    }
-
-    if (meData && Array.isArray(meData.permissions)) {
-      setPermissions(meData.permissions);
-    } else {
-      setPermissions([]);
-    }
-  }, [isAuthenticated, meData]);
+  const isLoading = isAuthenticated ? (isMeLoading || meData === undefined) : false;
 
   const hasDomain = useCallback(
     (key: PermissionKey): boolean => {
@@ -73,7 +65,7 @@ export const PermissionProvider: React.FC<PermissionProviderProps> = ({ children
 
   const value: PermissionContextType = {
     permissions,
-    isLoading: isMeLoading,
+    isLoading,
     hasPermission,
     hasAnyPermission,
     hasDomain,

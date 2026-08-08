@@ -12,6 +12,7 @@ import {
 import { AuthContainer, AuthCardSurface } from "../../styles";
 import { useAuthMutation } from "../../hooks/useAuthMutation";
 import { CircuitBackground } from "../../../../shared/components/CircuitBackground";
+import { PasswordInput } from "../../../../shared/components/PasswordInput";
 import logo from "../../../../images/logo.png";
 
 export const SignupPage: React.FC = () => {
@@ -165,9 +166,8 @@ export const SignupPage: React.FC = () => {
                 autoComplete="email"
               />
 
-              <TextField
+              <PasswordInput
                 label="Password"
-                type="password"
                 required
                 fullWidth
                 value={password}
@@ -175,9 +175,8 @@ export const SignupPage: React.FC = () => {
                 autoComplete="new-password"
               />
 
-              <TextField
+              <PasswordInput
                 label="Confirm Password"
-                type="password"
                 required
                 fullWidth
                 value={confirmPassword}

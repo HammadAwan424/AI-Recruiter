@@ -1,6 +1,59 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from datetime import date, datetime
-from typing import Optional
+from typing import Optional, Literal, Union
+
+
+# ──── Executive Decision Discriminated Union ────
+class ExecutiveOfferDecisionBase(BaseModel):
+    decision: str
+
+
+class ApprovedExecutiveOfferDecision(ExecutiveOfferDecisionBase):
+    decision: Literal["approved"] = "approved"
+    comments: Optional[str] = None
+
+
+class RejectedExecutiveOfferDecision(ExecutiveOfferDecisionBase):
+    decision: Literal["rejected"] = "rejected"
+    comments: Optional[str] = None
+
+
+ExecutiveOfferDecision = Union[ApprovedExecutiveOfferDecision, RejectedExecutiveOfferDecision]
+
+
+# ──── Candidate Public Decision Discriminated Union ────
+class CandidateOfferDecisionBase(BaseModel):
+    decision: str
+
+
+class SignedCandidateOfferDecision(CandidateOfferDecisionBase):
+    decision: Literal["signed"] = "signed"
+    signer_name: str
+    signature_type: str = "TYPED"
+    signature_data: str
+
+
+class DeclinedCandidateOfferDecision(CandidateOfferDecisionBase):
+    decision: Literal["declined"] = "declined"
+    decline_reason: str
+
+
+CandidateOfferDecision = Union[SignedCandidateOfferDecision, DeclinedCandidateOfferDecision]
+
+
+class OfferApprovalAction(BaseModel):
+    action: Optional[str] = "APPROVE"
+    comments: Optional[str] = None
+
+
+class OfferSignRequest(BaseModel):
+    signer_name: str
+    signature_type: str  # DRAWN | TYPED
+    signature_data: str
+
+
+class OfferDeclineRequest(BaseModel):
+    decline_reason: str
 
 
 class OfferTemplateCreate(BaseModel):
@@ -47,6 +100,11 @@ class OfferUpdate(BaseModel):
 class OfferResponse(BaseModel):
     id: int
     application_id: int
+    candidate_id: Optional[int] = None
+    job_id: Optional[int] = None
+    job_title: Optional[str] = None
+    department: Optional[str] = None
+    candidate_name: Optional[str] = None
     template_id: Optional[int] = None
     base_salary: float
     bonus_equity: Optional[str] = None
@@ -74,6 +132,11 @@ class OfferResponse(BaseModel):
 
 class OfferApprovalAction(BaseModel):
     action: Optional[str] = "APPROVE"
+    comments: Optional[str] = None
+
+
+class OfferDecisionPayload(BaseModel):
+    status: str  # "approved" | "rejected"
     comments: Optional[str] = None
 
 

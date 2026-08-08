@@ -1,3 +1,13 @@
+import { ApplicationStatus } from "../types/candidate.types";
+
+export type PipelineStageKey =
+  | "applied"
+  | "screening"
+  | "interview"
+  | "offer_approval"
+  | "offer_sent"
+  | "hired";
+
 export type StandardStageVariant = "normal" | "rejected";
 export type InterviewStageVariant = "pending_assignment" | "interview_assigned" | "interview_completed";
 export type HiredStageVariant = "normal";
@@ -10,10 +20,37 @@ export type CandidateCardVariant =
   | { stage: "offer_sent"; variant: StandardStageVariant }
   | { stage: "hired"; variant: HiredStageVariant };
 
+export type PermissionChecker = (permissionKey: string) => boolean;
+
+export interface CandidateEvaluationInput {
+  current_status?: ApplicationStatus | string;
+  status?: ApplicationStatus | string;
+  stage?: PipelineStageKey | string;
+  disposition?: string;
+  rejected?: boolean;
+  interview_status?: string;
+  interviews?: Array<{ status: string }>;
+  interviewer_assignments?: any[];
+  interviewer_1?: any;
+}
+
+/**
+ * Helper to create a PermissionChecker from a raw string array at the point of usage.
+ */
+export function createPermissionChecker(permissions: string[]): PermissionChecker {
+  return (permKey: string): boolean => {
+    if (permissions.includes("*") || permissions.includes(permKey)) return true;
+    return permissions.some((p) => permKey.startsWith(p) || p.startsWith(permKey));
+  };
+}
+
 /**
  * Resolves the card variant for any candidate given their stage key.
  */
-export function resolveCardVariant(candidate: any, stageKey: string): CandidateCardVariant {
+export function resolveCardVariant(
+  candidate: CandidateEvaluationInput,
+  stageKey: PipelineStageKey
+): CandidateCardVariant {
   const isRejected = candidate.disposition === "rejected" || candidate.rejected || candidate.status === "rejected";
 
   if (stageKey === "hired") {
@@ -25,7 +62,7 @@ export function resolveCardVariant(candidate: any, stageKey: string): CandidateC
     const isCompleted =
       candidate.interview_status === "COMPLETED" ||
       candidate.current_status === "interview_completed" ||
-      (interviewsList.length > 0 && interviewsList.every((i: any) => i.status === "COMPLETED"));
+      (interviewsList.length > 0 && interviewsList.every((i) => i.status === "COMPLETED"));
 
     const hasInterviewers = Boolean(
       (candidate.interviewer_assignments && candidate.interviewer_assignments.length > 0) ||
@@ -43,72 +80,92 @@ export function resolveCardVariant(candidate: any, stageKey: string): CandidateC
   }
 
   const variant: StandardStageVariant = isRejected ? "rejected" : "normal";
-  return { stage: stageKey as any, variant };
-}
 
-/**
- * Returns a stage-specific draggability evaluator function.
- */
-export function getDraggableEvaluator(stageKey: string): (variant?: string) => boolean {
   switch (stageKey) {
-    case "hired":
-    case "offer_sent":
-      return () => false;
-
-    case "interview":
-      return (variant?: string) => variant === "interview_completed" || variant === "completed";
-
     case "applied":
+      return { stage: "applied", variant };
     case "screening":
+      return { stage: "screening", variant };
     case "offer_approval":
+      return { stage: "offer_approval", variant };
+    case "offer_sent":
+      return { stage: "offer_sent", variant };
     default:
-      return (variant?: string) => variant !== "rejected";
+      return { stage: "applied", variant };
   }
 }
 
 /**
- * Evaluates whether a candidate is a draggable (completed) interview candidate ready for offer creation.
- * Directly maps to applications in 'interview' stage.
+ * Single evaluation entrypoint handling stage state & RBAC permissions for draggability across all 6 stages.
+ * Mandatory parameters: candidate (CandidateEvaluationInput), stageKey (PipelineStageKey), hasPermission (PermissionChecker).
  */
-export function isDraggableInterviewCandidate(candidate: any): boolean {
-  if (!candidate) return false;
+export function getDraggableEvaluator(
+  candidate: CandidateEvaluationInput,
+  stageKey: PipelineStageKey,
+  hasPermission: PermissionChecker
+): boolean {
   const isRejected = candidate.disposition === "rejected" || candidate.rejected || candidate.status === "rejected";
   if (isRejected) return false;
 
-  const currentStatus = candidate.current_status || candidate.status;
-  if (currentStatus !== "interview") return false;
+  switch (stageKey) {
+    case "hired":
+    case "offer_sent":
+      return false;
 
-  const resolved = resolveCardVariant(candidate, "interview");
-  const evaluator = getDraggableEvaluator("interview");
+    case "interview": {
+      // Must have offer:generate permission to initiate offer generation out of interview stage
+      if (!hasPermission("offer:generate")) return false;
+      const cardVariant = resolveCardVariant(candidate, "interview");
+      return cardVariant.variant === "interview_completed";
+    }
 
-  return evaluator(resolved.variant);
-}
+    case "offer_approval": {
+      // Must have offer:approve permission to drag card from Awaiting Approval -> Offer Sent
+      if (!hasPermission("offer:approve")) return false;
+      return true;
+    }
 
-/**
- * Centralized evaluator checking whether an offer item is pending executive approval.
- * Directly maps to applications in 'offer_approval' stage.
- */
-export function isPendingApprovalOffer(offer: any): boolean {
-  if (!offer) return false;
-
-  // Exclude signed, declined, or dispatched (secure_token) offers
-  if (offer.signed_at || offer.decline_reason || offer.secure_token) return false;
-
-  // Direct mapping to application stage if application relationship is present
-  if (offer.application?.current_status) {
-    return offer.application.current_status === "offer_approval";
+    case "applied":
+    case "screening":
+    default: {
+      // Must have candidate:disposition permission to move candidates out of applied or screening stages
+      if (!hasPermission("candidate:disposition")) return false;
+      return true;
+    }
   }
-
-  // Fallback status check
-  return offer.status === "PENDING_APPROVAL";
 }
 
 /**
- * Centralized evaluator checking whether an offer has been approved and dispatched to candidate.
- * Directly maps to applications in 'offer_sent' stage.
+ * Single evaluation entrypoint handling droppability into target stage given source stage & RBAC permissions.
  */
-export function isDispatchedOffer(offer: any): boolean {
-  if (!offer) return false;
-  if (offer.application?.current_status === "offer_sent") return true;
-  return Boolean(offer.secure_token || offer.status === "SENT" || offer.status === "APPROVED");
+export function getDroppableEvaluator(
+  sourceStageKey: PipelineStageKey,
+  targetStageKey: PipelineStageKey,
+  stages: Array<{ key: string }>,
+  hasPermission: PermissionChecker
+): boolean {
+  if (sourceStageKey === targetStageKey) return false;
+
+  const sourceIdx = stages.findIndex((s) => s.key === sourceStageKey);
+  const targetIdx = stages.findIndex((s) => s.key === targetStageKey);
+  if (sourceIdx === -1 || targetIdx === -1) return false;
+
+  // Enforce sequential pipeline flow (adjacent stages)
+  const isAdjacent = Math.abs(targetIdx - sourceIdx) === 1;
+  if (!isAdjacent) return false;
+
+  // Enforce target stage RBAC permissions
+  switch (targetStageKey) {
+    case "offer_approval":
+      return hasPermission("offer:generate");
+    case "offer_sent":
+      return hasPermission("offer:approve");
+    case "hired":
+      return hasPermission("offer:approve");
+    case "screening":
+    case "interview":
+    case "applied":
+    default:
+      return hasPermission("candidate:disposition");
+  }
 }

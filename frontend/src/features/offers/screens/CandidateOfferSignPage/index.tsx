@@ -107,10 +107,11 @@ export const CandidateOfferSignPage: React.FC = () => {
 
     setSubmitting(true);
     try {
-      const res = await fetch(`${getApiBaseUrl()}/offers/public/${token}/signatures`, {
+      const res = await fetch(`${getApiBaseUrl()}/offers/public/${token}/decisions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          decision: "signed",
           signature_type: sigType,
           signature_data: signatureData,
           signer_name: typedName || (offer ? offer.candidate_name : "Candidate"),
@@ -135,10 +136,13 @@ export const CandidateOfferSignPage: React.FC = () => {
     if (!declineReason.trim()) return alert("Please provide a reason.");
 
     try {
-      const res = await fetch(`${getApiBaseUrl()}/offers/public/${token}/declinations`, {
+      const res = await fetch(`${getApiBaseUrl()}/offers/public/${token}/decisions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ decline_reason: declineReason }),
+        body: JSON.stringify({
+          decision: "declined",
+          decline_reason: declineReason,
+        }),
       });
 
       if (res.ok) {

@@ -2,7 +2,7 @@ from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
 from datetime import datetime
 
-from app.schemas.user import UserResponse
+from app.schemas.user import UserResponse, CompanyMinimalResponse
 from app.schemas.job import JobResponse
 from app.schemas.offer import OfferResponse
 from app.schemas.interview import (
@@ -13,8 +13,9 @@ from app.schemas.interview import (
 from app.schemas.application import ApplicationResponse, CommentResponse
 
 
-# ──── User Detail (combines UserResponse + JobResponse) ────
+# ──── User Detail (combines UserResponse + CompanyMinimalResponse + JobResponse) ────
 class UserDetail(UserResponse):
+    company: Optional[CompanyMinimalResponse] = None
     permissions: List[str] = []
     assigned_jobs: List[JobResponse] = []
 

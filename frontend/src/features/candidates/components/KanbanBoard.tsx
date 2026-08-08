@@ -3,7 +3,8 @@ import { CandidateApplication, ApplicationListItem } from "../../../shared/types
 import { PipelineStageConfig } from "../hooks/useCandidatePipeline";
 import { ScreenCandidateCard } from "./cards/ScreenCandidateCard";
 import { InterviewCandidateCard } from "./cards/InterviewCandidateCard";
-import { resolveCardVariant, getDraggableEvaluator } from "./cards/variants";
+import { resolveCardVariant, getDraggableEvaluator, getDroppableEvaluator, PipelineStageKey } from "./cards/variants";
+import { usePermission } from "../../../shared/hooks/usePermission";
 
 interface KanbanBoardProps {
   candidates: (CandidateApplication | ApplicationListItem | any)[];
@@ -24,16 +25,19 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   onSelectCandidate,
   onDropCandidate,
 }) => {
+  const { hasPermission } = usePermission();
   const [draggedCandidateInfo, setDraggedCandidateInfo] = useState<{ id: number; sourceStageKey: string } | null>(null);
   const [dragOverStage, setDragOverStage] = useState<string | null>(null);
 
   const activeStages = stages.filter((s) => visibleStageKeys.includes(s.key));
 
-  const isAdjacentStage = (sourceKey: string, targetKey: string) => {
-    const sourceIdx = stages.findIndex((s) => s.key === sourceKey);
-    const targetIdx = stages.findIndex((s) => s.key === targetKey);
-    if (sourceIdx === -1 || targetIdx === -1) return false;
-    return Math.abs(targetIdx - sourceIdx) === 1;
+  const isDroppableTarget = (sourceKey: string, targetKey: string) => {
+    return getDroppableEvaluator(
+      sourceKey as PipelineStageKey,
+      targetKey as PipelineStageKey,
+      stages,
+      hasPermission
+    );
   };
 
   const handleDragStart = (
@@ -62,9 +66,9 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   const handleDragOver = (e: React.DragEvent, targetStageKey: string) => {
     if (!draggedCandidateInfo) return;
 
-    const isAdjacent = isAdjacentStage(draggedCandidateInfo.sourceStageKey, targetStageKey);
+    const canDrop = isDroppableTarget(draggedCandidateInfo.sourceStageKey, targetStageKey);
 
-    if (isAdjacent) {
+    if (canDrop) {
       e.preventDefault();
       e.dataTransfer.dropEffect = "move";
       if (dragOverStage !== targetStageKey) {
@@ -105,7 +109,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
     if (!candidateIdStr || !sourceStageKey) return;
     const candidateId = parseInt(candidateIdStr, 10);
 
-    if (candidateId && isAdjacentStage(sourceStageKey, targetStageKey)) {
+    if (candidateId && isDroppableTarget(sourceStageKey, targetStageKey)) {
       onDropCandidate(candidateId, targetStageKey);
     }
   };
@@ -122,7 +126,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   };
 
   const renderCardVariant = (candidate: any, stage: PipelineStageConfig, isDraggable: boolean) => {
-    const resolved = resolveCardVariant(candidate, stage.key);
+    const resolved = resolveCardVariant(candidate, stage.key as PipelineStageKey);
 
     if (resolved.stage === "interview") {
       return (
@@ -159,7 +163,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
         const isDraggingActive = Boolean(draggedCandidateInfo);
         const isSourceColumn = draggedCandidateInfo?.sourceStageKey === stage.key;
-        const isAdjacentTarget = draggedCandidateInfo ? isAdjacentStage(draggedCandidateInfo.sourceStageKey, stage.key) : false;
+        const isAdjacentTarget = draggedCandidateInfo ? isDroppableTarget(draggedCandidateInfo.sourceStageKey, stage.key) : false;
         const isColumnActiveTarget = dragOverStage === stage.key && isAdjacentTarget;
 
         let columnStyles = "border-gray-800/80 bg-black/40";
@@ -175,8 +179,6 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
             columnStyles = "border-gray-800/40 bg-black/20 opacity-40";
           }
         }
-
-        const evaluateDraggable = getDraggableEvaluator(stage.key);
 
         return (
           <div
@@ -205,8 +207,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                 </div>
               ) : (
                 stageCandidates.map((candidate: any) => {
-                  const resolved = resolveCardVariant(candidate, stage.key);
-                  const isDraggable = evaluateDraggable(resolved.variant);
+                  const isDraggable = getDraggableEvaluator(candidate, stage.key as PipelineStageKey, hasPermission);
                   const candId = candidate.id || candidate.candidate_id;
 
                   return (

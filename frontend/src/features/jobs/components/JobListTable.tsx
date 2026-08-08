@@ -17,11 +17,12 @@ import {
   DialogActions,
   Button,
 } from "@mui/material";
-import { Eye, Pencil, Trash2, X } from "lucide-react";
-import { JobPost, JobDetail } from "../../../../shared/types/job.types";
-import { useLazyGetJobDetailQuery } from "../../api";
-import { JobFormModal } from "../JobFormModal";
-import { usePermission } from "../../../../shared/hooks/usePermission";
+import { Eye, Pencil, Trash2, X, CheckCircle2, Lock } from "lucide-react";
+import { JobPost, JobDetail } from "../../../shared/types/job.types";
+import { useLazyGetJobDetailQuery, useUpdateJobMutation } from "../api";
+import { JobFormModal } from "./JobFormModal";
+import { usePermission } from "../../../shared/hooks/usePermission";
+import { JOB_PERMISSIONS } from "../permissions";
 
 interface JobListTableProps {
   jobs: JobPost[];
@@ -41,8 +42,10 @@ export const JobListTable: React.FC<JobListTableProps> = ({
   const [showEditModal, setShowEditModal] = useState(false);
 
   const [triggerGetJobDetail, { isLoading: isFetchingDetail }] = useLazyGetJobDetailQuery();
+  const [updateJob] = useUpdateJobMutation();
 
   const { hasPermission } = usePermission();
+  const canApproveJob = hasPermission(JOB_PERMISSIONS.APPROVE);
   const canDeleteJob = true;
 
   const handleEditClick = async (jobId: number) => {
@@ -52,6 +55,14 @@ export const JobListTable: React.FC<JobListTableProps> = ({
       setShowEditModal(true);
     } catch (err) {
       console.error("Failed to fetch job detail for editing:", err);
+    }
+  };
+
+  const handleQuickApprove = async (jobId: number) => {
+    try {
+      await updateJob({ id: jobId, payload: { status: "published" } }).unwrap();
+    } catch (err: any) {
+      alert(err?.data?.detail || "Failed to approve job.");
     }
   };
 
@@ -70,6 +81,42 @@ export const JobListTable: React.FC<JobListTableProps> = ({
     });
   };
 
+  const renderStatusChip = (status?: string) => {
+    const st = status || "published";
+    if (st === "pending_approval") {
+      return (
+        <Chip
+          icon={<Lock size={12} />}
+          label="Pending Approval"
+          size="small"
+          color="warning"
+          variant="outlined"
+          sx={{ fontWeight: 700 }}
+        />
+      );
+    }
+    if (st === "published" || st === "open") {
+      return (
+        <Chip
+          label="Published"
+          size="small"
+          color="success"
+          variant="filled"
+          sx={{ fontWeight: 700 }}
+        />
+      );
+    }
+    return (
+      <Chip
+        label={st}
+        size="small"
+        color="default"
+        variant="outlined"
+        sx={{ fontWeight: 600 }}
+      />
+    );
+  };
+
   return (
     <Stack spacing={2} className="w-full">
       <TableContainer
@@ -80,6 +127,9 @@ export const JobListTable: React.FC<JobListTableProps> = ({
             <TableRow className="!bg-black/40">
               <TableCell className="!text-gray-400 !font-semibold !text-xs !uppercase !tracking-wider">
                 Title & Department
+              </TableCell>
+              <TableCell className="!text-gray-400 !font-semibold !text-xs !uppercase !tracking-wider">
+                Status
               </TableCell>
               <TableCell className="!text-gray-400 !font-semibold !text-xs !uppercase !tracking-wider">
                 Employment Type
@@ -98,7 +148,7 @@ export const JobListTable: React.FC<JobListTableProps> = ({
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={4} align="center" sx={{ py: 6 }}>
+                <TableCell colSpan={5} align="center" sx={{ py: 6 }}>
                   <CircularProgress size={32} />
                   <Typography variant="body2" sx={{ mt: 1, color: "text.secondary" }}>
                     Loading job requisitions...
@@ -107,7 +157,7 @@ export const JobListTable: React.FC<JobListTableProps> = ({
               </TableRow>
             ) : jobs.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} align="center" sx={{ py: 6 }}>
+                <TableCell colSpan={5} align="center" sx={{ py: 6 }}>
                   <Typography variant="body2" sx={{ color: "text.secondary" }}>
                     No job requisitions found. Create one to get started.
                   </Typography>
@@ -130,6 +180,9 @@ export const JobListTable: React.FC<JobListTableProps> = ({
                       </Typography>
                     </Stack>
                   </TableCell>
+
+                  <TableCell>{renderStatusChip(job.status)}</TableCell>
+
                   <TableCell>
                     <Chip
                       label={job.employment_type}
@@ -141,7 +194,21 @@ export const JobListTable: React.FC<JobListTableProps> = ({
                   </TableCell>
                   <TableCell sx={{ color: "text.secondary" }}>{formatDate(job.created_at)}</TableCell>
                   <TableCell align="right">
-                    <Stack direction="row" spacing={1} sx={{ justifyContent: "flex-end" }}>
+                    <Stack direction="row" spacing={1} sx={{ justifyContent: "flex-end", alignItems: "center" }}>
+                      {/* One-Click Executive Approval Action */}
+                      {canApproveJob && job.status === "pending_approval" && (
+                        <Button
+                          size="small"
+                          variant="contained"
+                          color="success"
+                          startIcon={<CheckCircle2 size={14} />}
+                          onClick={() => handleQuickApprove(job.id)}
+                          sx={{ fontSize: "0.7rem", fontWeight: 700, py: 0.5, px: 1.5 }}
+                        >
+                          Approve & Publish
+                        </Button>
+                      )}
+
                       <IconButton
                         size="small"
                         color="primary"
@@ -266,3 +333,5 @@ export const JobListTable: React.FC<JobListTableProps> = ({
     </Stack>
   );
 };
+
+export default JobListTable;

@@ -1,6 +1,21 @@
 import { baseApi } from "../../shared/api/baseApi";
 import { JobPost, JobDetail, JobCreatePayload, JobsListResponse } from "../../shared/types/job.types";
 
+export interface GenerateJDPayload {
+  title: string;
+  department?: string;
+  employment_type?: string;
+  experience?: string;
+  skills?: string;
+  salary_range?: string;
+  additional_info?: string;
+}
+
+export interface GenerateJDResponse {
+  full_description: string;
+  keywords: string;
+}
+
 export const jobsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getJobs: builder.query<JobsListResponse, void>({
@@ -10,6 +25,13 @@ export const jobsApi = baseApi.injectEndpoints({
     getJobDetail: builder.query<JobDetail, number>({
       query: (jobId) => `/jobs/${jobId}`,
       providesTags: (_result, _error, jobId) => [{ type: "Jobs", id: jobId }],
+    }),
+    generateJobDescription: builder.mutation<GenerateJDResponse, GenerateJDPayload>({
+      query: (payload) => ({
+        url: "/job-descriptions",
+        method: "POST",
+        body: payload,
+      }),
     }),
     createJob: builder.mutation<JobPost, JobCreatePayload>({
       query: (payload) => ({
@@ -52,6 +74,7 @@ export const {
   useGetJobsQuery,
   useGetJobDetailQuery,
   useLazyGetJobDetailQuery,
+  useGenerateJobDescriptionMutation,
   useCreateJobMutation,
   useUpdateJobMutation,
   useAssignUserToJobMutation,

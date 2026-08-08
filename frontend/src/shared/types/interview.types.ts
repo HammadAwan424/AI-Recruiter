@@ -1,5 +1,16 @@
 import { JobPost } from "./job.types";
 
+export interface InterviewerAssignmentItem {
+  id: number;
+  interview_id: number;
+  interviewer_id: number;
+  interviewer?: {
+    id: number;
+    full_name: string;
+    email: string;
+  };
+}
+
 export interface InterviewItem {
   id: number;
   application_id: number;
@@ -16,6 +27,8 @@ export interface InterviewItem {
   meeting_link?: string;
   self_schedule_token?: string;
   token_expires_at?: string;
+  created_by?: number;
+  interviewer_assignments?: InterviewerAssignmentItem[];
 }
 
 export interface InterviewSlot {

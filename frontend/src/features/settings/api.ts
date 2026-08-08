@@ -1,24 +1,32 @@
 import { baseApi } from "../../shared/api/baseApi";
 
-export interface UserProfile {
+export interface MyProfile {
+  id: number;
   full_name: string;
   email: string;
-  company_name: string;
+  role: string;
+  department?: string;
+  company_name?: string;
+  company?: {
+    id: number;
+    name: string;
+  };
 }
 
-export interface UserProfileUpdatePayload {
-  full_name: string;
-  company_name: string;
+export interface MyProfileUpdatePayload {
+  full_name?: string;
+  company_name?: string;
+  old_password?: string | null;
   password?: string | null;
 }
 
 export const settingsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    getUserProfile: builder.query<UserProfile, void>({
+    getMyProfile: builder.query<MyProfile, void>({
       query: () => "/auth/me",
       providesTags: ["Users"],
     }),
-    updateUserProfile: builder.mutation<UserProfile, UserProfileUpdatePayload>({
+    updateMyProfile: builder.mutation<{ message: string; full_name: string; email: string; company_name: string }, MyProfileUpdatePayload>({
       query: (payload) => ({
         url: "/auth/me",
         method: "PUT",
@@ -29,4 +37,4 @@ export const settingsApi = baseApi.injectEndpoints({
   }),
 });
 
-export const { useGetUserProfileQuery, useUpdateUserProfileMutation } = settingsApi;
+export const { useGetMyProfileQuery, useUpdateMyProfileMutation } = settingsApi;

@@ -13,6 +13,7 @@ import { AuthContainer, AuthCardSurface } from "../../styles";
 import { useAuthMutation } from "../../hooks/useAuthMutation";
 import { useAuth } from "../../../../shared/context/AuthContext";
 import { CircuitBackground } from "../../../../shared/components/CircuitBackground";
+import { PasswordInput } from "../../../../shared/components/PasswordInput";
 import logo from "../../../../images/logo.png";
 
 export const LoginPage: React.FC = () => {
@@ -97,9 +98,8 @@ export const LoginPage: React.FC = () => {
                 autoComplete="email"
               />
 
-              <TextField
+              <PasswordInput
                 label="Password"
-                type="password"
                 required
                 fullWidth
                 value={password}

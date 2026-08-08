@@ -4,7 +4,18 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.config import CORS_ORIGINS
-from app.routes import auth, admin, user as user_routes, job as job_routes, application as application_routes, offer as offer_routes, interview as interview_routes
+from app.routes import (
+    auth,
+    admin,
+    user as user_routes,
+    job as job_routes,
+    job_description,
+    application as application_routes,
+    offer as offer_routes,
+    template as template_routes,
+    approval as approval_routes,
+    interview as interview_routes
+)
 
 app = FastAPI()
 
@@ -23,7 +34,10 @@ app.include_router(auth.router)
 app.include_router(admin.router)
 app.include_router(user_routes.router)
 app.include_router(job_routes.router)
+app.include_router(job_description.router)
 app.include_router(application_routes.router)
+app.include_router(template_routes.router)
+app.include_router(approval_routes.router)
 app.include_router(offer_routes.router)
 app.include_router(interview_routes.router)
 

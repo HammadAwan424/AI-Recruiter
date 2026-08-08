@@ -49,6 +49,13 @@ class RolePermissionUpdate(BaseModel):
     job_scope: Optional[str] = None  # "own" | "all"
 
 
+class CompanyMinimalResponse(BaseModel):
+    id: int
+    name: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 # User Response Schema
 class UserResponse(BaseModel):
     id: int
