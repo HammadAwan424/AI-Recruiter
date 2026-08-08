@@ -1,506 +1,504 @@
 import React, { useState } from "react";
 import {
-  FaFileContract,
-  FaCheckCircle,
   FaClock,
-  FaTimesCircle,
-  FaPaperPlane,
   FaPlus,
-  FaCopy,
-  FaEye,
-  FaLock,
-  FaShieldAlt,
   FaCheck,
-  FaTimes,
+  FaCog,
+  FaUserCheck,
+  FaExclamationTriangle,
+  FaPaperPlane,
+  FaEye,
+  FaFileAlt,
+  FaEdit,
+  FaArrowLeft,
 } from "react-icons/fa";
 import { useOffers } from "../../hooks/useOffers";
 import { useOfferMutations } from "../../hooks/useOfferMutations";
 import { useGetJobsQuery } from "../../../jobs/api";
-import { OfferItem, OfferCreatePayload } from "../../../../shared/types/offer.types";
+import { useGetApplicationsQuery } from "../../../candidates/api";
+import { OfferItem, OfferTemplate } from "../../../../shared/types/offer.types";
 import { usePermission } from "../../../../shared/hooks/usePermission";
 import { OFFER_PERMISSIONS } from "../../permissions";
+import { isDraggableInterviewCandidate } from "../../../../shared/utils/candidateEvaluation";
+import { InterviewCandidateCard } from "../../../candidates/components/cards/InterviewCandidateCard";
+import { RequestOfferApprovalModal } from "../../../../shared/components/RequestOfferApprovalModal";
+import { CandidateProfile } from "../../../../shared/components/CandidateProfile";
+import { OfferTemplateEditor } from "../../components/OfferTemplateEditor";
+import { useUpdateOfferTemplateMutation } from "../../api";
 
 export const OfferManagementPage: React.FC = () => {
   const { offers, templates, isLoading } = useOffers();
   const { data: jobsData } = useGetJobsQuery();
   const jobs = jobsData?.jobs || [];
 
+  // Selected job filter for candidate queries
+  const [selectedJobId, setSelectedJobId] = useState<number>(jobs[0]?.id || 1);
+  const { data: applicationsData, isLoading: isAppsLoading } = useGetApplicationsQuery(selectedJobId, {
+    skip: !selectedJobId,
+  });
+
+  const applications = Array.isArray(applicationsData) ? applicationsData : [];
+
   const { hasPermission } = usePermission();
   const canGenerateOffer = hasPermission(OFFER_PERMISSIONS.GENERATE);
   const canApproveOffer = hasPermission(OFFER_PERMISSIONS.APPROVE);
 
-  const { createOffer, submitOfferApproval, approveOfferAction, sendOffer } = useOfferMutations();
+  const { createOfferTemplate, updateOfferTemplate, approveOfferAction } = useOfferMutations();
 
-  const [activeFilter, setActiveFilter] = useState("ALL");
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [selectedOffer, setSelectedOffer] = useState<OfferItem | null>(null);
-  const [copiedToken, setCopiedToken] = useState<string | null>(null);
+  // Navigation Tabs: 2 Main Tabs ("CREATION" | "APPROVAL")
+  const [activeTab, setActiveTab] = useState<"CREATION" | "APPROVAL">("CREATION");
 
-  const [formData, setFormData] = useState<OfferCreatePayload>({
-    candidate_id: 0,
-    job_id: 0,
-    job_title: "",
-    department: "",
-    base_salary: 0,
-    bonus_equity: "",
-    start_date: "",
-    expiry_date: "",
-    offer_letter_text: "",
-  });
+  // Template Manager Toggle inside Offer Creation section
+  const [showTemplatesView, setShowTemplatesView] = useState(false);
+  const [selectedDeptFilter, setSelectedDeptFilter] = useState<string>("ALL");
+
+  // Template Full View Editor State: null | "NEW" | OfferTemplate
+  const [editingTemplate, setEditingTemplate] = useState<OfferTemplate | "NEW" | null>(null);
+
+  // ──── NESTED NAVIGATION STATES ────
+  // 1. Offer Creation Candidate Selection
+  const [selectedCandidateForCreation, setSelectedCandidateForCreation] = useState<any | null>(null);
+  const [showRequestApprovalModal, setShowRequestApprovalModal] = useState(false);
+
+  // 2. Offer Approval Item Selection
+  const [selectedOfferForApproval, setSelectedOfferForApproval] = useState<OfferItem | null>(null);
+  const [showApproveConfirmModal, setShowApproveConfirmModal] = useState(false);
 
   const [approvalComments, setApprovalComments] = useState("");
 
-  const handleTemplateChange = (templateId: string) => {
-    const tmpl = templates.find((t) => String(t.id) === String(templateId));
-    let content = tmpl ? tmpl.content : "";
+  // Filtered candidate cards based on shared draggability evaluation logic
+  const interviewedCandidates = applications.filter((app) => isDraggableInterviewCandidate(app));
+  const pendingApprovalOffers = offers.filter((o) => o.status === "PENDING_APPROVAL");
 
-    if (content) {
-      content = content
-        .replace(/{{job_title}}/g, formData.job_title || "[Job Title]")
-        .replace(/{{base_salary}}/g, formData.base_salary ? `$${Number(formData.base_salary).toLocaleString()}` : "[Base Salary]")
-        .replace(/{{start_date}}/g, formData.start_date || "[Start Date]")
-        .replace(/{{department}}/g, formData.department || "[Department]");
-    } else if (!formData.offer_letter_text) {
-      content = `Dear Candidate,\n\nWe are thrilled to offer you the position of ${formData.job_title || "[Job Title]"} at AI Recruiter.\n\nYour annual starting salary will be $${formData.base_salary ? Number(formData.base_salary).toLocaleString() : "[Salary]"} per year, starting on ${formData.start_date || "[Date]"}.\n\nPlease review and sign this offer letter before the expiration date.\n\nSincerely,\nAI Recruiter Team`;
-    }
-
-    setFormData((prev) => ({
-      ...prev,
-      offer_letter_text: content,
-    }));
+  const handleTabSelect = (tab: "CREATION" | "APPROVAL") => {
+    setActiveTab(tab);
+    setSelectedCandidateForCreation(null);
+    setSelectedOfferForApproval(null);
+    setShowTemplatesView(false);
+    setEditingTemplate(null);
   };
 
-  const handleCreateOffer = async (submitDirectly = false) => {
-    if (!formData.job_id || !formData.base_salary || !formData.start_date) {
-      alert("Please fill in required job, salary, and start date fields.");
-      return;
-    }
-
-    try {
-      await createOffer({
-        ...formData,
-        candidate_id: formData.candidate_id || 1,
-        submit_for_approval: submitDirectly,
-      });
-
-      alert(submitDirectly ? "Offer created and submitted for approval!" : "Offer draft saved successfully!");
-      setShowCreateModal(false);
-    } catch (err: any) {
-      alert(`Error: ${err?.data?.detail || "Failed to create offer"}`);
-    }
+  const handleOpenCreationDetail = (candidateApp: any) => {
+    setSelectedCandidateForCreation(candidateApp);
   };
 
-  const handleSubmitApproval = async (offerId: number) => {
-    try {
-      await submitOfferApproval(offerId);
-      alert("Offer submitted for approval!");
-    } catch (err: any) {
-      alert(err?.data?.detail || "Error submitting approval");
+  const handleSaveTemplateEditor = async (data: { title: string; department: string; content: string }) => {
+    if (editingTemplate && typeof editingTemplate === "object") {
+      await updateOfferTemplate(editingTemplate.id, data);
+      alert("Offer Template Updated Successfully!");
+    } else {
+      await createOfferTemplate(data);
+      alert("Offer Template Created Successfully!");
     }
+    setEditingTemplate(null);
   };
 
-  const handleApprovalAction = async (offerId: number, action: "APPROVE" | "REJECT") => {
+  const handleApproveActionSubmit = async (action: "APPROVE" | "REJECT") => {
+    if (!selectedOfferForApproval) return;
+
     try {
-      await approveOfferAction(offerId, action, approvalComments);
-      alert(`Offer ${action === "APPROVE" ? "Approved" : "Rejected"} successfully!`);
+      await approveOfferAction(selectedOfferForApproval.id, action, approvalComments);
+      alert(`Offer ${action === "APPROVE" ? "Approved & Email Dispatched to Candidate" : "Declined"} Successfully!`);
       setApprovalComments("");
-      setSelectedOffer(null);
+      setShowApproveConfirmModal(false);
+      setSelectedOfferForApproval(null);
     } catch (err: any) {
-      alert(err?.data?.detail || "Error processing approval");
-    }
-  };
-
-  const handleSendOffer = async (offerId: number) => {
-    try {
-      const res = await sendOffer(offerId);
-      const candidateLink = `${window.location.origin}/offer/sign/${res.secure_token}`;
-      alert(`Offer Sent Successfully!\n\nCandidate Public Signing Link:\n${candidateLink}`);
-    } catch (err: any) {
-      alert(err?.data?.detail || "Error sending offer");
-    }
-  };
-
-  const handleCopyLink = (secureToken: string) => {
-    const candidateLink = `${window.location.origin}/offer/sign/${secureToken}`;
-    navigator.clipboard.writeText(candidateLink);
-    setCopiedToken(secureToken);
-    setTimeout(() => setCopiedToken(null), 3000);
-  };
-
-  const filteredOffers = offers.filter((o) => {
-    if (activeFilter === "ALL") return true;
-    return o.status === activeFilter;
-  });
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "DRAFT":
-        return <span className="px-2.5 py-1 rounded-full text-xs bg-gray-500/20 text-gray-300 border border-gray-500/30 flex items-center gap-1.5 w-fit"><FaClock className="text-xs" /> Draft</span>;
-      case "PENDING_APPROVAL":
-        return <span className="px-2.5 py-1 rounded-full text-xs bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center gap-1.5 w-fit"><FaClock className="text-xs" /> Pending Approval</span>;
-      case "APPROVED":
-        return <span className="px-2.5 py-1 rounded-full text-xs bg-blue-500/20 text-blue-400 border border-blue-500/30 flex items-center gap-1.5 w-fit"><FaCheckCircle className="text-xs" /> Approved</span>;
-      case "SENT":
-        return <span className="px-2.5 py-1 rounded-full text-xs bg-purple-500/20 text-purple-400 border border-purple-500/30 flex items-center gap-1.5 w-fit"><FaPaperPlane className="text-xs" /> Sent to Candidate</span>;
-      case "SIGNED":
-        return <span className="px-2.5 py-1 rounded-full text-xs bg-[#05DC7F]/20 text-[#05DC7F] border border-[#05DC7F]/40 flex items-center gap-1.5 w-fit font-medium"><FaShieldAlt className="text-xs" /> Signed & Hired</span>;
-      case "DECLINED":
-        return <span className="px-2.5 py-1 rounded-full text-xs bg-red-500/20 text-red-400 border border-red-500/30 flex items-center gap-1.5 w-fit"><FaTimesCircle className="text-xs" /> Declined</span>;
-      default:
-        return <span className="px-2.5 py-1 rounded-full text-xs bg-gray-500/20 text-gray-300">{status}</span>;
+      alert(err?.data?.detail || "Error processing offer approval");
     }
   };
 
   return (
     <div className="space-y-6 p-4 sm:p-6">
-      {/* Top Header & Quick Action */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-[#111827]/80 p-6 rounded-2xl border border-[#05DC7F]/30 backdrop-blur-md shadow-[0_0_15px_rgba(5,220,127,0.1)]">
-        <div>
-          <h2 className="text-2xl font-bold text-white tracking-wide flex items-center gap-3">
-            <FaFileContract className="text-[#05DC7F]" /> Offer Management & E-Signatures
-          </h2>
-          <p className="text-white/60 text-sm mt-1">
-            Create offer letters, manage approval workflows, and track tamper-proof digital signatures.
-          </p>
-        </div>
+      {/* ──── TWO MAIN NAVIGATION TABS (ALWAYS VISIBLE AT ALL TIMES) ──── */}
+      <div className="flex w-full bg-[#111827]/90 border border-white/10 rounded-2xl p-1.5 shadow-lg">
+        <button
+          onClick={() => handleTabSelect("CREATION")}
+          className={`flex-1 py-3 px-4 text-center text-sm font-semibold rounded-xl transition flex items-center justify-center gap-2 ${
+            activeTab === "CREATION"
+              ? "bg-[#05DC7F] text-black shadow-[0_0_15px_rgba(5,220,127,0.4)] font-bold"
+              : "text-white/60 hover:text-white hover:bg-white/5"
+          }`}
+        >
+          <FaPlus /> Offer Creation
+        </button>
 
-        {canGenerateOffer && (
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#05DC7F] text-black font-semibold hover:bg-[#04b869] transition duration-300 shadow-[0_0_15px_rgba(5,220,127,0.4)]"
-          >
-            <FaPlus /> Create Offer Letter
-          </button>
-        )}
+        <button
+          onClick={() => handleTabSelect("APPROVAL")}
+          className={`flex-1 py-3 px-4 text-center text-sm font-semibold rounded-xl transition flex items-center justify-center gap-2 ${
+            activeTab === "APPROVAL"
+              ? "bg-[#05DC7F] text-black shadow-[0_0_15px_rgba(5,220,127,0.4)] font-bold"
+              : "text-white/60 hover:text-white hover:bg-white/5"
+          }`}
+        >
+          <FaClock /> Offer Approvals
+        </button>
       </div>
 
-      {/* Metrics Row */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <div className="bg-[#1F2937]/70 p-4 rounded-xl border border-white/10">
-          <p className="text-white/50 text-xs uppercase tracking-wider">Total Offers</p>
-          <p className="text-2xl font-bold text-white mt-1">{offers.length}</p>
-        </div>
-        <div className="bg-[#1F2937]/70 p-4 rounded-xl border border-amber-500/30">
-          <p className="text-amber-400/80 text-xs uppercase tracking-wider">Pending Approval</p>
-          <p className="text-2xl font-bold text-amber-400 mt-1">
-            {offers.filter((o) => o.status === "PENDING_APPROVAL").length}
-          </p>
-        </div>
-        <div className="bg-[#1F2937]/70 p-4 rounded-xl border border-purple-500/30">
-          <p className="text-purple-400/80 text-xs uppercase tracking-wider">Sent to Candidate</p>
-          <p className="text-2xl font-bold text-purple-400 mt-1">
-            {offers.filter((o) => o.status === "SENT").length}
-          </p>
-        </div>
-        <div className="bg-[#1F2937]/70 p-4 rounded-xl border border-[#05DC7F]/40">
-          <p className="text-[#05DC7F]/80 text-xs uppercase tracking-wider">Signed & Hired</p>
-          <p className="text-2xl font-bold text-[#05DC7F] mt-1">
-            {offers.filter((o) => o.status === "SIGNED").length}
-          </p>
-        </div>
-        <div className="bg-[#1F2937]/70 p-4 rounded-xl border border-red-500/30">
-          <p className="text-red-400/80 text-xs uppercase tracking-wider">Declined</p>
-          <p className="text-2xl font-bold text-red-400 mt-1">
-            {offers.filter((o) => o.status === "DECLINED").length}
-          </p>
-        </div>
-      </div>
+      {/* ───────────────────────────────────────────────────────────── */}
+      {/* TAB 1: OFFER CREATION FLOW (WITH INTEGRATED TEMPLATES MANAGER) */}
+      {/* ───────────────────────────────────────────────────────────── */}
+      {activeTab === "CREATION" && (
+        <>
+          {showTemplatesView ? (
+            /* TEMPLATES SUB-VIEW INSIDE OFFER CREATION */
+            editingTemplate !== null ? (
+              /* Full View Reusable Template Editor */
+              <OfferTemplateEditor
+                template={typeof editingTemplate === "object" ? editingTemplate : null}
+                onSave={handleSaveTemplateEditor}
+                onCancel={() => setEditingTemplate(null)}
+              />
+            ) : (
+              /* Templates Library View with Standardized Back Button */
+              <div className="bg-[#111827]/90 border border-white/10 rounded-2xl p-6 space-y-6 shadow-xl animate-fadeIn">
+                {/* Header Bar with Standardized Back Button */}
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-white/10">
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowTemplatesView(false);
+                        setEditingTemplate(null);
+                      }}
+                      className="p-2 rounded-xl bg-white/10 text-[#05DC7F] hover:bg-white/20 transition flex items-center justify-center shrink-0"
+                      title="Back to Offer Creation"
+                    >
+                      <FaArrowLeft size={16} />
+                    </button>
+                    <div>
+                      <h3 className="text-xl font-bold text-white flex items-center gap-2.5">
+                        <FaFileAlt className="text-[#05DC7F]" /> Offer Templates Library ({templates.length})
+                      </h3>
+                      <p className="text-xs text-white/50 mt-0.5">Create and edit reusable offer letter baselines with placeholders.</p>
+                    </div>
+                  </div>
 
-      {/* Filter Tabs */}
-      <div className="flex gap-2 overflow-x-auto border-b border-white/10 pb-2">
-        {["ALL", "PENDING_APPROVAL", "APPROVED", "SENT", "SIGNED", "DECLINED", "DRAFT"].map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveFilter(tab)}
-            className={`px-4 py-2 rounded-lg text-sm transition whitespace-nowrap ${
-              activeFilter === tab
-                ? "bg-[#05DC7F]/20 text-[#05DC7F] border border-[#05DC7F]/40 font-medium"
-                : "text-white/60 hover:text-white hover:bg-white/5"
-            }`}
-          >
-            {tab.replace("_", " ")}
-          </button>
-        ))}
-      </div>
-
-      {/* Offers Table */}
-      <div className="bg-[#111827]/90 rounded-2xl border border-white/10 overflow-hidden shadow-xl">
-        {isLoading ? (
-          <div className="p-8 text-center text-white/60">Loading offer letters...</div>
-        ) : filteredOffers.length === 0 ? (
-          <div className="p-12 text-center text-white/50 space-y-3">
-            <FaFileContract size={40} className="mx-auto text-white/20" />
-            <p className="text-base">No offer letters found for this status.</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-white/5 text-white/50 text-xs uppercase tracking-wider border-b border-white/10">
-                  <th className="p-4">Position & Dept</th>
-                  <th className="p-4">Base Salary</th>
-                  <th className="p-4">Start Date</th>
-                  <th className="p-4">Status</th>
-                  <th className="p-4">Audit Digest</th>
-                  <th className="p-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5 text-sm text-white/80">
-                {filteredOffers.map((offer) => (
-                  <tr key={offer.id} className="hover:bg-white/[0.02] transition">
-                    <td className="p-4">
-                      <p className="font-semibold text-white">{offer.job_title}</p>
-                      <p className="text-xs text-white/50">{offer.department || "Engineering"}</p>
-                    </td>
-                    <td className="p-4 font-mono text-[#05DC7F]">
-                      ${Number(offer.base_salary).toLocaleString()}/yr
-                    </td>
-                    <td className="p-4 text-white/70">{offer.start_date}</td>
-                    <td className="p-4">{getStatusBadge(offer.status)}</td>
-                    <td className="p-4">
-                      {offer.audit_hash ? (
-                        <div className="flex items-center gap-1.5 text-xs text-[#05DC7F] font-mono bg-[#05DC7F]/10 px-2.5 py-1 rounded border border-[#05DC7F]/30 w-fit">
-                          <FaLock className="text-[10px]" />
-                          {offer.audit_hash.substring(0, 12)}...
-                        </div>
-                      ) : (
-                        <span className="text-xs text-white/30">—</span>
-                      )}
-                    </td>
-                    <td className="p-4 text-right space-x-2">
+                  <div className="flex flex-wrap items-center gap-3">
+                    {/* Department Filter Chips */}
+                    <div className="flex flex-wrap gap-1">
                       <button
-                        onClick={() => setSelectedOffer(offer)}
-                        className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs transition inline-flex items-center gap-1"
+                        type="button"
+                        onClick={() => setSelectedDeptFilter("ALL")}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition border ${
+                          selectedDeptFilter === "ALL"
+                            ? "bg-[#05DC7F] text-black border-[#05DC7F]"
+                            : "bg-white/5 text-white/60 border-white/10 hover:text-white"
+                        }`}
                       >
-                        <FaEye /> View
+                        ALL
                       </button>
-
-                      {offer.status === "DRAFT" && canGenerateOffer && (
+                      {Array.from(new Set(templates.map((t) => (t.department || "GLOBAL").toUpperCase()))).map((dept) => (
                         <button
-                          onClick={() => handleSubmitApproval(offer.id)}
-                          className="px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs transition"
+                          key={dept}
+                          type="button"
+                          onClick={() => setSelectedDeptFilter(dept)}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition border ${
+                            selectedDeptFilter === dept
+                              ? "bg-[#05DC7F] text-black border-[#05DC7F]"
+                              : "bg-white/5 text-white/60 border-white/10 hover:text-white"
+                          }`}
                         >
-                          Submit Approval
+                          {dept}
                         </button>
-                      )}
+                      ))}
+                    </div>
 
-                      {offer.status === "APPROVED" && canGenerateOffer && (
-                        <button
-                          onClick={() => handleSendOffer(offer.id)}
-                          className="px-3 py-1.5 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/40 text-xs transition inline-flex items-center gap-1"
+                    <button
+                      onClick={() => setEditingTemplate("NEW")}
+                      className="px-4 py-2 bg-[#05DC7F] text-black font-bold rounded-xl text-xs hover:bg-[#04b869] transition shadow-[0_0_15px_rgba(5,220,127,0.3)] flex items-center gap-2"
+                    >
+                      <FaPlus /> Create New Template
+                    </button>
+                  </div>
+                </div>
+
+                {templates.length === 0 ? (
+                  <div className="p-12 text-center text-xs text-white/40">
+                    No templates created yet. Click "Create New Template" above to add one.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {templates
+                      .filter((t) => selectedDeptFilter === "ALL" || (t.department || "GLOBAL").toUpperCase() === selectedDeptFilter)
+                      .map((t) => (
+                        <div
+                          key={t.id}
+                          className="bg-[#1F2937]/80 border border-white/10 hover:border-[#05DC7F]/40 rounded-2xl p-5 space-y-3 transition duration-300 hover:shadow-[0_0_20px_rgba(5,220,127,0.15)] flex flex-col justify-between"
                         >
-                          <FaPaperPlane /> Send Offer
-                        </button>
-                      )}
+                          <div className="space-y-2">
+                            <div className="flex justify-between items-start">
+                              <h4 className="font-bold text-white text-base truncate">{t.title}</h4>
+                              <span className="text-[10px] bg-[#05DC7F]/20 text-[#05DC7F] px-2.5 py-0.5 rounded-full font-mono font-bold border border-[#05DC7F]/30 shrink-0">
+                                {t.department}
+                              </span>
+                            </div>
 
-                      {offer.secure_token && (
-                        <button
-                          onClick={() => handleCopyLink(offer.secure_token!)}
-                          className="px-3 py-1.5 rounded-lg bg-[#05DC7F]/20 hover:bg-[#05DC7F]/30 text-[#05DC7F] border border-[#05DC7F]/40 text-xs transition inline-flex items-center gap-1"
-                        >
-                          <FaCopy /> {copiedToken === offer.secure_token ? "Copied!" : "Copy Link"}
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+                            <div className="bg-white/5 p-3 rounded-xl border border-white/5 text-xs text-white/70 font-mono whitespace-pre-wrap line-clamp-6 leading-relaxed max-h-48 overflow-y-auto">
+                              {t.content}
+                            </div>
+                          </div>
 
-      {/* CREATE OFFER MODAL */}
-      {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-[#111827] border border-[#05DC7F]/30 rounded-2xl p-6 w-full max-w-3xl my-8 text-white space-y-4 shadow-2xl">
-            <div className="flex justify-between items-center border-b border-white/10 pb-4">
-              <h3 className="text-xl font-bold flex items-center gap-2 text-[#05DC7F]">
-                <FaFileContract /> Create Offer Letter
-              </h3>
-              <button onClick={() => setShowCreateModal(false)} className="text-white/50 hover:text-white">
-                <FaTimes size={20} />
-              </button>
-            </div>
+                          <button
+                            onClick={() => setEditingTemplate(t)}
+                            className="w-full py-2.5 bg-white/10 hover:bg-[#05DC7F] hover:text-black font-semibold rounded-xl text-xs text-white transition duration-300 flex items-center justify-center gap-2 border border-white/10"
+                          >
+                            <FaEdit /> Edit Template in Full View
+                          </button>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
+            )
+          ) : !selectedCandidateForCreation ? (
+            /* CANDIDATES LIST VIEW UNDER OFFER CREATION */
+            <div className="bg-[#111827]/90 border border-white/10 rounded-2xl p-6 space-y-6 shadow-xl">
+              {/* Integrated Header Bar with Job Filter & Settings Button */}
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-white/10">
+                <div>
+                  <h3 className="text-xl font-bold text-white flex items-center gap-2.5">
+                    <FaUserCheck className="text-[#05DC7F]" /> Candidates Ready for Offer
+                  </h3>
+                  <p className="text-xs text-white/50 mt-0.5">Candidates who completed technical interviews.</p>
+                </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-xs text-white/60 block mb-1">Select Job Position *</label>
-                <select
-                  value={formData.job_id}
-                  onChange={(e) => {
-                    const jb = jobs.find((j) => String(j.id) === e.target.value);
-                    setFormData({
-                      ...formData,
-                      job_id: Number(e.target.value),
-                      job_title: jb ? jb.title : "",
-                      department: jb ? jb.department || "Engineering" : "",
-                    });
-                  }}
-                  className="w-full bg-[#1F2937] border border-white/10 rounded-xl p-2.5 text-sm text-white focus:border-[#05DC7F] outline-none"
-                >
-                  <option value="">-- Choose Job --</option>
-                  {jobs.map((j) => (
-                    <option key={j.id} value={j.id}>
-                      {j.title} ({j.department || "Dept"})
-                    </option>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-white/50">Filter Job:</span>
+                  <select
+                    value={selectedJobId}
+                    onChange={(e) => setSelectedJobId(Number(e.target.value))}
+                    className="bg-[#1F2937] border border-white/10 rounded-lg p-2 text-xs text-white outline-none focus:border-[#05DC7F]"
+                  >
+                    {jobs.map((j) => (
+                      <option key={j.id} value={j.id}>
+                        {j.title} ({j.department || "Dept"})
+                      </option>
+                    ))}
+                  </select>
+
+                  {/* Settings / Template Manager Icon Button */}
+                  {canGenerateOffer && (
+                    <button
+                      type="button"
+                      onClick={() => setShowTemplatesView(true)}
+                      title="Manage Offer Templates"
+                      className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-[#05DC7F] transition border border-white/10 flex items-center justify-center"
+                    >
+                      <FaCog size={15} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {isAppsLoading ? (
+                <div className="p-8 text-center text-white/60">Loading candidates...</div>
+              ) : interviewedCandidates.length === 0 ? (
+                <div className="p-12 text-center text-white/40 space-y-2">
+                  <FaUserCheck size={36} className="mx-auto text-white/20" />
+                  <p className="text-sm">No completed interview candidates found for this position.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {interviewedCandidates.map((cand) => (
+                    <InterviewCandidateCard
+                      key={cand.id}
+                      candidate={cand}
+                      isDraggable={true}
+                      onSelectCandidate={() => handleOpenCreationDetail(cand)}
+                    />
                   ))}
-                </select>
+                </div>
+              )}
+            </div>
+          ) : (
+            /* CANDIDATE PROFILE VIEW */
+            <CandidateProfile
+              displayMode="fullPage"
+              candidate={selectedCandidateForCreation}
+              onClose={() => setSelectedCandidateForCreation(null)}
+              actionButton={
+                canGenerateOffer && (
+                  <button
+                    onClick={() => setShowRequestApprovalModal(true)}
+                    className="px-6 py-2.5 rounded-xl bg-[#05DC7F] text-black font-bold hover:bg-[#04b869] transition shadow-[0_0_20px_rgba(5,220,127,0.4)] text-sm flex items-center gap-2"
+                  >
+                    <FaPaperPlane /> Request Approval
+                  </button>
+                )
+              }
+            />
+          )}
+        </>
+      )}
+
+      {/* ───────────────────────────────────────────────────────────── */}
+      {/* TAB 2: OFFER APPROVAL QUEUE FLOW                              */}
+      {/* ───────────────────────────────────────────────────────────── */}
+      {activeTab === "APPROVAL" && (
+        <>
+          {!selectedOfferForApproval ? (
+            /* Merged Main Information Container */
+            <div className="bg-[#111827]/90 border border-white/10 rounded-2xl p-6 space-y-6 shadow-xl">
+              {/* Integrated Header Bar */}
+              <div className="pb-4 border-b border-white/10">
+                <h3 className="text-xl font-bold text-white flex items-center gap-2.5">
+                  <FaClock className="text-amber-400" /> Offers Awaiting Approval ({pendingApprovalOffers.length})
+                </h3>
+                <p className="text-xs text-white/50 mt-0.5">Drafted offer packages awaiting executive sign-off.</p>
               </div>
 
-              <div>
-                <label className="text-xs text-white/60 block mb-1">Base Salary (USD/yr) *</label>
-                <input
-                  type="number"
-                  placeholder="e.g. 95000"
-                  value={formData.base_salary || ""}
-                  onChange={(e) => setFormData({ ...formData, base_salary: Number(e.target.value) })}
-                  className="w-full bg-[#1F2937] border border-white/10 rounded-xl p-2.5 text-sm text-white focus:border-[#05DC7F] outline-none"
-                />
-              </div>
+              {pendingApprovalOffers.length === 0 ? (
+                <div className="p-12 text-center text-white/40 space-y-2">
+                  <FaCheck className="mx-auto text-[#05DC7F]/40" size={32} />
+                  <p className="text-sm">No offers currently pending executive approval.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {pendingApprovalOffers.map((offer) => (
+                    <div
+                      key={offer.id}
+                      onClick={() => setSelectedOfferForApproval(offer)}
+                      className="bg-[#1F2937]/80 border border-amber-500/30 hover:border-amber-500 rounded-2xl p-5 cursor-pointer transition-all duration-300 hover:shadow-[0_0_15px_rgba(245,158,11,0.2)] space-y-3"
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h4 className="font-bold text-white text-base">{offer.job_title}</h4>
+                          <p className="text-xs text-white/50">{offer.department || "Engineering"}</p>
+                        </div>
+                        <span className="font-mono text-[#05DC7F] font-bold text-sm">
+                          ${Number(offer.base_salary).toLocaleString()}
+                        </span>
+                      </div>
 
-              <div>
-                <label className="text-xs text-white/60 block mb-1">Bonus / Equity (Optional)</label>
-                <input
-                  type="text"
-                  placeholder="e.g. $10,000 Signing Bonus + 0.1% Equity"
-                  value={formData.bonus_equity}
-                  onChange={(e) => setFormData({ ...formData, bonus_equity: e.target.value })}
-                  className="w-full bg-[#1F2937] border border-white/10 rounded-xl p-2.5 text-sm text-white focus:border-[#05DC7F] outline-none"
-                />
-              </div>
+                      <div className="text-xs text-white/70 bg-white/5 p-3 rounded-xl border border-white/5 space-y-1">
+                        <p><span className="text-white/40">Target Start:</span> {offer.start_date}</p>
+                        <p><span className="text-white/40">Bonus/Equity:</span> {offer.bonus_equity || "None"}</p>
+                      </div>
 
-              <div>
-                <label className="text-xs text-white/60 block mb-1">Target Start Date *</label>
-                <input
-                  type="date"
-                  value={formData.start_date}
-                  onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                  className="w-full bg-[#1F2937] border border-white/10 rounded-xl p-2.5 text-sm text-white focus:border-[#05DC7F] outline-none"
-                />
-              </div>
+                      <button className="w-full py-2 bg-amber-500/20 text-amber-300 font-semibold rounded-xl text-xs hover:bg-amber-500/30 transition flex items-center justify-center gap-1.5 border border-amber-500/40">
+                        <FaEye /> Inspect & Approve Offer
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            /* Nested Approval Detail Screen with Standardized Back Button & Header */
+            <div className="space-y-6 animate-fadeIn">
+              <div className="bg-[#111827]/90 border border-amber-500/40 rounded-2xl p-6 space-y-6 shadow-2xl">
+                {/* Hero Header Bar with Standardized Back Button */}
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-white/10 pb-6">
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedOfferForApproval(null)}
+                      className="p-2 rounded-xl bg-white/10 text-[#05DC7F] hover:bg-white/20 transition flex items-center justify-center shrink-0"
+                      title="Back to Approvals List"
+                    >
+                      <FaArrowLeft size={16} />
+                    </button>
+                    <div>
+                      <span className="px-3 py-1 rounded-full text-xs bg-amber-500/20 text-amber-400 border border-amber-500/40 font-bold uppercase tracking-wider">
+                        Pending Executive Approval
+                      </span>
+                      <h3 className="text-xl font-bold text-white flex items-center gap-2.5 mt-1">
+                        <FaClock className="text-amber-400" /> {selectedOfferForApproval.job_title} Offer Package
+                      </h3>
+                      <p className="text-white/60 text-xs mt-0.5">Offer ID #{selectedOfferForApproval.id} • Awaiting Sign-off</p>
+                    </div>
+                  </div>
 
-              <div>
-                <label className="text-xs text-white/60 block mb-1">Offer Expiration Date</label>
-                <input
-                  type="date"
-                  value={formData.expiry_date}
-                  onChange={(e) => setFormData({ ...formData, expiry_date: e.target.value })}
-                  className="w-full bg-[#1F2937] border border-white/10 rounded-xl p-2.5 text-sm text-white focus:border-[#05DC7F] outline-none"
-                />
+                  {canApproveOffer && (
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => setShowApproveConfirmModal(true)}
+                        className="px-6 py-3 rounded-xl bg-[#05DC7F] text-black font-bold hover:bg-[#04b869] transition shadow-[0_0_20px_rgba(5,220,127,0.4)] text-sm flex items-center gap-2"
+                      >
+                        <FaCheck /> Approve & Send Offer
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Offer Terms Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-white/5 p-4 rounded-xl border border-white/10 space-y-1">
+                    <p className="text-xs text-white/50">Base Salary</p>
+                    <p className="text-xl font-bold text-[#05DC7F]">${Number(selectedOfferForApproval.base_salary).toLocaleString()}/yr</p>
+                  </div>
+                  <div className="bg-white/5 p-4 rounded-xl border border-white/10 space-y-1">
+                    <p className="text-xs text-white/50">Target Start Date</p>
+                    <p className="text-xl font-bold text-white">{selectedOfferForApproval.start_date}</p>
+                  </div>
+                  <div className="bg-white/5 p-4 rounded-xl border border-white/10 space-y-1">
+                    <p className="text-xs text-white/50">Bonus / Equity Terms</p>
+                    <p className="text-base font-bold text-white">{selectedOfferForApproval.bonus_equity || "None"}</p>
+                  </div>
+                </div>
+
+                {/* Offer Letter Text */}
+                <div className="space-y-2">
+                  <h4 className="text-sm font-bold text-white">Offer Letter Body</h4>
+                  <div className="bg-[#1F2937] p-4 rounded-xl border border-white/10 text-xs text-white/80 font-mono whitespace-pre-wrap max-h-60 overflow-y-auto">
+                    {selectedOfferForApproval.offer_letter_text}
+                  </div>
+                </div>
               </div>
             </div>
+          )}
+        </>
+      )}
 
-            <div>
-              <label className="text-xs text-white/60 block mb-1">Apply Offer Template</label>
-              <select
-                onChange={(e) => handleTemplateChange(e.target.value)}
-                className="w-full bg-[#1F2937] border border-white/10 rounded-xl p-2.5 text-sm text-white focus:border-[#05DC7F] outline-none mb-2"
-              >
-                <option value="">-- Standard Engineering Offer Template --</option>
-                {templates.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.title}
-                  </option>
-                ))}
-              </select>
+      {/* ──── MODAL 1: REQUEST APPROVAL MODAL (Shared Component) ──── */}
+      <RequestOfferApprovalModal
+        open={showRequestApprovalModal}
+        candidate={selectedCandidateForCreation}
+        onClose={() => setShowRequestApprovalModal(false)}
+        onSuccess={() => {
+          setShowRequestApprovalModal(false);
+          setSelectedCandidateForCreation(null);
+        }}
+      />
+
+      {/* ──── MODAL 2: IRREVERSIBLE APPROVE CONFIRMATION MODAL ──── */}
+      {showApproveConfirmModal && selectedOfferForApproval && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-[#111827] border border-amber-500/50 rounded-2xl p-6 w-full max-w-lg text-white space-y-4 shadow-2xl">
+            <div className="flex items-center gap-3 text-amber-400 border-b border-white/10 pb-3">
+              <FaExclamationTriangle size={24} />
+              <h3 className="text-lg font-bold text-white">Confirm Executive Offer Approval</h3>
             </div>
 
+            <p className="text-sm text-white/80 leading-relaxed">
+              This action is <strong className="text-amber-400">irreversible</strong>. Approving this offer will immediately set the candidate stage to <strong className="text-[#05DC7F]">Offer Sent</strong> and dispatch the formal offer letter & e-signature link directly to the candidate.
+            </p>
+
             <div>
-              <label className="text-xs text-white/60 block mb-1">Offer Letter Body (Markdown / Text)</label>
-              <textarea
-                rows={6}
-                value={formData.offer_letter_text}
-                onChange={(e) => setFormData({ ...formData, offer_letter_text: e.target.value })}
-                className="w-full bg-[#1F2937] border border-white/10 rounded-xl p-3 text-sm text-white focus:border-[#05DC7F] outline-none font-mono"
+              <label className="text-xs text-white/60 block mb-1">Approval Comments (Optional)</label>
+              <input
+                type="text"
+                placeholder="e.g. Approved by Executive Board"
+                value={approvalComments}
+                onChange={(e) => setApprovalComments(e.target.value)}
+                className="w-full bg-[#1F2937] border border-white/10 rounded-xl p-2.5 text-xs text-white outline-none"
               />
             </div>
 
             <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
               <button
-                onClick={() => handleCreateOffer(false)}
-                className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-sm transition"
+                onClick={() => setShowApproveConfirmModal(false)}
+                className="px-4 py-2 rounded-xl bg-white/10 text-white text-sm"
               >
-                Save as Draft
+                Cancel
               </button>
               <button
-                onClick={() => handleCreateOffer(true)}
-                className="px-5 py-2 rounded-xl bg-[#05DC7F] text-black font-semibold hover:bg-[#04b869] text-sm transition shadow-[0_0_10px_rgba(5,220,127,0.3)]"
+                onClick={() => handleApproveActionSubmit("APPROVE")}
+                className="px-5 py-2 rounded-xl bg-[#05DC7F] text-black font-bold text-sm shadow-[0_0_15px_rgba(5,220,127,0.4)] flex items-center gap-2"
               >
-                Submit for Approval
+                <FaCheck /> Confirm Approval & Send Email
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* DETAIL & APPROVAL MODAL */}
-      {selectedOffer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-[#111827] border border-white/20 rounded-2xl p-6 w-full max-w-2xl my-8 text-white space-y-4 shadow-2xl">
-            <div className="flex justify-between items-center border-b border-white/10 pb-4">
-              <div>
-                <h3 className="text-lg font-bold text-white">{selectedOffer.job_title} Offer</h3>
-                <p className="text-xs text-white/50">Offer ID: #{selectedOffer.id}</p>
-              </div>
-              <button onClick={() => setSelectedOffer(null)} className="text-white/50 hover:text-white">
-                <FaTimes size={20} />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 text-xs bg-white/5 p-3 rounded-xl">
-              <div>
-                <span className="text-white/50">Base Salary:</span>{" "}
-                <span className="font-semibold text-[#05DC7F]">${Number(selectedOffer.base_salary).toLocaleString()}/yr</span>
-              </div>
-              <div>
-                <span className="text-white/50">Start Date:</span>{" "}
-                <span className="font-semibold text-white">{selectedOffer.start_date}</span>
-              </div>
-              <div>
-                <span className="text-white/50">Status:</span> {getStatusBadge(selectedOffer.status)}
-              </div>
-              <div>
-                <span className="text-white/50">Audit Hash:</span>{" "}
-                <span className="font-mono text-[#05DC7F]">{selectedOffer.audit_hash ? selectedOffer.audit_hash.substring(0, 10) + "..." : "None"}</span>
-              </div>
-            </div>
-
-            <div>
-              <p className="text-xs text-white/60 mb-1 font-semibold">Offer Letter Content:</p>
-              <div className="bg-[#1F2937] p-4 rounded-xl border border-white/10 text-xs whitespace-pre-wrap font-mono text-white/80 max-h-60 overflow-y-auto">
-                {selectedOffer.offer_letter_text}
-              </div>
-            </div>
-
-            {selectedOffer.status === "PENDING_APPROVAL" && canApproveOffer && (
-              <div className="bg-amber-500/10 border border-amber-500/30 p-4 rounded-xl space-y-3">
-                <p className="text-sm font-semibold text-amber-300 flex items-center gap-2">
-                  <FaClock /> Executive Approval Action
-                </p>
-                <input
-                  type="text"
-                  placeholder="Approval comments (optional)"
-                  value={approvalComments}
-                  onChange={(e) => setApprovalComments(e.target.value)}
-                  className="w-full bg-[#1F2937] border border-white/10 rounded-lg p-2 text-xs text-white outline-none"
-                />
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleApprovalAction(selectedOffer.id, "APPROVE")}
-                    className="flex-1 py-2 bg-[#05DC7F] text-black font-semibold rounded-lg text-xs hover:bg-[#04b869] transition flex items-center justify-center gap-1"
-                  >
-                    <FaCheck /> Approve Offer
-                  </button>
-                  <button
-                    onClick={() => handleApprovalAction(selectedOffer.id, "REJECT")}
-                    className="flex-1 py-2 bg-red-500/20 text-red-400 border border-red-500/40 font-semibold rounded-lg text-xs hover:bg-red-500/30 transition flex items-center justify-center gap-1"
-                  >
-                    <FaTimes /> Reject Offer
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       )}

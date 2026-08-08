@@ -27,6 +27,7 @@ export interface OfferItem {
 export interface OfferTemplate {
   id: number;
   title: string;
+  department?: string;
   content: string;
 }
 

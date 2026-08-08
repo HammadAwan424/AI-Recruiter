@@ -1,5 +1,5 @@
 import React from "react";
-import { Stack, Typography, Chip, Button, Box } from "@mui/material";
+import { Stack, Typography, Chip, Box } from "@mui/material";
 import { Trophy, CheckCircle, XCircle } from "lucide-react";
 import { ApplicationDetail } from "../../../../shared/types/candidate.types";
 
@@ -20,65 +20,44 @@ export const CandidateProfileHeader: React.FC<CandidateProfileHeaderProps> = ({
   const isRejected = detail.disposition === "rejected";
 
   return (
-    <Box className="p-5 rounded-2xl bg-black/40 border border-gray-800/80 shadow-lg mb-6">
-      <Stack direction={{ xs: "column", sm: "row" }} spacing={3} sx={{ justifyContent: "space-between", alignItems: "flex-start" }}>
-        {/* Left: Info & Badges */}
-        <Stack spacing={1.5} sx={{ flex: 1 }}>
-          <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", flexWrap: "wrap" }}>
-            <Box className="w-10 h-10 rounded-full bg-black/60 border border-gray-700/80 flex items-center justify-center">
-              <Trophy size={20} className="text-yellow-400" />
-            </Box>
-            <div>
-              <Typography variant="h5" color="text.primary" sx={{ fontWeight: 800 }}>
-                Application #{detail.id}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Candidate ID: {detail.candidate_id} | Requisition ID: {detail.job_id}
-              </Typography>
-            </div>
-          </Stack>
-
-          <Stack direction="row" spacing={1} sx={{ pt: 0.5, flexWrap: "wrap", gap: 1 }}>
-            <Chip
-              label={`Status: ${detail.current_status.toUpperCase()}`}
-              size="small"
-              className="bg-[#05DC7F]/15 border border-[#05DC7F]/40 text-[#05DC7F] font-bold uppercase text-[10px]"
-            />
+    <div className="pb-6 border-b border-white/10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      {/* Left: Candidate & Requisition Info */}
+      <div className="flex items-center gap-3">
+        <div className="w-12 h-12 rounded-2xl bg-[#05DC7F]/10 border border-[#05DC7F]/30 flex items-center justify-center shrink-0">
+          <Trophy size={22} className="text-[#05DC7F]" />
+        </div>
+        <div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="text-xl font-bold text-white">Application #{detail.id}</h3>
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] bg-[#05DC7F]/20 text-[#05DC7F] border border-[#05DC7F]/40 font-mono font-bold uppercase">
+              {detail.current_status}
+            </span>
             {isHired && (
-              <Chip
-                icon={<CheckCircle size={12} className="text-emerald-400" />}
-                label="Hired"
-                size="small"
-                color="success"
-                variant="outlined"
-              />
+              <span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-bold flex items-center gap-1">
+                <CheckCircle size={10} /> Hired
+              </span>
             )}
             {isRejected && (
-              <Chip
-                icon={<XCircle size={12} className="text-red-400" />}
-                label="Rejected"
-                size="small"
-                color="error"
-                variant="outlined"
-              />
+              <span className="px-2 py-0.5 rounded-full text-[10px] bg-red-500/20 text-red-400 border border-red-500/40 font-bold flex items-center gap-1">
+                <XCircle size={10} /> Rejected
+              </span>
             )}
-          </Stack>
-        </Stack>
+          </div>
+          <p className="text-xs text-white/50 mt-1">
+            Candidate ID: <span className="text-white/80 font-mono">#{detail.candidate_id}</span> • Requisition ID: <span className="text-white/80 font-mono">#{detail.job_id}</span>
+          </p>
+        </div>
+      </div>
 
-        {/* Right: Score Display */}
-        <Stack spacing={2} sx={{ alignItems: { xs: "flex-start", sm: "flex-end" } }}>
-          {detail.final_score !== undefined && (
-            <Stack spacing={0} sx={{ alignItems: { xs: "flex-start", sm: "flex-end" } }}>
-              <Typography variant="caption" color="text.secondary">
-                Overall Final Score
-              </Typography>
-              <Typography variant="h4" color="primary.main" sx={{ fontWeight: 800 }}>
-                {detail.final_score.toFixed(1)}%
-              </Typography>
-            </Stack>
-          )}
-        </Stack>
-      </Stack>
-    </Box>
+      {/* Right: Overall Final Score Display */}
+      {detail.final_score !== undefined && (
+        <div className="text-left sm:text-right shrink-0">
+          <p className="text-[11px] text-white/40 font-semibold uppercase tracking-wider">Overall Match Score</p>
+          <p className="text-2xl font-extrabold text-[#05DC7F] font-mono">{detail.final_score.toFixed(1)}%</p>
+        </div>
+      )}
+    </div>
   );
 };
+
+export default CandidateProfileHeader;

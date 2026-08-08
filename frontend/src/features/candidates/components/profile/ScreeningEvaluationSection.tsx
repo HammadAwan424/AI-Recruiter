@@ -1,5 +1,4 @@
 import React from "react";
-import { Box, Typography, Stack, Button } from "@mui/material";
 import { Sparkles, FileText, Target, AlertTriangle } from "lucide-react";
 
 interface ScreeningEvaluationSectionProps {
@@ -21,33 +20,29 @@ export const ScreeningEvaluationSection: React.FC<ScreeningEvaluationSectionProp
   }
 
   return (
-    <Box className="p-5 rounded-2xl bg-black/40 border border-gray-800/80 shadow-lg mb-6">
-      <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", mb: 3 }}>
-        <Sparkles size={20} className="text-[#05DC7F]" />
-        <Typography variant="h6" color="text.primary" sx={{ fontWeight: 700 }}>
-          AI Screening & Evaluation
-        </Typography>
-      </Stack>
+    <div className="pb-6 border-b border-white/10 space-y-4">
+      <div className="flex items-center gap-2 text-[#05DC7F]">
+        <Sparkles size={18} />
+        <h4 className="text-sm font-bold text-white uppercase tracking-wider">AI Screening & Evaluation</h4>
+      </div>
 
-      <Stack spacing={3}>
+      <div className="space-y-3">
         {/* Match Score */}
         {match_score !== undefined && (
-          <div className="flex justify-between items-center p-3.5 rounded-xl bg-gray-900/60 border border-gray-800">
+          <div className="flex justify-between items-center py-2 px-3 rounded-xl bg-white/5 border border-white/10">
             <div className="flex items-center gap-2">
-              <Target size={16} className="text-[#05DC7F]" />
-              <span className="text-gray-300 text-xs font-semibold">Resume Match Score</span>
+              <Target size={15} className="text-[#05DC7F]" />
+              <span className="text-white/80 text-xs font-semibold">Resume Match Score</span>
             </div>
-            <span className="text-[#05DC7F] font-extrabold text-lg">{match_score.toFixed(1)}%</span>
+            <span className="text-[#05DC7F] font-extrabold text-base font-mono">{match_score.toFixed(1)}%</span>
           </div>
         )}
 
         {/* Executive Summary */}
         {summary && (
-          <div>
-            <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 700, mb: 1 }}>
-              Executive Summary
-            </Typography>
-            <p className="text-gray-300 text-xs leading-relaxed bg-gray-900/40 p-3.5 rounded-xl border border-gray-800/60">
+          <div className="space-y-1">
+            <p className="text-xs font-semibold text-white/70">Executive Summary</p>
+            <p className="text-white/80 text-xs leading-relaxed bg-white/5 p-3 rounded-xl border border-white/5">
               {summary}
             </p>
           </div>
@@ -55,14 +50,12 @@ export const ScreeningEvaluationSection: React.FC<ScreeningEvaluationSectionProp
 
         {/* Skill Gap Analysis */}
         {skill_gap && (
-          <div>
-            <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 1 }}>
-              <AlertTriangle size={15} className="text-amber-400" />
-              <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 700 }}>
-                Skill Gap & Qualifications Check
-              </Typography>
-            </Stack>
-            <p className="text-amber-300/90 text-xs leading-relaxed bg-amber-950/20 p-3.5 rounded-xl border border-amber-900/40">
+          <div className="space-y-1">
+            <div className="flex items-center gap-1.5 text-amber-400">
+              <AlertTriangle size={14} />
+              <span className="text-xs font-semibold">Skill Gap & Qualifications Check</span>
+            </div>
+            <p className="text-amber-200/90 text-xs leading-relaxed bg-amber-500/10 p-3 rounded-xl border border-amber-500/20">
               {skill_gap}
             </p>
           </div>
@@ -70,23 +63,20 @@ export const ScreeningEvaluationSection: React.FC<ScreeningEvaluationSectionProp
 
         {/* CV Attachment */}
         {cv_pdf_path && (
-          <div className="pt-2 border-t border-gray-800/60">
-            <Button
-              size="small"
-              variant="outlined"
-              color="primary"
-              startIcon={<FileText size={15} />}
-              component="a"
+          <div className="pt-1">
+            <a
               href={cv_pdf_path}
               target="_blank"
               rel="noopener noreferrer"
-              sx={{ borderRadius: 2, fontWeight: 700 }}
+              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-[#05DC7F] text-xs font-semibold transition border border-white/10"
             >
-              View Candidate CV Document
-            </Button>
+              <FileText size={14} /> View Candidate CV Document
+            </a>
           </div>
         )}
-      </Stack>
-    </Box>
+      </div>
+    </div>
   );
 };
+
+export default ScreeningEvaluationSection;

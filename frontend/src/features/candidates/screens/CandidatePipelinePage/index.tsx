@@ -3,6 +3,7 @@ import { Alert, CircularProgress } from "@mui/material";
 import { PipelineHeader } from "../../components/PipelineHeader";
 import { KanbanBoard } from "../../components/KanbanBoard";
 import { CandidateProfile } from "../../components/CandidateProfile";
+import { RequestOfferApprovalModal } from "../../../../shared/components/RequestOfferApprovalModal";
 import { STAGES, useCandidatePipeline } from "../../hooks/useCandidatePipeline";
 
 export const CandidatePipelinePage: React.FC = () => {
@@ -22,6 +23,9 @@ export const CandidatePipelinePage: React.FC = () => {
 
     selectedCandidate,
     setSelectedCandidate,
+
+    offerModalCandidate,
+    setOfferModalCandidate,
 
     canDisposition,
     canOffer,
@@ -83,6 +87,17 @@ export const CandidatePipelinePage: React.FC = () => {
         onClose={() => setSelectedCandidate(null)}
         onHire={handleHire}
         onReject={handleReject}
+      />
+
+      {/* Shared Request Offer Approval Modal triggered on dragging candidate card to offer stage */}
+      <RequestOfferApprovalModal
+        open={Boolean(offerModalCandidate)}
+        candidate={offerModalCandidate}
+        onClose={() => setOfferModalCandidate(null)}
+        onSuccess={() => {
+          setOfferModalCandidate(null);
+          setPipelineAlertMsg("✅ Offer approval request submitted! Candidate moved to Offer Approval stage.");
+        }}
       />
     </div>
   );

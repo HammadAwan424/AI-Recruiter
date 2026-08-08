@@ -39,6 +39,7 @@ export const useCandidatePipeline = () => {
 
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
   const [selectedCandidate, setSelectedCandidate] = useState<any | null>(null);
+  const [offerModalCandidate, setOfferModalCandidate] = useState<any | null>(null);
   const [assignModalCandidate, setAssignModalCandidate] = useState<any | null>(null);
   const [scorecardCandidate, setScorecardCandidate] = useState<any | null>(null);
 
@@ -150,6 +151,12 @@ export const useCandidatePipeline = () => {
 
     if ((targetStageKey === "offer_approval" || targetStageKey === "offer_sent") && !canOffer) {
       setPipelineAlertMsg("⚠️ Permissions required to move candidate to offer stage.");
+      return;
+    }
+
+    // Intercept dropping onto offer_approval or offer_sent to launch RequestOfferApprovalModal
+    if (targetStageKey === "offer_approval" || targetStageKey === "offer_sent") {
+      setOfferModalCandidate(candidate);
       return;
     }
 
@@ -267,6 +274,9 @@ export const useCandidatePipeline = () => {
 
     selectedCandidate,
     setSelectedCandidate,
+
+    offerModalCandidate,
+    setOfferModalCandidate,
 
     assignModalCandidate,
     setAssignModalCandidate,

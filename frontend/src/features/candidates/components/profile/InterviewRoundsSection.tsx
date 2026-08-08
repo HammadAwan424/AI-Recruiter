@@ -158,8 +158,8 @@ export const InterviewRoundsSection: React.FC<InterviewRoundsSectionProps> = ({
   }
 
   return (
-    <Box className="p-5 rounded-2xl bg-black/40 border border-gray-800/80 shadow-lg mb-6">
-      <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", justifyContent: "space-between", mb: 3 }}>
+    <div className="pb-6 border-b border-white/10 space-y-4">
+      <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", justifyContent: "space-between" }}>
         <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
           <Calendar size={20} className="text-[#05DC7F]" />
           <Typography variant="h6" color="text.primary" sx={{ fontWeight: 700 }}>
@@ -362,127 +362,68 @@ export const InterviewRoundsSection: React.FC<InterviewRoundsSectionProps> = ({
       )}
 
       {/* Render Active Interview Rounds */}
-      <Stack spacing={3}>
+      <div className="space-y-4">
         {interviews.map((interview, index) => {
           const assignments = interview.interviewer_assignments || [];
           return (
-            <Box
-              key={interview.id}
-              className="p-4 rounded-xl bg-gray-900/60 border border-gray-800 flex flex-col gap-3"
-            >
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-800/80 pb-2.5">
+            <div key={interview.id} className="space-y-3">
+              {/* Round Title & Date Header (No separator line, no status pills) */}
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  <Chip
-                    label={`Round ${index + 1}`}
-                    size="small"
-                    color="primary"
-                    sx={{ fontWeight: 700, fontSize: 11 }}
-                  />
-                  <Chip
-                    label={interview.status}
-                    size="small"
-                    variant="outlined"
-                    color={interview.status === "COMPLETED" ? "success" : "warning"}
-                    sx={{ fontWeight: 600, fontSize: 10 }}
-                  />
-                </div>
-
-                <div className="flex items-center gap-3 text-xs text-gray-400">
-                  {interview.status === "AWAITING_SELECTION" || interview.self_schedule_token ? (
-                    <span className="flex items-center gap-1 text-amber-400 font-medium">
-                      <Calendar size={13} /> Awaiting Candidate Slot Selection
+                  <span className="px-2.5 py-1 rounded-lg bg-[#05DC7F]/20 text-[#05DC7F] border border-[#05DC7F]/40 text-xs font-bold font-mono">
+                    Round {index + 1}
+                  </span>
+                  {interview.schedule_start && (
+                    <span className="text-xs text-white/50 flex items-center gap-1">
+                      <Calendar size={13} className="text-[#05DC7F]" />
+                      {new Date(interview.schedule_start).toLocaleString()}
                     </span>
-                  ) : (
-                    interview.schedule_start && (
-                      <span className="flex items-center gap-1">
-                        <Calendar size={13} className="text-[#05DC7F]" />
-                        {new Date(interview.schedule_start).toLocaleString()}
-                      </span>
-                    )
                   )}
                 </div>
               </div>
 
-              {/* Meeting Link or Self-Schedule Token Banner */}
-              {interview.self_schedule_token ? (
-                <div className="p-2.5 rounded-lg bg-black/50 border border-amber-500/30 flex items-center justify-between text-xs">
-                  <span className="text-amber-400 font-semibold flex items-center gap-1.5">
-                    <LinkIcon size={14} /> Self-Scheduling Token Active
-                  </span>
-                  <span className="text-gray-400 font-mono text-[11px]">
-                    Token: {interview.self_schedule_token.substring(0, 16)}...
-                  </span>
-                </div>
-              ) : (
-                interview.meeting_link && (
-                  <div className="flex items-center gap-2 text-xs">
-                    <Video size={14} className="text-[#05DC7F]" />
-                    <span className="text-gray-400">Meeting:</span>
-                    <Link
-                      href={interview.meeting_link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[#05DC7F] underline font-medium hover:text-[#04c56f]"
-                    >
-                      {interview.meeting_link}
-                    </Link>
-                  </div>
-                )
-              )}
-
-              {/* Assigned Interviewers Panel & Scorecards */}
-              <div className="flex flex-col gap-2 pt-1">
-                <Typography variant="caption" className="text-gray-400 uppercase tracking-wider font-bold flex items-center gap-1">
-                  <Users size={12} /> Assigned Panel ({assignments.length})
-                </Typography>
-
-                {assignments.length === 0 ? (
-                  <p className="text-gray-500 text-xs italic">No interviewers assigned to this round yet.</p>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {assignments.map((asgn) => {
-                      const fb = asgn.feedback;
-                      return (
-                        <div
-                          key={asgn.interviewer_id}
-                          className="p-3 rounded-lg bg-black/80 border border-gray-800 flex flex-col gap-1.5"
-                        >
-                          <div className="flex justify-between items-center">
-                            <span className="text-white text-xs font-semibold">
-                              {asgn.interviewer?.full_name || `Interviewer #${asgn.interviewer_id}`}
-                            </span>
-                            {fb ? (
-                              <span className="text-[#05DC7F] text-[10px] font-bold flex items-center gap-0.5">
-                                <CheckCircle2 size={12} /> Feedback Submitted
-                              </span>
-                            ) : (
-                              <span className="text-amber-400 text-[10px] font-medium">Pending Scorecard</span>
-                            )}
-                          </div>
-
+              {/* Scorecards List (Score-focused, no panel header, no meeting link, no nested black boxes) */}
+              {assignments.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {assignments.map((asgn) => {
+                    const fb = asgn.feedback;
+                    return (
+                      <div
+                        key={asgn.interviewer_id}
+                        className="p-3 rounded-xl bg-white/5 border border-white/5 space-y-1.5"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-1.5">
+                          <span className="text-white text-xs font-bold">
+                            {asgn.interviewer?.full_name || `Interviewer #${asgn.interviewer_id}`}
+                          </span>
                           {fb && (
-                            <div className="mt-1 pt-1.5 border-t border-gray-800/80 flex flex-col gap-1 text-xs">
-                              <div className="flex justify-between text-gray-300 font-medium">
-                                <span>Tech: <strong className="text-white">{fb.technical_score}/10</strong></span>
-                                <span>Comm: <strong className="text-white">{fb.communication_score}/10</strong></span>
-                              </div>
-                              {fb.notes && (
-                                <p className="text-gray-400 text-[11px] italic bg-gray-900/80 p-1.5 rounded border border-gray-800 mt-0.5">
-                                  "{fb.notes}"
-                                </p>
-                              )}
+                            <div className="flex items-center gap-1.5 font-mono text-xs">
+                              <span className="px-2 py-0.5 rounded-md bg-[#05DC7F]/15 text-[#05DC7F] border border-[#05DC7F]/30 font-bold">
+                                Tech: {fb.technical_score}/10
+                              </span>
+                              <span className="px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-bold">
+                                Comm: {fb.communication_score}/10
+                              </span>
                             </div>
                           )}
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </Box>
+
+                        {fb?.notes && (
+                          <p className="text-xs text-white/70 italic leading-relaxed">
+                            "{fb.notes}"
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           );
         })}
-      </Stack>
-    </Box>
+      </div>
+    </div>
   );
 };
+
+export default InterviewRoundsSection;

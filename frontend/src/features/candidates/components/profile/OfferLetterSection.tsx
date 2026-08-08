@@ -1,5 +1,4 @@
 import React from "react";
-import { Box, Typography, Stack, Chip } from "@mui/material";
 import { FileCheck, DollarSign, Calendar, ShieldCheck, PenTool } from "lucide-react";
 
 interface OfferLetterSectionProps {
@@ -30,40 +29,38 @@ export const OfferLetterSection: React.FC<OfferLetterSectionProps> = ({ offer })
   const isSigned = Boolean(offer.signed_at);
 
   return (
-    <Box className="p-5 rounded-2xl bg-black/40 border border-gray-800/80 shadow-lg mb-6">
-      <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", mb: 3 }}>
-        <FileCheck size={20} className="text-[#05DC7F]" />
-        <Typography variant="h6" color="text.primary" sx={{ fontWeight: 700 }}>
-          Offer Letter & Compensation Package
-        </Typography>
-      </Stack>
+    <div className="pb-6 border-b border-white/10 space-y-4">
+      <div className="flex items-center gap-2 text-[#05DC7F]">
+        <FileCheck size={18} />
+        <h4 className="text-sm font-bold text-white uppercase tracking-wider">Offer Letter & Compensation Package</h4>
+      </div>
 
-      <Stack spacing={3}>
+      <div className="space-y-3">
         {/* Salary & Dates Header */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-xl bg-gray-900/60 border border-gray-800 text-xs">
-          <div className="flex items-center gap-2 text-gray-300">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-xl bg-white/5 border border-white/10 text-xs">
+          <div className="flex items-center gap-2">
             <DollarSign size={16} className="text-[#05DC7F]" />
             <div>
-              <p className="text-gray-400 text-[10px]">Base Annual Salary</p>
-              <p className="text-[#05DC7F] font-extrabold text-sm">${offer.base_salary?.toLocaleString()}</p>
+              <p className="text-white/40 text-[10px]">Base Annual Salary</p>
+              <p className="text-[#05DC7F] font-extrabold text-sm font-mono">${offer.base_salary?.toLocaleString()}</p>
             </div>
           </div>
 
           {offer.bonus_equity && (
-            <div className="flex items-center gap-2 text-gray-300">
+            <div className="flex items-center gap-2">
               <DollarSign size={16} className="text-emerald-400" />
               <div>
-                <p className="text-gray-400 text-[10px]">Bonus / Equity</p>
+                <p className="text-white/40 text-[10px]">Bonus / Equity</p>
                 <p className="text-white font-bold">{offer.bonus_equity}</p>
               </div>
             </div>
           )}
 
           {offer.start_date && (
-            <div className="flex items-center gap-2 text-gray-300">
+            <div className="flex items-center gap-2">
               <Calendar size={15} className="text-[#05DC7F]" />
               <div>
-                <p className="text-gray-400 text-[10px]">Proposed Start Date</p>
+                <p className="text-white/40 text-[10px]">Proposed Start Date</p>
                 <p className="text-white font-bold">{offer.start_date}</p>
               </div>
             </div>
@@ -72,36 +69,40 @@ export const OfferLetterSection: React.FC<OfferLetterSectionProps> = ({ offer })
 
         {/* Offer Letter Content */}
         {offer.offer_letter_text && (
-          <div>
-            <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 700, mb: 1 }}>
-              Offer Letter Text
-            </Typography>
-            <div className="p-4 rounded-xl bg-gray-900/40 border border-gray-800 text-xs font-mono text-gray-300 whitespace-pre-wrap max-h-48 overflow-y-auto">
+          <div className="space-y-1">
+            <p className="text-xs font-semibold text-white/70">Offer Letter Body</p>
+            <div className="p-3.5 rounded-xl bg-white/5 border border-white/5 text-xs font-mono text-white/80 whitespace-pre-wrap max-h-48 overflow-y-auto leading-relaxed">
               {offer.offer_letter_text}
             </div>
           </div>
         )}
 
         {/* Signature Status */}
-        <div className="p-3.5 rounded-xl bg-black/50 border border-gray-800 flex justify-between items-center flex-wrap gap-2 text-xs">
+        <div className="p-3 rounded-xl bg-white/5 border border-white/10 flex justify-between items-center flex-wrap gap-2 text-xs">
           <div className="flex items-center gap-2">
             <PenTool size={15} className={isSigned ? "text-[#05DC7F]" : "text-amber-400"} />
-            <span className="text-gray-300 font-medium">Signature Status:</span>
-            {isSigned ? (
-              <Chip label={`Signed by ${offer.signer_name || "Candidate"}`} size="small" color="success" />
-            ) : (
-              <Chip label="Pending Signature" size="small" color="warning" variant="outlined" />
-            )}
+            <span className="text-white/70 font-medium">Signature Status:</span>
+            <span
+              className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                isSigned
+                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                  : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+              }`}
+            >
+              {isSigned ? `Signed by ${offer.signer_name || "Candidate"}` : "Pending Signature"}
+            </span>
           </div>
 
           {offer.audit_hash && (
-            <div className="flex items-center gap-1.5 text-gray-500 text-[10px]">
+            <div className="flex items-center gap-1.5 text-white/40 text-[10px]">
               <ShieldCheck size={13} className="text-[#05DC7F]" />
               <span className="font-mono truncate max-w-[160px]" title={offer.audit_hash}>Hash: {offer.audit_hash}</span>
             </div>
           )}
         </div>
-      </Stack>
-    </Box>
+      </div>
+    </div>
   );
 };
+
+export default OfferLetterSection;

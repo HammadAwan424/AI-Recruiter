@@ -52,7 +52,7 @@ def get_offer_templates(
 @router.post(
     "/templates",
     response_model=OfferTemplateResponse,
-    dependencies=[Depends(require_permissions(["create_offer"]))]
+    dependencies=[Depends(require_permissions(["offer:generate"]))]
 )
 def create_offer_template(
     payload: OfferTemplateCreate,
@@ -67,6 +67,31 @@ def create_offer_template(
         created_by=current_user["user_id"]
     )
     db.add(template)
+    db.commit()
+    db.refresh(template)
+    return template
+
+
+@router.put(
+    "/templates/{template_id}",
+    response_model=OfferTemplateResponse,
+    dependencies=[Depends(require_permissions(["offer:generate"]))]
+)
+def update_offer_template(
+    template_id: int,
+    payload: OfferTemplateCreate,
+    db: Session = Depends(get_db),
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    template = db.query(OfferTemplate).filter(OfferTemplate.id == template_id).first()
+    if not template:
+        raise HTTPException(status_code=404, detail="Offer template not found")
+
+    template.title = payload.title
+    template.department = payload.department or "GLOBAL"
+    template.content = payload.content
+    template.updated_by = current_user["user_id"]
+
     db.commit()
     db.refresh(template)
     return template

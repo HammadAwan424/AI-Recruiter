@@ -1,5 +1,4 @@
 import React from "react";
-import { Box, Typography, Stack, Avatar } from "@mui/material";
 import { MessageSquare } from "lucide-react";
 
 interface ApplicationCommentsSectionProps {
@@ -17,31 +16,31 @@ export const ApplicationCommentsSection: React.FC<ApplicationCommentsSectionProp
   if (!comments || comments.length === 0) return null;
 
   return (
-    <Box className="p-5 rounded-2xl bg-black/40 border border-gray-800/80 shadow-lg mb-6">
-      <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", mb: 3 }}>
-        <MessageSquare size={20} className="text-[#05DC7F]" />
-        <Typography variant="h6" color="text.primary" sx={{ fontWeight: 700 }}>
-          Internal Team Comments ({comments.length})
-        </Typography>
-      </Stack>
+    <div className="pb-6 border-b border-white/10 space-y-4">
+      <div className="flex items-center gap-2 text-[#05DC7F]">
+        <MessageSquare size={18} />
+        <h4 className="text-sm font-bold text-white uppercase tracking-wider">Internal Team Comments ({comments.length})</h4>
+      </div>
 
-      <Stack spacing={2}>
+      <div className="space-y-2.5">
         {comments.map((comment) => (
-          <div key={comment.id} className="p-3.5 rounded-xl bg-gray-900/60 border border-gray-800/80 flex items-start gap-3">
-            <Avatar className="w-7 h-7 bg-[#05DC7F]/20 text-[#05DC7F] text-xs font-bold border border-[#05DC7F]/40">
-              {(comment.author_name || "User")[0].toUpperCase()}
-            </Avatar>
+          <div key={comment.id} className="p-3 rounded-xl bg-white/5 border border-white/5 flex items-start gap-3">
+            <div className="w-7 h-7 rounded-full bg-[#05DC7F]/20 text-[#05DC7F] text-xs font-bold border border-[#05DC7F]/40 flex items-center justify-center shrink-0">
+              {(comment.author_name || "U")[0].toUpperCase()}
+            </div>
 
             <div className="flex-1 min-w-0">
-              <div className="flex justify-between items-center mb-1">
+              <div className="flex justify-between items-center mb-0.5">
                 <span className="text-white font-bold text-xs">{comment.author_name || `User #${comment.author_id}`}</span>
-                <span className="text-gray-500 text-[10px]">{comment.created_at}</span>
+                <span className="text-white/40 text-[10px]">{comment.created_at}</span>
               </div>
-              <p className="text-gray-300 text-xs leading-relaxed">{comment.content}</p>
+              <p className="text-white/80 text-xs leading-relaxed">{comment.content}</p>
             </div>
           </div>
         ))}
-      </Stack>
-    </Box>
+      </div>
+    </div>
   );
 };
+
+export default ApplicationCommentsSection;
