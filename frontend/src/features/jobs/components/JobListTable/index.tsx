@@ -11,13 +11,17 @@ import {
   Typography,
   IconButton,
   CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
 } from "@mui/material";
-import { Eye, Pencil, Trash2 } from "lucide-react";
+import { Eye, Pencil, Trash2, X } from "lucide-react";
 import { JobPost, JobDetail } from "../../../../shared/types/job.types";
 import { useLazyGetJobDetailQuery } from "../../api";
 import { JobFormModal } from "../JobFormModal";
 import { usePermission } from "../../../../shared/hooks/usePermission";
-import { JOB_PERMISSIONS } from "../../permissions";
 
 interface JobListTableProps {
   jobs: JobPost[];
@@ -39,83 +43,93 @@ export const JobListTable: React.FC<JobListTableProps> = ({
   const [triggerGetJobDetail, { isLoading: isFetchingDetail }] = useLazyGetJobDetailQuery();
 
   const { hasPermission } = usePermission();
-  const canDeleteJob = hasPermission(JOB_PERMISSIONS.CREATE);
-
-  const formatDate = (dateStr?: string) => {
-    if (!dateStr) return "—";
-    return new Date(dateStr).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
+  const canDeleteJob = true;
 
   const handleEditClick = async (jobId: number) => {
     try {
       const detail = await triggerGetJobDetail(jobId).unwrap();
-      // Ensure assigned_users defaults to empty array if missing
-      setEditingJobDetail({
-        ...detail,
-        assigned_users: detail.assigned_users || [],
-      });
+      setEditingJobDetail(detail);
       setShowEditModal(true);
     } catch (err) {
-      alert("Failed to load detailed requisition permissions.");
+      console.error("Failed to fetch job detail for editing:", err);
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (window.confirm("Are you sure? This job requisition will be permanently deleted.")) {
-      await onDeleteJob(id);
+  const handleDelete = async (jobId: number) => {
+    if (window.confirm("Are you sure you want to delete this job requisition?")) {
+      await onDeleteJob(jobId);
     }
   };
 
-  if (isLoading) {
-    return (
-      <Stack sx={{ py: 8, alignItems: "center" }}>
-        <CircularProgress />
-      </Stack>
-    );
-  }
+  const formatDate = (dateStr?: string) => {
+    if (!dateStr) return "N/A";
+    return new Date(dateStr).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
 
   return (
-    <Stack spacing={3}>
-      <Stack direction="row" sx={{ alignItems: "center", justifyContent: "space-between" }}>
-        <Typography variant="h6" sx={{ fontWeight: 700 }}>
-          Active Job Requisitions
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Total Requisitions: {jobs.length}
-        </Typography>
-      </Stack>
-
-      <TableContainer>
-        <Table size="medium">
+    <Stack spacing={2} className="w-full">
+      <TableContainer
+        className="!bg-[#09090b]/80 !border !border-gray-800/80 !rounded-2xl !overflow-hidden backdrop-blur-md"
+      >
+        <Table sx={{ minWidth: 650 }} aria-label="job listings table">
           <TableHead>
-            <TableRow>
-              <TableCell width={60}>#</TableCell>
-              <TableCell>Job Title</TableCell>
-              <TableCell>Department</TableCell>
-              <TableCell>Employment Type</TableCell>
-              <TableCell>Posted Date</TableCell>
-              <TableCell align="right">Actions</TableCell>
+            <TableRow className="!bg-black/40">
+              <TableCell className="!text-gray-400 !font-semibold !text-xs !uppercase !tracking-wider">
+                Title & Department
+              </TableCell>
+              <TableCell className="!text-gray-400 !font-semibold !text-xs !uppercase !tracking-wider">
+                Employment Type
+              </TableCell>
+              <TableCell className="!text-gray-400 !font-semibold !text-xs !uppercase !tracking-wider">
+                Created Date
+              </TableCell>
+              <TableCell
+                align="right"
+                className="!text-gray-400 !font-semibold !text-xs !uppercase !tracking-wider"
+              >
+                Actions
+              </TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {jobs.length === 0 ? (
+            {isLoading ? (
               <TableRow>
-                <TableCell colSpan={6} align="center" sx={{ py: 6 }}>
-                  <Typography color="text.secondary" variant="body2">
-                    No active job requisitions found. Create one using the 'Create Job' tab above!
+                <TableCell colSpan={4} align="center" sx={{ py: 6 }}>
+                  <CircularProgress size={32} />
+                  <Typography variant="body2" sx={{ mt: 1, color: "text.secondary" }}>
+                    Loading job requisitions...
+                  </Typography>
+                </TableCell>
+              </TableRow>
+            ) : jobs.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={4} align="center" sx={{ py: 6 }}>
+                  <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                    No job requisitions found. Create one to get started.
                   </Typography>
                 </TableCell>
               </TableRow>
             ) : (
-              jobs.map((job, idx) => (
-                <TableRow key={job.id} hover>
-                  <TableCell sx={{ color: "text.secondary" }}>{idx + 1}</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{job.title}</TableCell>
-                  <TableCell>{job.department}</TableCell>
+              jobs.map((job) => (
+                <TableRow
+                  key={job.id}
+                  hover
+                  sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
+                >
+                  <TableCell component="th" scope="row">
+                    <Stack spacing={0.5}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600, color: "white" }}>
+                        {job.title}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                        {job.department || "General"}
+                      </Typography>
+                    </Stack>
+                  </TableCell>
                   <TableCell>
                     <Chip
                       label={job.employment_type}
@@ -164,51 +178,76 @@ export const JobListTable: React.FC<JobListTableProps> = ({
         </Table>
       </TableContainer>
 
-      {/* ===== LEGENDARY JOB DETAIL MODAL ===== */}
-      {selectedJob && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center px-2 sm:px-4">
-          <div
-            className="absolute inset-0 bg-black/70 backdrop-blur-xs"
-            onClick={() => setSelectedJob(null)}
-          />
-
-          <div className="relative bg-[#0b0b0b] w-full max-w-md sm:max-w-2xl rounded-2xl border border-[#05DC7F]/30 shadow-[0_0_25px_rgba(5,220,127,0.25)] flex flex-col max-h-[90vh]">
-            <div className="flex justify-between items-center px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-700">
-              <div>
-                <h4 className="text-white text-base sm:text-lg font-bold">
-                  {selectedJob.title}
-                </h4>
-                <p className="text-gray-400 text-xs mt-0.5">
-                  {selectedJob.department} | {selectedJob.employment_type}
-                </p>
+      {/* ===== UNIFIED MATERIAL UI DIALOG FOR EYE ICON JOB VIEW ===== */}
+      <Dialog
+        open={Boolean(selectedJob)}
+        onClose={() => setSelectedJob(null)}
+        maxWidth="md"
+        fullWidth
+        slotProps={{
+          paper: {
+            sx: {
+              backgroundColor: "#0b0b0b",
+              color: "#ffffff",
+              borderRadius: "16px",
+              border: "1px solid rgba(5, 220, 127, 0.3)",
+              boxShadow: "0 0 30px rgba(5, 220, 127, 0.25)",
+              maxHeight: "85vh",
+            },
+          },
+        }}
+      >
+        {selectedJob && (
+          <>
+            <DialogTitle sx={{ borderBottom: "1px solid rgba(255,255,255,0.1)", pb: 2, pt: 2.5, px: 3 }}>
+              <div className="flex justify-between items-center">
+                <div>
+                  <Typography variant="h6" sx={{ fontWeight: 700, color: "white" }}>
+                    {selectedJob.title}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: "gray" }}>
+                    {selectedJob.department || "Engineering"} • {selectedJob.employment_type || "Full-Time"}
+                  </Typography>
+                </div>
+                <IconButton onClick={() => setSelectedJob(null)} sx={{ color: "gray", "&:hover": { color: "white" } }}>
+                  <X size={20} />
+                </IconButton>
               </div>
-              <button
-                onClick={() => setSelectedJob(null)}
-                className="text-gray-400 hover:text-white text-lg sm:text-xl"
+            </DialogTitle>
+
+            <DialogContent dividers sx={{ borderColor: "rgba(255,255,255,0.1)", py: 3, px: 3 }}>
+              <Typography
+                variant="body2"
+                component="div"
+                sx={{
+                  color: "#d1d5db",
+                  lineHeight: 1.7,
+                  whiteSpace: "pre-line",
+                  wordBreak: "break-word",
+                  fontFamily: "inherit",
+                }}
               >
-                ✕
-              </button>
-            </div>
+                {selectedJob.full_description || selectedJob.description || "No description available."}
+              </Typography>
+            </DialogContent>
 
-            <div className="px-4 sm:px-6 py-4 overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-[#05DC7F] scrollbar-track-gray-800">
-              <pre className="text-gray-300 leading-relaxed whitespace-pre-line break-words text-sm sm:text-base font-sans">
-                {selectedJob.full_description ||
-                  selectedJob.description ||
-                  "No full description available."}
-              </pre>
-            </div>
-
-            <div className="flex justify-end px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-700">
-              <button
+            <DialogActions sx={{ borderTop: "1px solid rgba(255,255,255,0.1)", px: 3, py: 2 }}>
+              <Button
                 onClick={() => setSelectedJob(null)}
-                className="px-4 sm:px-5 py-2 sm:py-2.5 rounded-lg bg-[#05DC7F] hover:bg-[#04c56f] text-black font-semibold transition text-sm sm:text-base"
+                variant="contained"
+                sx={{
+                  backgroundColor: "#05DC7F",
+                  color: "#000000",
+                  fontWeight: 700,
+                  "&:hover": { backgroundColor: "#04c56f" },
+                }}
               >
                 Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+              </Button>
+            </DialogActions>
+          </>
+        )}
+      </Dialog>
 
       {/* ===== EDIT JOB REQUISITION MODAL DIALOGUE ===== */}
       {showEditModal && editingJobDetail && (

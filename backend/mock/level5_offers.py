@@ -53,85 +53,77 @@ def seed_offers(db, users_context, applications, jobs):
 
     seeded_templates = []
     for t_data in templates_data:
-        tmpl = db.query(OfferTemplate).filter(OfferTemplate.title == t_data["title"]).first()
-        if not tmpl:
-            tmpl = OfferTemplate(
-                company_id=ceo_user.company_id,
-                title=t_data["title"],
-                department=t_data["department"],
-                content=t_data["content"],
-                is_active=True,
-                created_by=ceo_user.id,
-            )
-            db.add(tmpl)
-            db.commit()
-            db.refresh(tmpl)
+        tmpl = OfferTemplate(
+            company_id=ceo_user.company_id,
+            title=t_data["title"],
+            department=t_data["department"],
+            content=t_data["content"],
+            is_active=True,
+            created_by=ceo_user.id,
+        )
+        db.add(tmpl)
+        db.commit()
+        db.refresh(tmpl)
         seeded_templates.append(tmpl)
 
     main_template = seeded_templates[0]
     offers_created = []
 
-    # 2. Offer for Candidate in 'offer_sent' stage (David Kim)
-    app_sent = next((a for a in applications if a.current_status == "offer_sent"), applications[4] if len(applications) > 4 else applications[0])
-    offer1 = db.query(Offer).filter(Offer.application_id == app_sent.id).first()
-    if not offer1:
-        token = generate_secure_offer_token()
-        offer1 = Offer(
-            application_id=app_sent.id,
-            template_id=main_template.id if main_template else None,
-            base_salary=145000.0,
-            bonus_equity="$10,000 Signing Bonus + 5,000 Options",
-            start_date=date.today() + timedelta(days=14),
-            expiry_date=date.today() + timedelta(days=7),
-            offer_letter_text=(
-                "Dear David Kim,\n\n"
-                "On behalf of AI Recruiter, I am delighted to extend to you a formal offer of employment for the position of Senior Full Stack Engineer within our Engineering department. We were exceptionally impressed by your technical expertise during the evaluation process.\n\n"
-                "Your starting annual base salary will be $145,000. In addition, your package includes $10,000 Signing Bonus + 5,000 Options. Your targeted start date will be "
-                + str(date.today() + timedelta(days=14)) + ".\n\n"
-                "Sincerely,\nAI Recruiter Team"
-            ),
-            secure_token=token,
-            token_expires_at=datetime.utcnow() + timedelta(days=7),
-            created_by=ceo_user.id,
-        )
-        db.add(offer1)
-        db.commit()
-        db.refresh(offer1)
+    # 2. Offer for Candidate in 'offer_sent' stage (David Kim - Job 1, App 5)
+    app_sent = applications[4]
+    token = generate_secure_offer_token()
+    offer1 = Offer(
+        application_id=app_sent.id,
+        template_id=main_template.id if main_template else None,
+        base_salary=145000.0,
+        bonus_equity="$10,000 Signing Bonus + 5,000 Options",
+        start_date=date.today() + timedelta(days=14),
+        expiry_date=date.today() + timedelta(days=7),
+        offer_letter_text=(
+            "Dear David Kim,\n\n"
+            "On behalf of AI Recruiter, I am delighted to extend to you a formal offer of employment for the position of Senior Full Stack Engineer within our Engineering department. We were exceptionally impressed by your technical expertise during the evaluation process.\n\n"
+            "Your starting annual base salary will be $145,000. In addition, your package includes $10,000 Signing Bonus + 5,000 Options. Your targeted start date will be "
+            + str(date.today() + timedelta(days=14)) + ".\n\n"
+            "Sincerely,\nAI Recruiter Team"
+        ),
+        secure_token=token,
+        token_expires_at=datetime.utcnow() + timedelta(days=7),
+        created_by=ceo_user.id,
+    )
+    db.add(offer1)
+    db.commit()
+    db.refresh(offer1)
     offers_created.append(offer1)
 
-    # 3. Offer Approval for Candidate in 'offer_approval' stage (Elena Rostova)
-    app_approval = next((a for a in applications if a.current_status == "offer_approval"), applications[3] if len(applications) > 3 else applications[0])
-    offer2 = db.query(Offer).filter(Offer.application_id == app_approval.id).first()
-    if not offer2:
-        offer2 = Offer(
-            application_id=app_approval.id,
-            template_id=main_template.id if main_template else None,
-            base_salary=155000.0,
-            bonus_equity="15% Performance Bonus + 2,500 Stock Options",
-            start_date=date.today() + timedelta(days=21),
-            expiry_date=date.today() + timedelta(days=7),
-            offer_letter_text=(
-                "Dear Elena Rostova,\n\n"
-                "On behalf of AI Recruiter, we are pleased to offer you the position of AI / ML Engineer within our Engineering department. Your annual starting salary will be $155,000 with 15% Performance Bonus + 2,500 Stock Options.\n\n"
-                "Target start date: " + str(date.today() + timedelta(days=21)) + ".\n\n"
-                "Sincerely,\nExecutive Committee"
-            ),
-            created_by=ceo_user.id,
-        )
-        db.add(offer2)
-        db.commit()
-        db.refresh(offer2)
+    # 3. Offer Approval for Candidate in 'offer_approval' stage (Elena Rostova - Job 1, App 4)
+    app_approval = applications[3]
+    offer2 = Offer(
+        application_id=app_approval.id,
+        template_id=main_template.id if main_template else None,
+        base_salary=155000.0,
+        bonus_equity="15% Performance Bonus + 2,500 Stock Options",
+        start_date=date.today() + timedelta(days=21),
+        expiry_date=date.today() + timedelta(days=7),
+        offer_letter_text=(
+            "Dear Elena Rostova,\n\n"
+            "On behalf of AI Recruiter, we are pleased to offer you the position of AI / ML Engineer within our Engineering department. Your annual starting salary will be $155,000 with 15% Performance Bonus + 2,500 Stock Options.\n\n"
+            "Target start date: " + str(date.today() + timedelta(days=21)) + ".\n\n"
+            "Sincerely,\nExecutive Committee"
+        ),
+        created_by=ceo_user.id,
+    )
+    db.add(offer2)
+    db.commit()
+    db.refresh(offer2)
 
-        appr2 = db.query(OfferApproval).filter(OfferApproval.offer_id == offer2.id).first()
-        if not appr2:
-            appr2 = OfferApproval(
-                offer_id=offer2.id,
-                approver_id=ceo_user.id,
-                comments="Draft offer package approved by CEO.",
-                created_by=ceo_user.id,
-            )
-            db.add(appr2)
-            db.commit()
+    appr2 = OfferApproval(
+        offer_id=offer2.id,
+        approver_id=ceo_user.id,
+        comments="Draft offer package approved by CEO.",
+        created_by=ceo_user.id,
+    )
+    db.add(appr2)
+    db.commit()
     offers_created.append(offer2)
 
     print(f"  ✓ Level 5 Complete: {len(seeded_templates)} Offer Templates, {len(offers_created)} Active Offers & Approvals created.")

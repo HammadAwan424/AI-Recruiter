@@ -98,7 +98,7 @@ def update_offer_template(
 
 
 # ─────────────────────────────────────────────────────────────
-# 2. OFFER CRUD & UNIFIED APPROVAL WORKFLOW
+# 2. CANONICAL REST OFFER & APPROVAL RESOURCE ENDPOINTS
 # ─────────────────────────────────────────────────────────────
 @router.post(
     "",
@@ -121,12 +121,61 @@ def create_offer_endpoint(
 
     # Update application status to offer_approval
     app.current_status = "offer_approval"
+    app.disposition = "active"
     app.updated_by = current_user["user_id"]
+
+    # Ensure an OfferApproval record is created in pending state
+    approval = db.query(OfferApproval).filter(OfferApproval.offer_id == offer.id).first()
+    if not approval:
+        ceo = db.query(User).filter(User.role == "ceo", User.company_id == current_user.get("company_id")).first()
+        approver_id = ceo.id if ceo else current_user["user_id"]
+        approval = create_offer_approval(
+            db,
+            offer_id=offer.id,
+            approver_id=approver_id,
+            comments="Offer approval requested",
+            created_by=current_user["user_id"]
+        )
 
     db.commit()
     db.refresh(offer)
 
     return offer
+
+
+@router.post(
+    "/{offer_id}/approvals",
+    dependencies=[Depends(require_permissions(["offer:generate"]))]
+)
+@router.post(
+    "/{offer_id}/submit-approval",
+    dependencies=[Depends(require_permissions(["offer:generate"]))]
+)
+def create_offer_approval_request(
+    offer_id: int,
+    db: Session = Depends(get_db),
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    offer = get_offer_or_403(offer_id, db=db, current_user=current_user)
+    if offer.application:
+        offer.application.current_status = "offer_approval"
+        offer.application.disposition = "active"
+        offer.application.updated_by = current_user["user_id"]
+
+    approval = db.query(OfferApproval).filter(OfferApproval.offer_id == offer.id).first()
+    if not approval:
+        ceo = db.query(User).filter(User.role == "ceo", User.company_id == current_user.get("company_id")).first()
+        approver_id = ceo.id if ceo else current_user["user_id"]
+        approval = create_offer_approval(
+            db,
+            offer_id=offer.id,
+            approver_id=approver_id,
+            comments="Offer approval requested",
+            created_by=current_user["user_id"]
+        )
+
+    db.commit()
+    return {"message": "Offer approval submitted successfully"}
 
 
 @router.get("", response_model=List[OfferResponse],
@@ -137,7 +186,21 @@ def list_offers(
     offers_query: Query = Depends(get_scoped_offers_query),
 ):
     offers = offers_query.order_by(Offer.created_at.desc()).all()
-    return offers
+    results = []
+    for offer in offers:
+        resp = OfferResponse.model_validate(offer)
+        if offer.signed_at:
+            resp.status = "SIGNED"
+        elif offer.decline_reason:
+            resp.status = "DECLINED"
+        elif offer.secure_token or (offer.application and offer.application.current_status == "offer_sent"):
+            resp.status = "SENT"
+        elif offer.application and offer.application.current_status == "offer_approval":
+            resp.status = "PENDING_APPROVAL"
+        else:
+            resp.status = "DRAFT"
+        results.append(resp)
+    return results
 
 
 @router.get("/{offer_id}", response_model=OfferResponse,
@@ -168,13 +231,18 @@ def update_offer(
     return offer
 
 
-# ──── Unified Offer Approval & Dispatch (CEO Only) ────
+# ──── Executive Decision (Approve / Reject) ────
+@router.post(
+    "/{offer_id}/approvals/decision",
+    response_model=OfferResponse,
+    dependencies=[Depends(require_permissions(["offer:approve"]))]
+)
 @router.post(
     "/{offer_id}/approval",
     response_model=OfferResponse,
     dependencies=[Depends(require_permissions(["offer:approve"]))]
 )
-async def handle_offer_approval(
+async def record_offer_approval_decision(
     action_payload: OfferApprovalAction,
     offer: Offer = Depends(get_offer_or_403),
     db: Session = Depends(get_db),
@@ -196,22 +264,57 @@ async def handle_offer_approval(
         approval.updated_by = current_user["user_id"]
         approval.decided_at = datetime.utcnow()
 
-    # 2. Auto-Generate Secure E-Signature Token
-    token = generate_secure_offer_token()
-    offer.secure_token = token
-    offer.token_expires_at = datetime.utcnow() + timedelta(days=7)
-    offer.updated_by = current_user["user_id"]
+    action_upper = (action_payload.action or "APPROVE").upper()
 
-    if offer.application:
-        offer.application.current_status = "offer_sent"
-        offer.application.updated_by = current_user["user_id"]
+    if "REJECT" in action_upper:
+        if offer.application:
+            offer.application.current_status = "rejected"
+            offer.application.disposition = "rejected"
+            offer.application.updated_by = current_user["user_id"]
+    else:
+        # 2. Auto-Generate Secure E-Signature Token
+        token = generate_secure_offer_token()
+        offer.secure_token = token
+        offer.token_expires_at = datetime.utcnow() + timedelta(days=7)
+        offer.updated_by = current_user["user_id"]
+
+        if offer.application:
+            offer.application.current_status = "offer_sent"
+            offer.application.disposition = "active"
+            offer.application.updated_by = current_user["user_id"]
 
     db.commit()
     db.refresh(offer)
 
-    # TODO: 3. Dispatch E-Signature Offer Link to Candidate Email via MCP
-
     return offer
+
+
+# ──── Dispatch Offer to Candidate ────
+@router.post(
+    "/{offer_id}/dispatch",
+    dependencies=[Depends(require_permissions(["offer:generate"]))]
+)
+@router.post(
+    "/{offer_id}/send",
+    dependencies=[Depends(require_permissions(["offer:generate"]))]
+)
+def dispatch_offer_to_candidate(
+    offer_id: int,
+    db: Session = Depends(get_db),
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    offer = get_offer_or_403(offer_id, db=db, current_user=current_user)
+    if not offer.secure_token:
+        offer.secure_token = generate_secure_offer_token()
+        offer.token_expires_at = datetime.utcnow() + timedelta(days=7)
+
+    if offer.application:
+        offer.application.current_status = "offer_sent"
+        offer.application.disposition = "active"
+
+    db.commit()
+    db.refresh(offer)
+    return {"message": "Offer letter dispatched to candidate", "secure_token": offer.secure_token}
 
 
 # ─────────────────────────────────────────────────────────────
@@ -247,8 +350,9 @@ def get_public_offer(token: str, db: Session = Depends(get_db)):
     )
 
 
+@router.post("/public/{token}/signatures", response_model=OfferPublicResponse)
 @router.post("/public/{token}/sign", response_model=OfferPublicResponse)
-def sign_public_offer(
+def create_public_offer_signature(
     token: str,
     payload: OfferSignRequest,
     request: Request,
@@ -314,8 +418,9 @@ def sign_public_offer(
     )
 
 
+@router.post("/public/{token}/declinations", response_model=OfferPublicResponse)
 @router.post("/public/{token}/decline", response_model=OfferPublicResponse)
-def decline_public_offer(
+def create_public_offer_declination(
     token: str,
     payload: OfferDeclineRequest,
     db: Session = Depends(get_db)

@@ -47,8 +47,6 @@ class ApplicationResponse(BaseModel):
     job_id: int
     status: str
     match_score: Optional[float] = None
-    skill_gap: Optional[str] = None
-    summary: Optional[str] = None
 
     class Config:
         from_attributes = True

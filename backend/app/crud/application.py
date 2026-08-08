@@ -10,8 +10,6 @@ def get_or_create_application(
     current_status: str = "applied",
     disposition: str = "active",
     match_score: Optional[float] = None,
-    skill_gap: Optional[str] = None,
-    summary: Optional[str] = None,
     cv_text: Optional[str] = None,
     cv_pdf_path: Optional[str] = None,
     gmail_message_id: Optional[str] = None,
@@ -29,8 +27,6 @@ def get_or_create_application(
             current_status=current_status,
             disposition=disposition,
             match_score=match_score,
-            skill_gap=skill_gap,
-            summary=summary,
             cv_text=cv_text,
             cv_pdf_path=cv_pdf_path,
             gmail_message_id=gmail_message_id,
@@ -43,12 +39,6 @@ def get_or_create_application(
         changed = False
         if match_score is not None:
             app.match_score = match_score
-            changed = True
-        if skill_gap is not None:
-            app.skill_gap = skill_gap
-            changed = True
-        if summary is not None:
-            app.summary = summary
             changed = True
         if cv_text is not None:
             app.cv_text = cv_text

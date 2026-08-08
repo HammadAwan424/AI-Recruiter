@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional, List
-from sqlalchemy import String, Float, Text, ForeignKey, DateTime
+from sqlalchemy import String, Float, Text, Integer, ForeignKey, DateTime
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from sqlalchemy.sql import func
 from app.database import Base, BaseModelMixin
@@ -25,19 +25,14 @@ class Application(Base, BaseModelMixin):
     cv_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     cv_pdf_path: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     gmail_message_id: Mapped[Optional[str]] = mapped_column(String, unique=True, index=True, nullable=True)
-    parsed_profile: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    parsed_profile: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # ──── Status Tracking ────
     current_status: Mapped[str] = mapped_column(String, default="applied", nullable=False, index=True)  # applied | screening | interview | offer_approval | offer_sent | hired
     disposition: Mapped[str] = mapped_column(String, default="active", nullable=False, index=True)      # active | rejected
 
-    # ──── AI CV Screening Evaluation ────
+    # ──── AI CV Screening Evaluation (Denormalized Cache / Rollup) ────
     match_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
-    skill_gap: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    summary: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-
-    # ──── AI Structured Resume Profile (JSON-encoded string) ────
-    parsed_profile: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # ──── Combined Final Score ────
     final_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
@@ -64,6 +59,42 @@ class Application(Base, BaseModelMixin):
     interviews = relationship("InterviewModel", back_populates="application", cascade="all, delete-orphan")
     offer = relationship("Offer", back_populates="application", uselist=False, cascade="all, delete-orphan")
     comments = relationship("ApplicationComment", back_populates="application", cascade="all, delete-orphan")
+    screening = relationship("ApplicationScreening", back_populates="application", uselist=False, cascade="all, delete-orphan")
+
+
+class ApplicationScreening(Base, BaseModelMixin):
+    __tablename__ = "application_screenings"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    application_id: Mapped[int] = mapped_column(
+        ForeignKey("applications.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+
+    # ──── Dimension Scores (0-100) ────
+    skills_match: Mapped[int] = mapped_column(Integer, nullable=False)
+    experience_match: Mapped[int] = mapped_column(Integer, nullable=False)
+    education_match: Mapped[int] = mapped_column(Integer, nullable=False)
+    keyword_coverage: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    # ──── Application-Level Rollup & Quality Signals ────
+    match_score: Mapped[float] = mapped_column(Float, nullable=False)
+    confidence: Mapped[int] = mapped_column(Integer, nullable=False)
+    data_quality_flag: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # ──── Structured Evidence & Weights (JSON text) ────
+    evidence: Mapped[str] = mapped_column(Text, nullable=False)
+    weights_used: Mapped[str] = mapped_column(Text, nullable=False)
+
+    # ──── Audit & Model Provenance Metadata ────
+    model_used: Mapped[str] = mapped_column(String, default="llama-3.1-8b-instant", nullable=False)
+    prompt_version: Mapped[str] = mapped_column(String, default="v2.0", nullable=False)
+    evaluated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+    # ──── Relationship ────
+    application = relationship("Application", back_populates="screening")
 
 
 class ApplicationComment(Base, BaseModelMixin):
@@ -85,4 +116,3 @@ class ApplicationComment(Base, BaseModelMixin):
 
     application = relationship("Application", back_populates="comments")
     author = relationship("User")
-

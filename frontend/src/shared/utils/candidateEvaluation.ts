@@ -68,15 +68,47 @@ export function getDraggableEvaluator(stageKey: string): (variant?: string) => b
 
 /**
  * Evaluates whether a candidate is a draggable (completed) interview candidate ready for offer creation.
+ * Directly maps to applications in 'interview' stage.
  */
 export function isDraggableInterviewCandidate(candidate: any): boolean {
   if (!candidate) return false;
   const isRejected = candidate.disposition === "rejected" || candidate.rejected || candidate.status === "rejected";
   if (isRejected) return false;
 
+  const currentStatus = candidate.current_status || candidate.status;
+  if (currentStatus !== "interview") return false;
+
   const resolved = resolveCardVariant(candidate, "interview");
   const evaluator = getDraggableEvaluator("interview");
 
-  // Candidate is draggable if their interview variant evaluates to true
   return evaluator(resolved.variant);
+}
+
+/**
+ * Centralized evaluator checking whether an offer item is pending executive approval.
+ * Directly maps to applications in 'offer_approval' stage.
+ */
+export function isPendingApprovalOffer(offer: any): boolean {
+  if (!offer) return false;
+
+  // Exclude signed, declined, or dispatched (secure_token) offers
+  if (offer.signed_at || offer.decline_reason || offer.secure_token) return false;
+
+  // Direct mapping to application stage if application relationship is present
+  if (offer.application?.current_status) {
+    return offer.application.current_status === "offer_approval";
+  }
+
+  // Fallback status check
+  return offer.status === "PENDING_APPROVAL";
+}
+
+/**
+ * Centralized evaluator checking whether an offer has been approved and dispatched to candidate.
+ * Directly maps to applications in 'offer_sent' stage.
+ */
+export function isDispatchedOffer(offer: any): boolean {
+  if (!offer) return false;
+  if (offer.application?.current_status === "offer_sent") return true;
+  return Boolean(offer.secure_token || offer.status === "SENT" || offer.status === "APPROVED");
 }

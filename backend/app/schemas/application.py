@@ -28,10 +28,27 @@ class ApplicationUpdate(BaseModel):
     current_status: Optional[str] = None
     disposition: Optional[str] = None
     match_score: Optional[float] = None
-    skill_gap: Optional[str] = None
-    summary: Optional[str] = None
     final_score: Optional[float] = None
     updated_by: Optional[int] = None
+
+
+class ApplicationScreeningResponse(BaseModel):
+    id: int
+    application_id: int
+    skills_match: int
+    experience_match: int
+    education_match: int
+    keyword_coverage: int
+    match_score: float
+    confidence: int
+    data_quality_flag: Optional[str] = None
+    evidence: str
+    weights_used: str
+    model_used: str
+    prompt_version: str
+    evaluated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ApplicationResponse(BaseModel):
@@ -44,9 +61,8 @@ class ApplicationResponse(BaseModel):
     current_status: str
     disposition: str
     match_score: Optional[float] = None
-    skill_gap: Optional[str] = None
-    summary: Optional[str] = None
     final_score: Optional[float] = None
+    screening: Optional[ApplicationScreeningResponse] = None
     created_by: Optional[int] = None
     updated_by: Optional[int] = None
     created_at: datetime
@@ -75,7 +91,5 @@ class ScreeningResultResponse(BaseModel):
     candidate_id: int
     candidate_name: str
     match_score: float
-    skill_gap: Optional[str] = None
-    summary: Optional[str] = None
     status: str
     disposition: str

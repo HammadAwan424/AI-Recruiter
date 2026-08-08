@@ -2,40 +2,46 @@ export type ApplicationStatus =
   | "applied"
   | "screening"
   | "interview"
-  | "offered"
+  | "offer_approval"
+  | "offer_sent"
   | "hired"
   | "rejected";
 
-export interface CandidateApplication {
-  application_id: number;
-  candidate_id: number;
-  full_name: string;
-  email: string;
-  phone?: string;
-  job_id: number;
-  job_title?: string;
-  rank: number;
-  ranking_category: "Strong Hire" | "Hire" | "Consider" | "Reject" | string;
-  final_score: number;
-  match_score?: number;
-  resume_score?: number;
-  technical_score?: number;
-  communication_score?: number;
-  interview_id?: number;
-  interview_status?: string;
-  interview_date?: string;
-  interview_time?: string;
-  meeting_link?: string;
-  hired?: boolean;
-  rejected?: boolean;
-  current_status?: ApplicationStatus;
-  disposition?: string;
-  status?: ApplicationStatus;
-  applied_at?: string;
-  cv_url?: string;
+export interface EvidenceItem {
+  requirement: string;
+  resume_evidence: string;
 }
 
-export interface ApplicationListItem {
+export interface EvidenceBlock {
+  matched: EvidenceItem[];
+  missing: string[];
+}
+
+export interface EvidenceSet {
+  skills_match: EvidenceBlock;
+  experience_match: EvidenceBlock;
+  education_match: EvidenceBlock;
+  keyword_coverage: EvidenceBlock;
+}
+
+export interface ApplicationScreeningDetail {
+  id?: number;
+  application_id?: number;
+  skills_match: number;
+  experience_match: number;
+  education_match: number;
+  keyword_coverage: number;
+  match_score: number;
+  confidence: number;
+  data_quality_flag?: string;
+  evidence: EvidenceSet | string;
+  weights_used?: string | Record<string, number>;
+  model_used?: string;
+  prompt_version?: string;
+  evaluated_at?: string;
+}
+
+export interface ApplicationItem {
   id: number;
   candidate_id: number;
   job_id: number;
@@ -45,9 +51,8 @@ export interface ApplicationListItem {
   current_status: ApplicationStatus;
   disposition: string;
   match_score?: number;
-  skill_gap?: string;
-  summary?: string;
   final_score?: number;
+  screening?: ApplicationScreeningDetail;
   created_by?: number;
   updated_by?: number;
   created_at: string;
@@ -67,6 +72,9 @@ export interface ApplicationListItem {
   }>;
 }
 
+export type ApplicationListItem = ApplicationItem;
+export type CandidateApplication = ApplicationItem;
+
 export interface ApplicationDetail {
   id: number;
   candidate_id: number;
@@ -76,10 +84,7 @@ export interface ApplicationDetail {
   final_score?: number;
   created_at: string;
   updated_at: string;
-  screening: {
-    match_score?: number;
-    skill_gap?: string;
-    summary?: string;
+  screening?: ApplicationScreeningDetail & {
     cv_pdf_path?: string;
     cv_text?: string;
   };
@@ -91,6 +96,9 @@ export interface ApplicationDetail {
     meeting_type: string;
     meeting_link: string;
     status: string;
+    notes?: string;
+    created_at: string;
+    updated_at: string;
     interviewer_assignments?: Array<{
       interviewer_id: number;
       interviewer: {
@@ -107,14 +115,6 @@ export interface ApplicationDetail {
       };
     }>;
   }>;
-  comments: Array<{
-    id: number;
-    application_id: number;
-    author_id: number;
-    author_name?: string;
-    content: string;
-    created_at: string;
-  }>;
   offer?: {
     id: number;
     base_salary: number;
@@ -127,11 +127,24 @@ export interface ApplicationDetail {
     signed_at?: string;
     decline_reason?: string;
     audit_hash?: string;
-    approval?: {
-      id: number;
-      approver_name?: string;
-      comments?: string;
-      decided_at?: string;
-    };
   };
+  comments?: Array<{
+    id: number;
+    application_id: number;
+    author_id: number;
+    author_name?: string;
+    content: string;
+    created_at: string;
+  }>;
+}
+
+export interface CandidateItem {
+  id: number;
+  full_name: string;
+  email: string;
+  phone?: string;
+  location?: string;
+  created_at: string;
+  updated_at: string;
+  applications?: ApplicationItem[];
 }

@@ -19,7 +19,7 @@ import { useGetApplicationsQuery } from "../../../candidates/api";
 import { OfferItem, OfferTemplate } from "../../../../shared/types/offer.types";
 import { usePermission } from "../../../../shared/hooks/usePermission";
 import { OFFER_PERMISSIONS } from "../../permissions";
-import { isDraggableInterviewCandidate } from "../../../../shared/utils/candidateEvaluation";
+import { isDraggableInterviewCandidate, isPendingApprovalOffer } from "../../../../shared/utils/candidateEvaluation";
 import { InterviewCandidateCard } from "../../../candidates/components/cards/InterviewCandidateCard";
 import { RequestOfferApprovalModal } from "../../../../shared/components/RequestOfferApprovalModal";
 import { CandidateProfile } from "../../../../shared/components/CandidateProfile";
@@ -66,9 +66,18 @@ export const OfferManagementPage: React.FC = () => {
 
   const [approvalComments, setApprovalComments] = useState("");
 
-  // Filtered candidate cards based on shared draggability evaluation logic
+  // Centralized candidate & offer filtering logic mapping directly to Kanban columns
   const interviewedCandidates = applications.filter((app) => isDraggableInterviewCandidate(app));
-  const pendingApprovalOffers = offers.filter((o) => o.status === "PENDING_APPROVAL");
+
+  const pendingApprovalOffers = offers.filter((o) => {
+    const isPending = isPendingApprovalOffer(o);
+    if (!isPending) return false;
+    // Map offer to active requisition (selectedJobId)
+    const appId = o.application_id;
+    const app = applications.find((a) => a.id === appId);
+    if (app) return app.job_id === selectedJobId;
+    return o.job_id === selectedJobId || !selectedJobId;
+  });
 
   const handleTabSelect = (tab: "CREATION" | "APPROVAL") => {
     setActiveTab(tab);

@@ -53,6 +53,7 @@ class OfferResponse(BaseModel):
     start_date: date
     expiry_date: Optional[date] = None
     offer_letter_text: str
+    status: Optional[str] = "PENDING_APPROVAL"
     secure_token: Optional[str] = None
     token_expires_at: Optional[datetime] = None
     signature_type: Optional[str] = None
@@ -72,6 +73,7 @@ class OfferResponse(BaseModel):
 
 
 class OfferApprovalAction(BaseModel):
+    action: Optional[str] = "APPROVE"
     comments: Optional[str] = None
 
 

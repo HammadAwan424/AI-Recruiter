@@ -174,20 +174,20 @@ export const JobPortalPage: React.FC = () => {
       </div>
 
       {selectedJob && (
-        <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setSelectedJob(null)} />
-          <div className="relative bg-[#0d0d0d] w-full sm:max-w-2xl rounded-t-3xl sm:rounded-2xl border border-[#05DC7F]/20 p-6 flex flex-col max-h-[90vh] text-white">
-            <div className="flex justify-between items-start border-b border-white/10 pb-3 mb-4">
+          <div className="relative bg-[#0d0d0d] w-full sm:max-w-2xl rounded-2xl border border-[#05DC7F]/20 p-6 flex flex-col max-h-[85vh] min-h-0 text-white my-auto">
+            <div className="shrink-0 flex justify-between items-start border-b border-white/10 pb-3 mb-4">
               <div>
                 <h3 className="font-bold text-lg">{selectedJob.title}</h3>
                 <p className="text-xs text-gray-400">{selectedJob.company_name} • {selectedJob.department}</p>
               </div>
-              <button onClick={() => setSelectedJob(null)} className="text-gray-400 hover:text-white">✕</button>
+              <button onClick={() => setSelectedJob(null)} className="text-gray-400 hover:text-white p-1">✕</button>
             </div>
-            <div className="overflow-y-auto flex-1 text-sm text-gray-300 whitespace-pre-line font-sans">
+            <div className="overflow-y-auto flex-1 min-h-0 text-sm text-gray-300 whitespace-pre-line font-sans leading-relaxed">
               {selectedJob.full_description}
             </div>
-            <div className="mt-4 pt-3 border-t border-white/10">
+            <div className="shrink-0 mt-4 pt-3 border-t border-white/10">
               <button
                 onClick={() => handleApplyNow(selectedJob)}
                 className="w-full py-3 rounded-xl bg-[#05DC7F] text-black font-semibold hover:bg-[#04c56f] transition"

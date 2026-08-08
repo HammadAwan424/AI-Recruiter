@@ -88,35 +88,16 @@ def extract_name_from_cv(cv_text: str, fallback_name: str = "") -> str:
 
 
 # ──── Emails fetch (MOCKED FOR DEVELOPMENT / TESTING) ────
+from app.data.mock_gmail_cvs import MOCK_GMAIL_CANDIDATE_APPLICATIONS
+
+
 def fetch_job_application_emails(job_title: str, max_results: int = 20, job_keywords: str = ""):
-    mock_entities = [
-        {
-            "gmail_message_id": "mock_msg_001",
-            "message_id": "mock_msg_001",
-            "email": "alex.johnson@example.com",
-            "full_name": "Alex Johnson",
-            "name": "Alex Johnson",
-            "phone": "+1 (555) 234-5678",
-            "subject": f"Application for {job_title}",
-            "cv_text": f"Alex Johnson\nExperienced Software Engineer with 5+ years expertise in Python, FastAPI, React, PostgreSQL, Docker, and AWS.\nEducation: BS in Computer Science.\nExperience: Senior Developer at TechCorp. Built scalable microservices.",
-            "cv_pdf": None,
-            "cv_pdf_path": None,
-            "cv_filename": "alex_johnson_resume.pdf"
-        },
-        {
-            "gmail_message_id": "mock_msg_002",
-            "message_id": "mock_msg_002",
-            "email": "sarah.smith@example.com",
-            "full_name": "Sarah Smith",
-            "name": "Sarah Smith",
-            "phone": "+1 (555) 876-5432",
-            "subject": f"Application for {job_title}",
-            "cv_text": f"Sarah Smith\nFull Stack Engineer specializing in TypeScript, React, Node.js, GraphQL, TailwindCSS, and Kubernetes.\nExperience: Lead Frontend Engineer at CloudScale Tech.",
-            "cv_pdf": None,
-            "cv_pdf_path": None,
-            "cv_filename": "sarah_smith_cv.pdf"
-        }
-    ]
+    mock_entities = []
+    for item in MOCK_GMAIL_CANDIDATE_APPLICATIONS:
+        entity = dict(item)
+        entity["subject"] = f"Application for {job_title}"
+        mock_entities.append(entity)
+
     return mock_entities
 
     try:

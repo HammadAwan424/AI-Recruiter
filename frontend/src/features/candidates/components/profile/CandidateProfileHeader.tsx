@@ -1,5 +1,4 @@
 import React from "react";
-import { Stack, Typography, Chip, Box } from "@mui/material";
 import { Trophy, CheckCircle, XCircle } from "lucide-react";
 import { ApplicationDetail } from "../../../../shared/types/candidate.types";
 
@@ -12,12 +11,11 @@ interface CandidateProfileHeaderProps {
 
 export const CandidateProfileHeader: React.FC<CandidateProfileHeaderProps> = ({
   detail,
-  canDisposition,
-  onHire,
-  onReject,
 }) => {
   const isHired = detail.current_status === "hired";
   const isRejected = detail.disposition === "rejected";
+  const rawScore = detail.final_score ?? detail.screening?.match_score;
+  const matchScore = rawScore != null ? Number(rawScore) : null;
 
   return (
     <div className="pb-6 border-b border-white/10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -49,11 +47,11 @@ export const CandidateProfileHeader: React.FC<CandidateProfileHeaderProps> = ({
         </div>
       </div>
 
-      {/* Right: Overall Final Score Display */}
-      {detail.final_score !== undefined && (
+      {/* Right: Overall Final / Match Score Display */}
+      {matchScore != null && !isNaN(matchScore) && (
         <div className="text-left sm:text-right shrink-0">
           <p className="text-[11px] text-white/40 font-semibold uppercase tracking-wider">Overall Match Score</p>
-          <p className="text-2xl font-extrabold text-[#05DC7F] font-mono">{detail.final_score.toFixed(1)}%</p>
+          <p className="text-2xl font-extrabold text-[#05DC7F] font-mono">{matchScore.toFixed(1)}%</p>
         </div>
       )}
     </div>

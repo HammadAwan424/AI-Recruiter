@@ -32,6 +32,7 @@ def reset_database():
         conn.execute(text("DROP TABLE IF EXISTS interview_slots CASCADE;"))
         conn.execute(text("DROP TABLE IF EXISTS final_scores CASCADE;"))
         conn.execute(text("DROP TABLE IF EXISTS candidate_requisitions CASCADE;"))
+        conn.execute(text("DROP TABLE IF EXISTS application_screenings CASCADE;"))
         conn.execute(text("DROP TABLE IF EXISTS applications CASCADE;"))
         conn.execute(text("DROP TABLE IF EXISTS jobs CASCADE;"))
         conn.execute(text("DROP TABLE IF EXISTS candidates CASCADE;"))

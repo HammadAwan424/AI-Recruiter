@@ -63,8 +63,6 @@ def create_mock_applications(count: int = 5):
                 current_status=status,
                 disposition="active" if status != "rejected" else "rejected",
                 match_score=score,
-                skill_gap=random.choice(["GraphQL", "Kubernetes", "Redis", "None"]),
-                summary=random.choice(summaries)
             )
             db.add(app)
             db.commit()

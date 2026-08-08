@@ -33,29 +33,29 @@ export const offersApi = baseApi.injectEndpoints({
         method: "POST",
         body: payload,
       }),
-      invalidatesTags: ["Offers"],
+      invalidatesTags: ["Offers", "Applications"],
     }),
     submitOfferApproval: builder.mutation<{ message: string }, number>({
       query: (offerId) => ({
-        url: `/offers/${offerId}/submit-approval`,
+        url: `/offers/${offerId}/approvals`,
         method: "POST",
       }),
-      invalidatesTags: ["Offers"],
+      invalidatesTags: ["Offers", "Applications"],
     }),
-    approveOfferAction: builder.mutation<{ message: string }, { offerId: number; action: "APPROVE" | "REJECT"; comments?: string }>({
+    approveOfferAction: builder.mutation<{ message: string }, { offerId: number; action?: "APPROVE" | "REJECT"; comments?: string }>({
       query: ({ offerId, action, comments }) => ({
-        url: `/offers/${offerId}/approval`,
+        url: `/offers/${offerId}/approvals/decision`,
         method: "POST",
         body: { action, comments },
       }),
-      invalidatesTags: ["Offers"],
+      invalidatesTags: ["Offers", "Applications"],
     }),
     sendOffer: builder.mutation<{ message: string; secure_token: string }, number>({
       query: (offerId) => ({
-        url: `/offers/${offerId}/send`,
+        url: `/offers/${offerId}/dispatch`,
         method: "POST",
       }),
-      invalidatesTags: ["Offers"],
+      invalidatesTags: ["Offers", "Applications"],
     }),
   }),
 });
