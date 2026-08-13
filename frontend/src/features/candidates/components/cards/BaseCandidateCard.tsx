@@ -1,7 +1,8 @@
 import React from "react";
 import { Chip, Typography } from "@mui/material";
-import { Trophy, Medal, Info, GripVertical } from "lucide-react";
+import { Trophy, Medal, Info, GripVertical, Calendar } from "lucide-react";
 import { CandidateApplication, ApplicationListItem } from "../../../../shared/types/candidate.types";
+import { FitFlagBadgeList } from "../../../../shared/components/FitFlagBadge";
 
 export interface BaseCandidateCardProps {
   candidate: CandidateApplication | ApplicationListItem | any;
@@ -49,7 +50,7 @@ export const BaseCandidateCard: React.FC<BaseCandidateCardProps> = ({
     <div
       draggable={isDraggable}
       onDragStart={handleDragStart}
-      className={`flex flex-col p-3.5 rounded-xl border transition-all duration-300 overflow-hidden ${
+      className={`flex flex-col p-3.5 rounded-xl border transition-all duration-300 ${
         isDraggable ? "cursor-grab active:cursor-grabbing hover:border-gray-700" : ""
       } ${
         isRejected
@@ -68,6 +69,21 @@ export const BaseCandidateCard: React.FC<BaseCandidateCardProps> = ({
               {candidate.full_name || `Application #${candidate.id || candidate.application_id}`}
             </h5>
             <p className="text-gray-500 text-[10px] truncate mt-0.5">{candidate.email || `Candidate ID: ${candidate.candidate_id}`}</p>
+            {(candidate.received_at || candidate.created_at) && (
+              <p className="text-gray-500 text-[9px] mt-0.5 flex items-center gap-1">
+                <Calendar size={10} className="text-gray-500 shrink-0" />
+                <span>Received {(() => {
+                  const raw = candidate.received_at || candidate.created_at;
+                  const utcStr = raw.endsWith("Z") || raw.includes("+") ? raw : `${raw}Z`;
+                  return new Date(utcStr).toLocaleString(undefined, {
+                    month: "short",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  });
+                })()}</span>
+              </p>
+            )}
           </div>
         </div>
         {isHired && (
@@ -87,12 +103,22 @@ export const BaseCandidateCard: React.FC<BaseCandidateCardProps> = ({
       {/* Custom Body Content for Card Variant */}
       {children}
 
+      {/* Fit Flags Summary Badges */}
+      {!isRejected && (candidate.fit_flags || candidate.screening?.fit_flags) && (
+        <div className="mt-2 flex-shrink-0">
+          <FitFlagBadgeList fitFlags={candidate.fit_flags || candidate.screening?.fit_flags} size="sm" />
+        </div>
+      )}
+
       {/* Match Score Display (Optional) */}
       {showMatchScore && (
         <div className="flex justify-between items-center mt-3 pt-2.5 border-t border-gray-800/60">
           <span className="text-gray-400 text-[11px]">Match Score</span>
           <span className={`font-bold text-xs ${isRejected ? "text-red-400/90" : "text-[#05DC7F]"}`}>
-            {candidate.final_score || candidate.match_score ? `${(candidate.final_score || candidate.match_score).toFixed(1)}%` : "Evaluating..."}
+            {(() => {
+              const score = candidate.final_score ?? candidate.match_score ?? candidate.screening?.match_score;
+              return score != null && !isNaN(Number(score)) ? `${Number(score).toFixed(1)}%` : "Evaluating...";
+            })()}
           </span>
         </div>
       )}

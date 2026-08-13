@@ -15,6 +15,7 @@ export interface JobPost {
   created_at?: string;
   company_id?: number;
   keywords?: string;
+  last_read?: string;
 }
 
 export interface JobDetail extends JobPost {

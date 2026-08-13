@@ -43,11 +43,27 @@ class ApplicationScreeningResponse(BaseModel):
     confidence: int
     data_quality_flag: Optional[str] = None
     evidence: str
+    fit_flags: Optional[str] = None
     weights_used: str
     model_used: str
     prompt_version: str
     evaluated_at: datetime
 
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CandidateMinimalResponse(BaseModel):
+    id: int
+    full_name: str
+    email: str
+    phone: Optional[str] = None
+    model_config = ConfigDict(from_attributes=True)
+
+
+class JobMinimalResponse(BaseModel):
+    id: int
+    title: str
+    department: Optional[str] = None
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -58,11 +74,15 @@ class ApplicationResponse(BaseModel):
     cv_text: Optional[str] = None
     cv_pdf_path: Optional[str] = None
     gmail_message_id: Optional[str] = None
+    received_at: Optional[datetime] = None
+    parsed_profile: Optional[str] = None
     current_status: str
     disposition: str
     match_score: Optional[float] = None
     final_score: Optional[float] = None
     screening: Optional[ApplicationScreeningResponse] = None
+    candidate: Optional[CandidateMinimalResponse] = None
+    job: Optional[JobMinimalResponse] = None
     created_by: Optional[int] = None
     updated_by: Optional[int] = None
     created_at: datetime
@@ -93,3 +113,22 @@ class ScreeningResultResponse(BaseModel):
     match_score: float
     status: str
     disposition: str
+
+
+class FetchedEmailApplication(BaseModel):
+    full_name: str
+    email: str
+    cv_text: str
+    cv_pdf_path: Optional[str] = None
+    cv_filename: Optional[str] = None
+    gmail_message_id: str
+    received_at: datetime
+
+
+class FetchApplicationsResponse(BaseModel):
+    message: str
+    job_id: int
+    total_fetched: int
+    total_saved: int
+    new_applications: int
+    renewed_applications: int

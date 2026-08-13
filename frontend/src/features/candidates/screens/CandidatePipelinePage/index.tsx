@@ -1,6 +1,7 @@
 import React from "react";
 import { Alert, CircularProgress } from "@mui/material";
 import { PipelineHeader } from "../../components/PipelineHeader";
+import { PipelineStatsSummary } from "../../components/PipelineStatsSummary";
 import { KanbanBoard } from "../../components/KanbanBoard";
 import { CandidateProfile } from "../../components/CandidateProfile";
 import { RequestOfferApprovalModal } from "../../../../shared/components/RequestOfferApprovalModal";
@@ -35,6 +36,7 @@ export const CandidatePipelinePage: React.FC = () => {
     handleDropCandidate,
     handleHire,
     handleReject,
+    pipelineStep,
     isFetchingNew,
     isScreeningActive,
   } = useCandidatePipeline();
@@ -46,11 +48,16 @@ export const CandidatePipelinePage: React.FC = () => {
         selectedJobId={selectedJobId}
         onSelectJob={setSelectedJobId}
         onFetchNewCVs={handleFetchNewCVs}
+        pipelineStep={pipelineStep}
         isFetchingNew={isFetchingNew}
         isScreeningActive={isScreeningActive}
         visibleStageKeys={visibleStageKeys}
         onToggleStageVisibility={toggleStageVisibility}
         allStages={STAGES}
+      />
+
+      <PipelineStatsSummary
+        applications={applications && applications.length > 0 ? applications : candidates}
       />
 
       {pipelineAlertMsg && (

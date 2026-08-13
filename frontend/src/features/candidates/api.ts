@@ -1,22 +1,33 @@
 import { baseApi } from "../../shared/api/baseApi";
-import { ApplicationListItem, ApplicationDetail } from "../../shared/types/candidate.types";
+import { ApplicationListItem, ApplicationDetail, FetchApplicationsResponse } from "../../shared/types/candidate.types";
 
 export const candidatesApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getApplications: builder.query<ApplicationListItem[], number>({
-      query: (jobId) => `/jobs/${jobId}/applications`,
+      query: (jobId) => `/jobs/${jobId}/applications/`,
       providesTags: (_result, _error, jobId) => [{ type: "Applications", id: jobId }],
     }),
     getApplicationDetail: builder.query<ApplicationDetail, { jobId: number; applicationId: number }>({
       query: ({ jobId, applicationId }) => `/jobs/${jobId}/applications/${applicationId}`,
       providesTags: (_result, _error, { applicationId }) => [{ type: "Applications", id: applicationId }],
     }),
-    fetchNewCVs: builder.mutation<{ message: string; saved: number }, number>({
+    fetchNewCVs: builder.mutation<FetchApplicationsResponse, number>({
       query: (jobId) => ({
         url: `/jobs/${jobId}/applications/new`,
         method: "POST",
       }),
-      invalidatesTags: (_result, _error, jobId) => [{ type: "Applications", id: jobId }],
+      invalidatesTags: (_result, _error, jobId) => [
+        { type: "Applications", id: jobId },
+        { type: "Jobs", id: jobId },
+      ],
+    }),
+    parseApplications: builder.mutation<any[], { jobId: number; applicationIds: number[] }>({
+      query: ({ jobId, applicationIds }) => ({
+        url: `/jobs/${jobId}/applications/parse`,
+        method: "POST",
+        body: { application_ids: applicationIds },
+      }),
+      invalidatesTags: (_result, _error, { jobId }) => [{ type: "Applications", id: jobId }],
     }),
     screenApplications: builder.mutation<{ message: string }, number>({
       query: (jobId) => ({
@@ -59,6 +70,7 @@ export const {
   useGetApplicationDetailQuery,
   useLazyGetApplicationDetailQuery,
   useFetchNewCVsMutation,
+  useParseApplicationsMutation,
   useScreenApplicationsMutation,
   useUpdateApplicationStageMutation,
   useHireCandidateMutation,

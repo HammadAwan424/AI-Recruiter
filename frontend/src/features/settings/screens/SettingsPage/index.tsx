@@ -5,11 +5,11 @@ import { PasswordInput } from "../../../../shared/components/PasswordInput";
 import { useAuth } from "../../../../shared/context/AuthContext";
 
 export const SettingsPage: React.FC = () => {
-  const { user } = useAuth();
+  const auth = useAuth();
   const { data: profile, isLoading } = useGetMyProfileQuery();
   const [updateMyProfile, { isLoading: isSaving }] = useUpdateMyProfileMutation();
 
-  const isCEO = Boolean(user?.role === "ceo" || profile?.role === "ceo");
+  const isCEO = Boolean(auth?.role === "ceo" || profile?.role === "ceo");
 
   const [formData, setFormData] = useState({
     name: "",
@@ -32,16 +32,14 @@ export const SettingsPage: React.FC = () => {
     const compName =
       profile?.company?.name ||
       profile?.company_name ||
-      user?.company_name ||
-      user?.company?.name ||
       "";
 
     setFormData({
-      name: profile?.full_name || user?.full_name || "",
-      email: profile?.email || user?.email || "",
+      name: profile?.full_name || "",
+      email: profile?.email || "",
       companyName: compName,
     });
-  }, [profile, user]);
+  }, [profile]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -126,18 +124,18 @@ export const SettingsPage: React.FC = () => {
       <div className="bg-[#111827]/90 border border-white/10 rounded-2xl p-6 shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#05DC7F]/30 to-[#05DC7F]/5 border border-[#05DC7F]/40 flex items-center justify-center text-[#05DC7F] text-2xl font-bold shadow-[0_0_20px_rgba(5,220,127,0.2)]">
-            {(formData.name || user?.full_name || "U").charAt(0).toUpperCase()}
+            {(formData.name || profile?.full_name || "U").charAt(0).toUpperCase()}
           </div>
           <div>
             <h2 className="text-xl font-bold text-white flex items-center gap-2">
               {formData.name || "User Profile"}
             </h2>
             <p className="text-xs text-white/50 flex items-center gap-1.5 mt-0.5">
-              <FaEnvelope className="text-[#05DC7F]/70" /> {formData.email || user?.email}
+              <FaEnvelope className="text-[#05DC7F]/70" /> {formData.email || profile?.email}
             </p>
             <div className="flex items-center gap-2 mt-2">
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#05DC7F]/15 text-[#05DC7F] border border-[#05DC7F]/30">
-                {user?.role || profile?.role || "Member"}
+                {auth?.role || profile?.role || "Member"}
               </span>
               <span className="text-xs text-white/40">• {formData.companyName || "AI Recruiter"}</span>
             </div>

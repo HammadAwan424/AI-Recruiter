@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from app.models.job import Job
 from app.models.rbac import UserJobScope
 
@@ -84,6 +85,7 @@ Preferred Qualifications:
             full_description=item["full_description"],
             keywords=item["keywords"],
             status="published",
+            last_read=datetime.utcnow() - timedelta(days=2),
             created_by=ceo_user.id
         )
         db.add(job)

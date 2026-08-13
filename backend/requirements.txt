@@ -21,6 +21,7 @@ PyMuPDF
 
 # ──── AI Agents & Vector RAG ────
 langchain-groq
+langchain-openai
 langchain-core
 langgraph
 chromadb

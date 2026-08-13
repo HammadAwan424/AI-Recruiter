@@ -1,5 +1,7 @@
-import os
-from typing import List, Dict, Any
+import json
+import asyncio
+from datetime import datetime
+from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.orm import Session, joinedload
 from pydantic import BaseModel
@@ -7,11 +9,20 @@ from app.database import get_db
 from app.models.application import Application
 from app.models.job import Job
 from app.models.interview import InterviewModel, InterviewInterviewers
-from app.schemas.application import ApplicationUpdate
+from app.schemas.application import ApplicationUpdate, FetchApplicationsResponse
 from app.schemas.composite import ApplicationDetail, ApplicationListItem
+from app.schemas.parsing import ParsingLLMOutput
+from app.agents.parsing import parse_resume_structured
 from app.utils.security import get_current_user, get_job_or_403, get_application_or_403
 from app.models.candidate import Candidate
-from app.crud.application import get_or_create_application
+from app.crud.application import (
+    get_application_by_candidate_and_job_db,
+    create_application_db
+)
+from app.services.gmail import (
+    fetch_job_application_emails_service,
+    notify_candidate_rejection,
+)
 
 router = APIRouter(tags=["Applications CRUD"])
 
@@ -19,70 +30,39 @@ router = APIRouter(tags=["Applications CRUD"])
 # ─────────────────────────────────────────────────────────────
 # 1. INGEST / FETCH NEW CVS
 # ─────────────────────────────────────────────────────────────
-@router.post("/new")
+@router.post("/new", response_model=FetchApplicationsResponse)
 def fetch_new_cvs(
     job_id: int,
+    before: Optional[datetime] = None,
+    limit: Optional[int] = 20,
     db: Session = Depends(get_db),
     current_user: Dict[str, Any] = Depends(get_current_user),
     job: Job = Depends(get_job_or_403)
 ):
-    from app.agents.gmail_agent import fetch_job_application_emails
-    email_applications = fetch_job_application_emails(job.title, 20, job.keywords or "")
-    saved = 0
+    """
+    Fetches new email applications for a job using the Gmail service layer.
+    - Encapsulates 4 subcomponents:
+      1. get_after_date
+      2. get_deduped_mails
+      3. process_mails
+      4. persist_application_with_candidate
+    """
+    email_applications, total_saved, new_applications, renewed_applications = fetch_job_application_emails_service(
+        db=db,
+        job_id=job.id,
+        before=before,
+        limit=limit,
+        created_by=current_user["user_id"]
+    )
 
-    for app_data in email_applications:
-        candidate_name = app_data.get("full_name") or app_data.get("name", "Candidate")
-        candidate = db.query(Candidate).filter(Candidate.email == app_data["email"]).first()
-        if not candidate:
-            candidate = Candidate(
-                full_name=candidate_name,
-                email=app_data["email"],
-                phone=app_data.get("phone")
-            )
-            db.add(candidate)
-            db.commit()
-            db.refresh(candidate)
-
-        file_path = app_data.get("cv_pdf_path")
-        msg_id = app_data.get("gmail_message_id")
-
-        existing_app = (
-            db.query(Application)
-            .filter(Application.candidate_id == candidate.id, Application.job_id == job.id)
-            .first()
-        )
-
-        if existing_app:
-            if existing_app.current_status in ["interview", "offer_approval", "offer_sent", "hired"]:
-                continue
-            existing_app.current_status = "applied"
-            existing_app.disposition = "active"
-            existing_app.cv_text = app_data["cv_text"]
-            if file_path:
-                existing_app.cv_pdf_path = file_path
-        else:
-            get_or_create_application(
-                db,
-                candidate_id=candidate.id,
-                job_id=job.id,
-                current_status="applied",
-                disposition="active",
-                cv_text=app_data["cv_text"],
-                cv_pdf_path=file_path,
-                gmail_message_id=msg_id,
-                created_by=current_user["user_id"]
-            )
-
-        saved += 1
-
-    db.commit()
-
-    return {
-        "message": f"Successfully ingested {saved} new applications.",
-        "job_id": job.id,
-        "total_fetched": len(email_applications),
-        "saved": saved
-    }
+    return FetchApplicationsResponse(
+        message=f"Successfully processed {total_saved} applications ({new_applications} new, {renewed_applications} renewed).",
+        job_id=job.id,
+        total_fetched=len(email_applications),
+        total_saved=total_saved,
+        new_applications=new_applications,
+        renewed_applications=renewed_applications
+    )
 
 
 # ─────────────────────────────────────────────────────────────
@@ -97,7 +77,10 @@ def list_job_applications(
     applications = (
         db.query(Application)
         .options(
-            joinedload(Application.interviews)
+            joinedload(Application.candidate),
+            joinedload(Application.job),
+            joinedload(Application.interviews),
+            joinedload(Application.screening)
         )
         .filter(Application.job_id == job.id)
         .all()
@@ -119,6 +102,8 @@ def get_application_detail(
         db.query(Application)
         .options(
             joinedload(Application.candidate),
+            joinedload(Application.job),
+            joinedload(Application.screening),
             joinedload(Application.interviews)
                 .joinedload(InterviewModel.interviewer_assignments)
                 .joinedload(InterviewInterviewers.interviewer),
@@ -199,6 +184,18 @@ def update_application_stage(
         app.current_status = payload.current_status
     if payload.disposition:
         app.disposition = payload.disposition
+        if payload.disposition == "rejected":
+            candidate_name = app.candidate.full_name if app.candidate else "Candidate"
+            candidate_email = app.candidate.email if app.candidate else ""
+            job_title = app.job.title if app.job else "Position"
+            company_name = app.job.company.name if (app.job and app.job.company) else "AI Recruiter"
+            if candidate_email:
+                notify_candidate_rejection(
+                    candidate_email=candidate_email,
+                    candidate_name=candidate_name,
+                    job_title=job_title,
+                    company_name=company_name
+                )
 
     app.updated_by = current_user["user_id"]
     db.commit()
@@ -210,3 +207,66 @@ def update_application_stage(
         "current_status": app.current_status,
         "disposition": app.disposition
     }
+
+
+# ─────────────────────────────────────────────────────────────
+# 6. PARALLEL BATCH RESUME PARSING FOR APPLICATIONS
+# ─────────────────────────────────────────────────────────────
+class BatchParseApplicationsRequest(BaseModel):
+    application_ids: List[int]
+
+
+SEMAPHORE_LIMIT = 5
+
+
+def _run_parse_for_application(db: Session, app_id: int) -> Optional[ParsingLLMOutput]:
+    app = db.query(Application).filter(Application.id == app_id).first()
+    if not app or not app.cv_text or not app.cv_text.strip():
+        return None
+
+    parsed_result = parse_resume_structured(app.cv_text)
+    app.parsed_profile = json.dumps(parsed_result.model_dump())
+    db.commit()
+    db.refresh(app)
+    return parsed_result
+
+
+async def _parse_app_task(app_id: int, semaphore: asyncio.Semaphore, db: Session) -> Optional[ParsingLLMOutput]:
+    async with semaphore:
+        return await asyncio.to_thread(_run_parse_for_application, db, app_id)
+
+
+@router.post("/parse", response_model=List[ParsingLLMOutput])
+async def parse_batch_applications(
+    job_id: int,
+    payload: BatchParseApplicationsRequest,
+    db: Session = Depends(get_db),
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    job: Job = Depends(get_job_or_403)
+):
+    """
+    Runs parse_resume_structured in parallel across specified application_ids
+    using an asyncio Semaphore limit, persists results into app.parsed_profile,
+    and returns structured profile items.
+    """
+    if not payload.application_ids:
+        return []
+
+    valid_apps = (
+        db.query(Application)
+        .filter(
+            Application.job_id == job.id,
+            Application.id.in_(payload.application_ids),
+            Application.cv_text.isnot(None)
+        )
+        .all()
+    )
+
+    if not valid_apps:
+        return []
+
+    semaphore = asyncio.Semaphore(SEMAPHORE_LIMIT)
+    tasks = [_parse_app_task(app.id, semaphore, db) for app in valid_apps]
+    results = await asyncio.gather(*tasks)
+
+    return [r for r in results if r is not None]

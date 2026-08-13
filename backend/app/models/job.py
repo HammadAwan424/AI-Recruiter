@@ -26,6 +26,7 @@ class Job(Base, BaseModelMixin):
     full_description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     keywords: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String, default="published", nullable=False)
+    last_read: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     # Audit Trail
     created_by: Mapped[Optional[int]] = mapped_column(

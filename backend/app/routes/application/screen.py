@@ -20,21 +20,29 @@ async def _screen_app_task(app_id: int, semaphore: asyncio.Semaphore, db: Sessio
 
 
 # ─────────────────────────────────────────────────────────────
-# 1. PARALLEL ASYNC AI SCREENING FOR ALL UNSCREENED APPLICATIONS
+# 1. PARALLEL ASYNC AI SCREENING FOR ALL APPLIED & ACTIVE APPLICATIONS
 # ─────────────────────────────────────────────────────────────
 @router.post("", response_model=List[ScreeningEvaluationDetail])
 async def screen_job_applications(
     job_id: int,
-    only_unscreened: bool = True,
     job: Job = Depends(get_job_or_403),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    query = db.query(Application).filter(Application.job_id == job.id)
-    if only_unscreened:
-        query = query.filter(Application.match_score.is_(None))
+    """
+    Fetches all applications for the job with current_status='applied' and disposition='active',
+    then runs parallel AI screening evaluations.
+    """
+    applications = (
+        db.query(Application)
+        .filter(
+            Application.job_id == job.id,
+            Application.current_status == "applied",
+            Application.disposition == "active"
+        )
+        .all()
+    )
 
-    applications = query.all()
     if not applications:
         return []
 

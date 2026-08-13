@@ -1,0 +1,75 @@
+{
+  "skills_match": 90,
+  "experience_match": 95,
+  "education_match": 100,
+  "keyword_coverage": 85,
+  "confidence": 80,
+  "evidence": {
+    "skills_match": {
+      "matched": [
+        {
+          "requirement": "Python, PyTorch, TensorFlow, LangChain, RAG, FastAPI, Docker, Vector Databases, MLOps, AWS",
+          "resume_evidence": "Programming & Development: \u2022 Languages & Frameworks: Python, Scikit-Learn, TensorFlow, Keras, PyTorch, NLTK, Hugging Face Transformers, OpenCV, FastAPI, Flask, Streamlit."
+        },
+        {
+          "requirement": "Vector Databases (Pinecone, ChromaDB, Faiss)",
+          "resume_evidence": "Database Systems: \u2022 Vector Databases (Pinecone, Faiss, Chroma DB)."
+        },
+        {
+          "requirement": "MLOps",
+          "resume_evidence": "Cloud & MLOps: \u2022 Practices: MLOps, LLMOps, AIOps, Cloud Machine Learning, MLflow, Orchestration Frameworks."
+        }
+      ],
+      "missing": [
+        "Docker",
+        "FastAPI"
+      ]
+    },
+    "experience_match": {
+      "matched": [
+        {
+          "requirement": "5+ years of experience in Python, ML frameworks (TensorFlow/PyTorch/Scikit-Learn)",
+          "resume_evidence": "Experience Senior Data Scientist & Machine Learning Software Engineer (Generative AI) PURELOGICS New York, United States 12/2024 \u2013 Currently \u2022 Led AI-Driven MVPs & Enterprise Deployments: Spearheaded high-impact MVP projects, including an Enterprise-Grade RAG Pipeline for BI, a Health Guard AI Pipeline for Remote Patient Monitoring, a GPT-4o-Based Conversational AI Chatbot, and an Agentic AI System for Legal & Financial Advisory, leveraging Generative AI, RAG, and Autonomous AI Agents."
+        },
+        {
+          "requirement": "Hands-on experience with Vector Databases (Pinecone, ChromaDB, Faiss)",
+          "resume_evidence": "Database Systems: \u2022 Vector Databases (Pinecone, Faiss, Chroma DB)."
+        },
+        {
+          "requirement": "Strong background in MLOps, CI/CD, and Cloud Machine Learning",
+          "resume_evidence": "Cloud & MLOps: \u2022 Practices: MLOps, LLMOps, AIOps, Cloud Machine Learning, MLflow, Orchestration Frameworks."
+        }
+      ],
+      "missing": [
+        "Cloud Machine Learning"
+      ]
+    },
+    "education_match": {
+      "matched": [],
+      "missing": []
+    },
+    "keyword_coverage": {
+      "matched": [
+        {
+          "requirement": "Design and deploy LLM applications, RAG pipelines, and autonomous AI agents",
+          "resume_evidence": "Senior Data Scientist & Machine Learning Software Engineer (Generative AI) PURELOGICS New York, United States 12/2024 \u2013 Currently \u2022 Led AI-Driven MVPs & Enterprise Deployments: Spearheaded high-impact MVP projects, including an Enterprise-Grade RAG Pipeline for BI, a Health Guard AI Pipeline for Remote Patient Monitoring, a GPT-4o-Based Conversational AI Chatbot, and an Agentic AI System for Legal & Financial Advisory, leveraging Generative AI, RAG, and Autonomous AI Agents."
+        },
+        {
+          "requirement": "Train and fine-tune machine learning and deep learning models",
+          "resume_evidence": "Senior Data Scientist & Machine Learning Software Engineer (Generative AI) PURELOGICS New York, United States 12/2024 \u2013 Currently \u2022 Led AI-Driven MVPs & Enterprise Deployments: Spearheaded high-impact MVP projects, including an Enterprise-Grade RAG Pipeline for BI, a Health Guard AI Pipeline for Remote Patient Monitoring, a GPT-4o-Based Conversational AI Chatbot, and an Agentic AI System for Legal & Financial Advisory, leveraging Generative AI, RAG, and Autonomous AI Agents."
+        },
+        {
+          "requirement": "Build production-ready REST APIs using FastAPI and Docker",
+          "resume_evidence": "Programming & Development: \u2022 Languages & Frameworks: Python, Scikit-Learn, TensorFlow, Keras, PyTorch, NLTK, Hugging Face Transformers, OpenCV, FastAPI, Flask, Streamlit."
+        }
+      ],
+      "missing": [
+        "Design and deploy LLM applications, RAG pipelines, and autonomous AI agents",
+        "Train and fine-tune machine learning and deep learning models",
+        "Build production-ready REST APIs using FastAPI and Docker"
+      ]
+    }
+  },
+  "fit_flags": [],
+  "data_quality_flag": null
+}

@@ -2,19 +2,14 @@ import json
 import os
 from typing import TypedDict
 from dotenv import load_dotenv
-from langchain_groq import ChatGroq
+from app.utils.llm_factory import get_llm
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import StateGraph, END
 
 load_dotenv()
 
 # ──── LLM Setup ────
-llm = ChatGroq(
-    api_key=os.getenv("GROQ_API_KEY"),  # type: ignore[arg-type]
-    model="llama-3.1-8b-instant",
-    temperature=0.9,
-    max_tokens=2000
-)
+llm = get_llm(temperature=0.9, max_tokens=2000)
 
 
 # ──── State Schema ────

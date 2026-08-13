@@ -24,6 +24,19 @@ export interface EvidenceSet {
   keyword_coverage: EvidenceBlock;
 }
 
+export type FitFlagCategory =
+  | "overqualified"
+  | "underqualified"
+  | "employment_gap"
+  | "frequent_job_changes"
+  | "career_pivot"
+  | "salary_expectation_risk";
+
+export interface FitFlag {
+  flag: FitFlagCategory;
+  rationale: string;
+}
+
 export interface ApplicationScreeningDetail {
   id?: number;
   application_id?: number;
@@ -35,6 +48,7 @@ export interface ApplicationScreeningDetail {
   confidence: number;
   data_quality_flag?: string;
   evidence: EvidenceSet | string;
+  fit_flags?: FitFlag[] | string;
   weights_used?: string | Record<string, number>;
   model_used?: string;
   prompt_version?: string;
@@ -48,6 +62,13 @@ export interface ApplicationItem {
   cv_text?: string;
   cv_pdf_path?: string;
   gmail_message_id?: string;
+  received_at?: string;
+  parsed_profile?: string;
+  stage?: string;
+  offer?: any;
+  candidate?: any;
+  job?: any;
+  fit_flags?: any;
   current_status: ApplicationStatus;
   disposition: string;
   match_score?: number;
@@ -75,15 +96,28 @@ export interface ApplicationItem {
 export type ApplicationListItem = ApplicationItem;
 export type CandidateApplication = ApplicationItem;
 
+export interface FetchApplicationsResponse {
+  message: string;
+  job_id: number;
+  total_fetched: number;
+  total_saved: number;
+  new_applications: number;
+  renewed_applications: number;
+}
+
 export interface ApplicationDetail {
   id: number;
   candidate_id: number;
   job_id: number;
+  received_at?: string;
+  parsed_profile?: string;
   current_status: ApplicationStatus;
   disposition: string;
   final_score?: number;
   created_at: string;
   updated_at: string;
+  candidate?: any;
+  job?: any;
   screening?: ApplicationScreeningDetail & {
     cv_pdf_path?: string;
     cv_text?: string;

@@ -1,9 +1,22 @@
 from sqlalchemy.orm import Session
 from typing import Optional
+from datetime import datetime
 from app.models.application import Application
 
 
-def get_or_create_application(
+def get_application_by_candidate_and_job_db(
+    db: Session,
+    candidate_id: int,
+    job_id: int
+) -> Optional[Application]:
+    """Retrieves an application by candidate_id and job_id."""
+    return db.query(Application).filter(
+        Application.candidate_id == candidate_id,
+        Application.job_id == job_id
+    ).first()
+
+
+def create_application_db(
     db: Session,
     candidate_id: int,
     job_id: int,
@@ -13,43 +26,25 @@ def get_or_create_application(
     cv_text: Optional[str] = None,
     cv_pdf_path: Optional[str] = None,
     gmail_message_id: Optional[str] = None,
+    received_at: Optional[datetime] = None,
     created_by: Optional[int] = None,
 ) -> Application:
-    app = db.query(Application).filter(
-        Application.candidate_id == candidate_id,
-        Application.job_id == job_id
-    ).first()
-
-    if not app:
-        app = Application(
-            candidate_id=candidate_id,
-            job_id=job_id,
-            current_status=current_status,
-            disposition=disposition,
-            match_score=match_score,
-            cv_text=cv_text,
-            cv_pdf_path=cv_pdf_path,
-            gmail_message_id=gmail_message_id,
-            created_by=created_by,
-        )
-        db.add(app)
-        db.commit()
-        db.refresh(app)
-    else:
-        changed = False
-        if match_score is not None:
-            app.match_score = match_score
-            changed = True
-        if cv_text is not None:
-            app.cv_text = cv_text
-            changed = True
-        if cv_pdf_path is not None:
-            app.cv_pdf_path = cv_pdf_path
-            changed = True
-        if changed:
-            db.commit()
-            db.refresh(app)
-
+    """Creates a new Application entity in the database."""
+    app = Application(
+        candidate_id=candidate_id,
+        job_id=job_id,
+        current_status=current_status,
+        disposition=disposition,
+        match_score=match_score,
+        cv_text=cv_text,
+        cv_pdf_path=cv_pdf_path,
+        gmail_message_id=gmail_message_id,
+        received_at=received_at,
+        created_by=created_by,
+    )
+    db.add(app)
+    db.commit()
+    db.refresh(app)
     return app
 
 
@@ -61,10 +56,8 @@ def update_application_status(
     disposition: Optional[str] = None,
     updated_by: Optional[int] = None,
 ) -> Optional[Application]:
-    app = db.query(Application).filter(
-        Application.candidate_id == candidate_id,
-        Application.job_id == job_id
-    ).first()
+    """Updates status or disposition on an existing application."""
+    app = get_application_by_candidate_and_job_db(db, candidate_id=candidate_id, job_id=job_id)
 
     if app:
         if current_status is not None:

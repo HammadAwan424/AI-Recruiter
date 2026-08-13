@@ -41,7 +41,8 @@ def seed_applications_and_slots(db, users_context, jobs):
     })
 
     applications = []
-    for cand, job, curr_status, disp, score, final_s, sm, em, ed, kw, conf in app_mappings:
+    for idx, (cand, job, curr_status, disp, score, final_s, sm, em, ed, kw, conf) in enumerate(app_mappings):
+        received_at_dt = datetime.utcnow() - timedelta(days=idx + 1)
         app = Application(
             candidate_id=cand.id,
             job_id=job.id,
@@ -49,6 +50,7 @@ def seed_applications_and_slots(db, users_context, jobs):
             disposition=disp,
             match_score=score,
             final_score=final_s,
+            received_at=received_at_dt,
             created_by=ceo_user.id
         )
         db.add(app)
@@ -82,6 +84,12 @@ def seed_applications_and_slots(db, users_context, jobs):
             }
         }
 
+        mock_fit_flags = []
+        if em > 95:
+            mock_fit_flags.append({"flag": "overqualified", "rationale": "Candidate experience significantly exceeds baseline requirements."})
+        elif em < 50:
+            mock_fit_flags.append({"flag": "underqualified", "rationale": "Experience background is below required threshold."})
+
         screening = ApplicationScreening(
             application_id=app.id,
             skills_match=sm,
@@ -92,6 +100,7 @@ def seed_applications_and_slots(db, users_context, jobs):
             confidence=conf,
             data_quality_flag=None,
             evidence=json.dumps(evidence_data),
+            fit_flags=json.dumps(mock_fit_flags),
             weights_used=default_weights,
             model_used="llama-3.1-8b-instant",
             prompt_version="v2.0"

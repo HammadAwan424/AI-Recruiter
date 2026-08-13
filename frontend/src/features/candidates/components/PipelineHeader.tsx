@@ -20,8 +20,9 @@ interface PipelineHeaderProps {
   selectedJobId: number | null;
   onSelectJob: (id: number) => void;
   onFetchNewCVs: () => void;
-  isFetchingNew: boolean;
-  isScreeningActive: boolean;
+  pipelineStep?: "idle" | "fetching" | "parsing" | "screening" | string;
+  isFetchingNew?: boolean;
+  isScreeningActive?: boolean;
   visibleStageKeys: string[];
   onToggleStageVisibility: (key: string) => void;
   allStages: { key: string; label: string; color: string }[];
@@ -32,6 +33,7 @@ export const PipelineHeader: React.FC<PipelineHeaderProps> = ({
   selectedJobId,
   onSelectJob,
   onFetchNewCVs,
+  pipelineStep = "idle",
   isFetchingNew,
   isScreeningActive,
   visibleStageKeys,
@@ -181,22 +183,50 @@ export const PipelineHeader: React.FC<PipelineHeaderProps> = ({
           </FormControl>
         )}
 
-        <Button
-          variant="contained"
-          color="primary"
-          disabled={isFetchingNew || isScreeningActive || !selectedJobId}
-          onClick={onFetchNewCVs}
-          startIcon={
-            isFetchingNew || isScreeningActive ? (
-              <RefreshCw className="animate-spin" size={16} />
-            ) : (
-              <DownloadCloud size={16} />
-            )
-          }
-          sx={{ height: 40, fontWeight: 700, px: 2.5, whitespace: "nowrap" }}
-        >
-          {isFetchingNew || isScreeningActive ? "Fetching & Screening..." : "Fetch New CVs"}
-        </Button>
+        <div className="flex flex-col items-end">
+          {(() => {
+            const isPipelineActive = (pipelineStep && pipelineStep !== "idle") || Boolean(isFetchingNew) || Boolean(isScreeningActive);
+            const getButtonLabel = () => {
+              if (pipelineStep === "fetching" || isFetchingNew) return "Fetching...";
+              if (pipelineStep === "parsing") return "Parsing...";
+              if (pipelineStep === "screening" || isScreeningActive) return "Screening...";
+              return "Fetch New CVs";
+            };
+
+            return (
+              <Button
+                variant="contained"
+                color="primary"
+                disabled={isPipelineActive || !selectedJobId}
+                onClick={onFetchNewCVs}
+                startIcon={
+                  isPipelineActive ? (
+                    <RefreshCw className="animate-spin" size={16} />
+                  ) : (
+                    <DownloadCloud size={16} />
+                  )
+                }
+                sx={{ height: 40, fontWeight: 700, px: 2.5, whitespace: "nowrap" }}
+              >
+                {getButtonLabel()}
+              </Button>
+            );
+          })()}
+          {jobDetail?.last_read && (
+            <span className="text-[10px] text-gray-400 mt-1 font-mono tracking-tight">
+              Last read: {(() => {
+                const raw = jobDetail.last_read;
+                const utcStr = raw.endsWith("Z") || raw.includes("+") ? raw : `${raw}Z`;
+                return new Date(utcStr).toLocaleString(undefined, {
+                  month: "short",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                });
+              })()}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );

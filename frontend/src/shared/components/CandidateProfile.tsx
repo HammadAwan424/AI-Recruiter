@@ -10,6 +10,7 @@ import {
 import { X, ArrowLeft } from "lucide-react";
 import { useGetApplicationDetailQuery } from "../../features/candidates/api";
 import { CandidateProfileHeader } from "../../features/candidates/components/profile/CandidateProfileHeader";
+import { ParsedProfileSection } from "../../features/candidates/components/profile/ParsedProfileSection";
 import { ScreeningEvaluationSection } from "../../features/candidates/components/profile/ScreeningEvaluationSection";
 import { InterviewRoundsSection } from "../../features/candidates/components/profile/InterviewRoundsSection";
 import { OfferLetterSection } from "../../features/candidates/components/profile/OfferLetterSection";
@@ -95,6 +96,9 @@ export const CandidateProfile: React.FC<CandidateProfileProps> = ({
             onHire={onHire}
             onReject={onReject}
           />
+
+          {/* AI Parsed Structured Profile Section */}
+          <ParsedProfileSection parsedProfile={detail.parsed_profile} />
 
           {/* AI Screening & Evaluation Section */}
           <ScreeningEvaluationSection screening={detail.screening} />

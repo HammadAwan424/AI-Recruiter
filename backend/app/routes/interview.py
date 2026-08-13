@@ -37,6 +37,11 @@ from app.utils.meeting_generator import generate_video_meeting_link
 from app.utils.ical_generator import generate_ical_event
 from app.utils.interview_crypto import generate_interview_token
 from app.utils.candidate_evaluation import evaluate_candidate
+from app.services.gmail import (
+    notify_candidate_interview_invite,
+    notify_candidate_self_schedule,
+    notify_interviewer_assignment,
+)
 
 router = APIRouter(prefix="/interviews", tags=["Interviews"])
 
@@ -290,6 +295,40 @@ def schedule_interview(
     interview.candidate_name = app.candidate.full_name
     interview.candidate_email = app.candidate.email
     interview.job_title = app.job.title
+
+    # 1-liner Notifications Dispatch
+    if interview_in.schedule_type == "self_schedule":
+        if interview.self_schedule_token and app.candidate.email:
+            notify_candidate_self_schedule(
+                candidate_email=app.candidate.email,
+                candidate_name=app.candidate.full_name,
+                job_title=app.job.title,
+                schedule_token=interview.self_schedule_token
+            )
+    else:
+        scheduled_date_str = str(interview.schedule_start.date()) if interview.schedule_start else "Scheduled"
+        scheduled_time_str = str(interview.schedule_start.time()) if interview.schedule_start else "Scheduled"
+        if app.candidate.email:
+            notify_candidate_interview_invite(
+                candidate_email=app.candidate.email,
+                candidate_name=app.candidate.full_name,
+                job_title=app.job.title,
+                meeting_link=meeting_link or "",
+                scheduled_date=scheduled_date_str,
+                scheduled_time=scheduled_time_str
+            )
+        for assignment in interview.interviewer_assignments:
+            interviewer = assignment.interviewer
+            if interviewer and interviewer.email:
+                notify_interviewer_assignment(
+                    interviewer_email=interviewer.email,
+                    interviewer_name=interviewer.full_name,
+                    candidate_name=app.candidate.full_name,
+                    job_title=app.job.title,
+                    scheduled_date=scheduled_date_str,
+                    scheduled_time=scheduled_time_str,
+                    meeting_link=meeting_link or ""
+                )
 
     return interview
 

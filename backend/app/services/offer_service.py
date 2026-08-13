@@ -22,6 +22,12 @@ from app.crud.offer import (
 )
 from app.utils.security import get_offer_or_403, get_application_or_403
 from app.utils.offer_crypto import generate_secure_offer_token, compute_offer_audit_hash
+from app.services.gmail import (
+    notify_executive_offer_approval,
+    notify_candidate_offer_letter,
+    notify_recruiter_offer_decision,
+    notify_candidate_welcome_onboarding,
+)
 
 
 def create_offer_service(
@@ -54,6 +60,17 @@ def create_offer_service(
             comments="Offer approval requested",
             created_by=current_user["user_id"]
         )
+        if ceo and ceo.email:
+            candidate_name = app.candidate.full_name if app.candidate else "Candidate"
+            job_title = app.job.title if app.job else "Position"
+            notify_executive_offer_approval(
+                approver_email=ceo.email,
+                candidate_name=candidate_name,
+                job_title=job_title,
+                base_salary=offer.base_salary,
+                bonus_equity=offer.bonus_equity,
+                start_date=str(offer.start_date) if offer.start_date else None
+            )
 
     db.commit()
     db.refresh(offer)
@@ -113,9 +130,25 @@ def record_executive_decision_service(
         offer.approval.updated_by = current_user["user_id"]
         offer.approval.decided_at = datetime.utcnow()
 
+    app = offer.application
+    candidate_name = app.candidate.full_name if app.candidate else "Candidate"
+    candidate_email = app.candidate.email if app.candidate else ""
+    job_title = app.job.title if app.job else "Position"
+    company_name = app.job.company.name if (app.job and app.job.company) else "AI Recruiter"
+
     if decision_payload.decision == "rejected":
         offer.application.disposition = "rejected"
         offer.application.updated_by = current_user["user_id"]
+
+        creator = db.query(User).filter(User.id == offer.created_by).first()
+        if creator and creator.email:
+            notify_recruiter_offer_decision(
+                recruiter_email=creator.email,
+                candidate_name=candidate_name,
+                job_title=job_title,
+                decision="rejected",
+                comments=comments
+            )
     else:
         token = generate_secure_offer_token()
         offer.secure_token = token
@@ -125,6 +158,17 @@ def record_executive_decision_service(
         offer.application.current_status = "offer_sent"
         offer.application.disposition = "active"
         offer.application.updated_by = current_user["user_id"]
+
+        if candidate_email:
+            notify_candidate_offer_letter(
+                candidate_email=candidate_email,
+                candidate_name=candidate_name,
+                job_title=job_title,
+                company_name=company_name,
+                secure_token=token,
+                base_salary=offer.base_salary,
+                start_date=str(offer.start_date) if offer.start_date else None
+            )
 
     db.commit()
     db.refresh(offer)
@@ -203,10 +247,37 @@ def record_candidate_decision_service(
         app.current_status = "hired"
         app.disposition = "active"
 
+        candidate_name = app.candidate.full_name if app.candidate else "Candidate"
+        candidate_email = app.candidate.email if app.candidate else ""
+        job_title = app.job.title if app.job else "Position"
+        company_name = app.job.company.name if (app.job and app.job.company) else "AI Recruiter"
+
+        if candidate_email:
+            notify_candidate_welcome_onboarding(
+                candidate_email=candidate_email,
+                candidate_name=candidate_name,
+                job_title=job_title,
+                company_name=company_name,
+                start_date=str(offer.start_date) if offer.start_date else None,
+                audit_hash=audit_hash
+            )
+
     elif decision_payload.decision == "declined":
         declined_data: DeclinedCandidateOfferDecision = decision_payload
         offer.decline_reason = declined_data.decline_reason
         app.disposition = "rejected"
+
+        creator = db.query(User).filter(User.id == offer.created_by).first()
+        if creator and creator.email:
+            candidate_name = app.candidate.full_name if app.candidate else "Candidate"
+            job_title = app.job.title if app.job else "Position"
+            notify_recruiter_offer_decision(
+                recruiter_email=creator.email,
+                candidate_name=candidate_name,
+                job_title=job_title,
+                decision="declined",
+                comments=declined_data.decline_reason
+            )
 
     db.commit()
     db.refresh(offer)

@@ -6,11 +6,12 @@ import { useGetCompanyUsersQuery } from "../../users/api";
 import { usePermission } from "../../../shared/hooks/usePermission";
 import { CANDIDATE_PERMISSIONS } from "../permissions";
 import { OFFER_PERMISSIONS } from "../../offers/permissions";
-import { useApproveOfferActionMutation } from "../../offers/api";
 import {
   useFetchNewCVsMutation,
+  useParseApplicationsMutation,
   useScreenApplicationsMutation,
   useUpdateApplicationStageMutation,
+  useLazyGetApplicationsQuery,
 } from "../api";
 import {
   useScheduleInterviewMutation,
@@ -68,12 +69,15 @@ export const useCandidatePipeline = () => {
   const [scoreNotes, setScoreNotes] = useState<string>("");
 
   const [pipelineAlertMsg, setPipelineAlertMsg] = useState<string | null>(null);
+  const [pipelineStep, setPipelineStep] = useState<"idle" | "fetching" | "parsing" | "screening">("idle");
 
   const { applications, candidates, isLoading, isError } = useCandidates(selectedJobId);
   const { hireCandidate, rejectCandidate } = useCandidateMutations();
   const [fetchNewApplications, { isLoading: isFetchingNew }] = useFetchNewCVsMutation();
+  const [parseApplications, { isLoading: isParsingActive }] = useParseApplicationsMutation();
   const [screenJobApplications, { isLoading: isScreeningActive }] = useScreenApplicationsMutation();
   const [updateApplicationStage] = useUpdateApplicationStageMutation();
+  const [triggerGetApplications] = useLazyGetApplicationsQuery();
 
   const [scheduleInterview, { isLoading: isScheduling }] = useScheduleInterviewMutation();
   const [assignInterviewer] = useAssignInterviewerMutation();
@@ -108,12 +112,33 @@ export const useCandidatePipeline = () => {
   const handleFetchNewCVs = async () => {
     if (!selectedJobId) return;
     setPipelineAlertMsg(null);
+    setPipelineStep("fetching");
     try {
+      // 1. Fetch applications from Gmail
       const fetchRes = await fetchNewApplications(selectedJobId).unwrap();
-      setPipelineAlertMsg(fetchRes.message || "Fetched new CVs successfully.");
+      
+      // Persist feedback message from fetching stage (will NOT be updated/overwritten)
+      const fetchedMsg = `Fetched ${fetchRes.total_saved} application(s) (${fetchRes.new_applications} new, ${fetchRes.renewed_applications} renewed).`;
+      setPipelineAlertMsg(fetchedMsg);
+
+      // 2. Refetch list to retrieve newly created/renewed application IDs
+      const freshApps = await triggerGetApplications(selectedJobId, true).unwrap();
+      const targetAppIds = freshApps
+        .filter((app: any) => app.disposition !== "rejected" && (app.current_status === "applied" || !app.current_status))
+        .map((app: any) => app.id);
+
+      if (targetAppIds.length > 0) {
+        setPipelineStep("parsing");
+        await parseApplications({ jobId: selectedJobId, applicationIds: targetAppIds }).unwrap();
+      }
+
+      // 3. Run AI Screening evaluation
+      setPipelineStep("screening");
       await screenJobApplications(selectedJobId).unwrap();
     } catch (err: any) {
-      setPipelineAlertMsg(`⚠️ Fetch/Screening error: ${err?.data?.detail || "Error"}`);
+      setPipelineAlertMsg(`⚠️ Pipeline error: ${err?.data?.detail || err?.message || "Error during fetch pipeline"}`);
+    } finally {
+      setPipelineStep("idle");
     }
   };
 
@@ -360,6 +385,7 @@ export const useCandidatePipeline = () => {
     scoreNotes,
     setScoreNotes,
 
+    pipelineStep,
     isFetchingNew,
     isScreeningActive,
     isScheduling,

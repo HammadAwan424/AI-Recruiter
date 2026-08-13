@@ -22,7 +22,8 @@ dependencies = [
     "mcp",
     "google-api-python-client",
     "google-auth-oauthlib",
-    "google-auth-httplib2"
+    "google-auth-httplib2",
+    "langchain-openai>=1.4.3",
 ]
 
 [tool.vercel]

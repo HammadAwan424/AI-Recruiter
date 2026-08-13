@@ -25,6 +25,7 @@ class Application(Base, BaseModelMixin):
     cv_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     cv_pdf_path: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     gmail_message_id: Mapped[Optional[str]] = mapped_column(String, unique=True, index=True, nullable=True)
+    received_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, index=True)
     parsed_profile: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # ──── Status Tracking ────
@@ -84,8 +85,9 @@ class ApplicationScreening(Base, BaseModelMixin):
     confidence: Mapped[int] = mapped_column(Integer, nullable=False)
     data_quality_flag: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
-    # ──── Structured Evidence & Weights (JSON text) ────
+    # ──── Structured Evidence, Fit Flags & Weights (JSON text) ────
     evidence: Mapped[str] = mapped_column(Text, nullable=False)
+    fit_flags: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     weights_used: Mapped[str] = mapped_column(Text, nullable=False)
 
     # ──── Audit & Model Provenance Metadata ────

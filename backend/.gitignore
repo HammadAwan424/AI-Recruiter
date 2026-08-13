@@ -1,2 +1,5 @@
 venv
 .vercel
+token.json
+credentials.json
+*.log

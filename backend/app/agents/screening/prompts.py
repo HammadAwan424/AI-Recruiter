@@ -17,6 +17,17 @@ For every dimension, you must list:
 - missing: specific items from the job description with no support found anywhere in the resume
 If you cannot point to specific resume text supporting a claim, do not include it in "matched" — list it in "missing" instead. Do not infer skills or experience that are not stated or clearly implied in the resume text.
 
+FIT FLAGS
+After scoring, identify any of the following patterns if clearly present, each with a one-sentence rationale grounded in the resume:
+- overqualified (experience/seniority significantly exceeds role level)
+- underqualified (lacks fundamental qualifications for the role)
+- employment_gap (unexplained gap over ~6 months)
+- frequent_job_changes (multiple roles under ~1 year each)
+- career_pivot (little direct experience in this domain despite other strengths)
+- salary_expectation_risk (current/prior seniority suggests likely compensation mismatch)
+
+Only include flags with clear resume evidence — do not speculate. Return an empty array if no flags apply.
+
 CONFIDENCE
 Return a confidence score (0-100) for your overall evaluation, reflecting how clear-cut the match was. Lower confidence indicates: an ambiguous or sparse resume, a job description with vague requirements, or significant judgment calls in the "matched" vs "missing" classification.
 

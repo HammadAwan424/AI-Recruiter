@@ -47,6 +47,7 @@ class JobResponse(BaseModel):
     full_description: Optional[str] = None
     keywords: Optional[str] = None
     status: str
+    last_read: Optional[datetime] = None
     created_by: Optional[int] = None
     updated_by: Optional[int] = None
     created_at: datetime

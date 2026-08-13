@@ -1,6 +1,6 @@
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List
-from datetime import date, time
+from datetime import date, time, datetime
 
 
 # ──── Job Schemas ────
@@ -47,6 +47,7 @@ class ApplicationResponse(BaseModel):
     job_id: int
     status: str
     match_score: Optional[float] = None
+    received_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

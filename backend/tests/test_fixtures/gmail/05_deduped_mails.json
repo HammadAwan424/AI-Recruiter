@@ -1,0 +1,23 @@
+{
+  "job_id": 4,
+  "job_title": "Test AI Engineer",
+  "after_date_query": "2026/08/05",
+  "deduped_count": 1,
+  "duplicated_count": 2,
+  "deduped_mails": [
+    {
+      "id": "19ff1013985bbe0a",
+      "threadId": "19ff1013985bbe0a"
+    }
+  ],
+  "duplicated_mails": [
+    {
+      "id": "19ff10265ae9de73",
+      "threadId": "19ff10265ae9de73"
+    },
+    {
+      "id": "19ff04ca19fbfa07",
+      "threadId": "19ff04ca19fbfa07"
+    }
+  ]
+}

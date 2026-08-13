@@ -1,7 +1,7 @@
 import os
-from typing import TypedDict, Optional, Dict, Any
+from typing import TypedDict, Optional
 from dotenv import load_dotenv
-from langchain_groq import ChatGroq
+from app.utils.llm_factory import get_llm
 from langchain_core.messages import SystemMessage, HumanMessage
 from langchain_core.output_parsers import JsonOutputParser
 from langgraph.graph import StateGraph, END
@@ -10,7 +10,6 @@ from app.schemas.screening import (
     ScreeningLLMOutput,
     EvidenceSet,
     EvidenceBlock,
-    EvidenceItem
 )
 from app.agents.screening.prompts import (
     SCREENING_SYSTEM_PROMPT,
@@ -28,15 +27,6 @@ class EvaluationState(TypedDict):
     sanitized_cv: str
     llm_output: Optional[ScreeningLLMOutput]
     error: str
-
-
-def get_groq_llm():
-    return ChatGroq(
-        api_key=os.getenv("GROQ_API_KEY"),
-        model="llama-3.1-8b-instant",
-        temperature=0.1,
-        max_tokens=2500,
-    )
 
 
 # ──── Node 1: Input Sanitization ────
@@ -66,12 +56,14 @@ def invoke_llm_node(state: EvaluationState) -> EvaluationState:
         HumanMessage(content=user_prompt)
     ]
 
-    llm = get_groq_llm()
+    llm = get_llm(temperature=0.1, max_tokens=2500)
 
     try:
         # Attempt primary structured output invocation via Groq tool calling
         structured_llm = llm.with_structured_output(ScreeningLLMOutput)
-        result: ScreeningLLMOutput = structured_llm.invoke(messages)
+        raw_res = structured_llm.invoke(messages)
+        assert isinstance(raw_res, ScreeningLLMOutput)  # satisfies Pylance AND guards against off-spec responses
+        result = raw_res
         return {**state, "llm_output": result, "error": ""}
     except Exception as primary_err:
         # Fallback: Invoke standard LLM with Pydantic JSON Output Parser
@@ -112,6 +104,7 @@ def validate_output_node(state: EvaluationState) -> EvaluationState:
                 education_match=empty_block,
                 keyword_coverage=empty_block
             ),
+            fit_flags=[],
             data_quality_flag=state.get("error") or "Evaluation pipeline failed"
         )
         return {**state, "llm_output": fallback_output}
@@ -130,6 +123,7 @@ def validate_output_node(state: EvaluationState) -> EvaluationState:
         keyword_coverage=keywords,
         confidence=confidence,
         evidence=output.evidence,
+        fit_flags=getattr(output, "fit_flags", []) or [],
         data_quality_flag=output.data_quality_flag
     )
 

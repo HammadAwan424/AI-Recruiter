@@ -85,8 +85,9 @@ def run_screening_for_application(
             current_status = "applied"
             disposition = "rejected"
 
-    # 4. Serialize JSON Evidence & Weights
+    # 4. Serialize JSON Evidence, Fit Flags & Weights
     evidence_json = llm_output.evidence.model_dump_json()
+    fit_flags_json = json.dumps([f.model_dump() for f in llm_output.fit_flags]) if llm_output.fit_flags else "[]"
     weights_json = weights.model_dump_json()
 
     # 5. Database Persistence (ApplicationScreening 1-to-1 entity)
@@ -106,6 +107,7 @@ def run_screening_for_application(
         screening_rec.confidence = llm_output.confidence
         screening_rec.data_quality_flag = llm_output.data_quality_flag
         screening_rec.evidence = evidence_json
+        screening_rec.fit_flags = fit_flags_json
         screening_rec.weights_used = weights_json
         screening_rec.model_used = "llama-3.1-8b-instant"
         screening_rec.prompt_version = "v2.0"
@@ -121,6 +123,7 @@ def run_screening_for_application(
             confidence=llm_output.confidence,
             data_quality_flag=llm_output.data_quality_flag,
             evidence=evidence_json,
+            fit_flags=fit_flags_json,
             weights_used=weights_json,
             model_used="llama-3.1-8b-instant",
             prompt_version="v2.0",
@@ -147,6 +150,7 @@ def run_screening_for_application(
         match_score=match_score,
         weights_used=weights,
         evidence=llm_output.evidence,
+        fit_flags=llm_output.fit_flags,
         data_quality_flag=llm_output.data_quality_flag,
         model_used="llama-3.1-8b-instant",
         prompt_version="v2.0",
