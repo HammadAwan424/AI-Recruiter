@@ -4,7 +4,7 @@ from typing import Optional, List, Dict, Any
 from app.models.job import Job
 from app.models.job_distribution import JobDistribution
 from app.models.application import Application
-from app.models.interview import InterviewModel, InterviewFeedback
+from app.models.interview import InterviewModel, InterviewFeedback, InterviewInterviewers
 from app.models.rbac import UserJobScope
 from app.models.user import User
 from app.schemas.job import JobCreate, JobUpdate
@@ -69,7 +69,19 @@ def delete_job_cascading_db(db: Session, job: Job) -> None:
     interview_ids = [i.id for i in interviews]
 
     if interview_ids:
-        db.query(InterviewFeedback).filter(InterviewFeedback.interview_id.in_(interview_ids)).delete(synchronize_session=False)
+        feedback_ids = [
+            feedback_id
+            for (feedback_id,) in (
+                db.query(InterviewFeedback.id)
+                .join(InterviewInterviewers)
+                .filter(InterviewInterviewers.interview_id.in_(interview_ids))
+                .all()
+            )
+        ]
+        if feedback_ids:
+            db.query(InterviewFeedback).filter(InterviewFeedback.id.in_(feedback_ids)).delete(
+                synchronize_session=False
+            )
         db.query(InterviewModel).filter(InterviewModel.id.in_(interview_ids)).delete(synchronize_session=False)
 
     db.query(JobDistribution).filter(JobDistribution.job_id == job.id).delete(synchronize_session=False)

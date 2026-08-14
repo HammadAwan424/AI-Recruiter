@@ -1,7 +1,8 @@
 {
-  "schema_version": "gmail.deduped_messages.v1",
+  "schema_version": "gmail.deduped_messages.v2",
   "company_id": 1,
   "anchor_job_id": 10,
+  "gmail_account_id": 1,
   "after_date_query": "2026/08/05",
   "deduped_mails": [
     {

@@ -57,9 +57,10 @@ class GmailMessageProcessingTests(unittest.TestCase):
                 service=FakeGmailResource(messages),
                 db=None,
                 deduped_messages=DedupedGmailMessages(
-                    schema_version="gmail.deduped_messages.v1",
+                    schema_version="gmail.deduped_messages.v2",
                     company_id=1,
                     anchor_job_id=1,
+                    gmail_account_id=1,
                     after_date_query="2026/08/01",
                     deduped_mails=[{"id": "message-1"}, {"id": "message-2"}],
                 ),

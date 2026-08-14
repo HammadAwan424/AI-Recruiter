@@ -23,13 +23,13 @@ def test_persist_applications():
     context = read_stage_schema(
         "gmail",
         "company_sync",
-        "sync_context.v1.json",
+        "sync_context.v2.json",
         GmailSyncContext,
     )
     processed = read_stage_schema(
         "gmail",
         "company_sync",
-        "processed_messages.v1.json",
+        "processed_messages.v2.json",
         ProcessedGmailMessages,
     )
     classified = read_stage_schema(
@@ -84,9 +84,10 @@ def test_persist_applications():
 
         classified_count = sum(1 for result in classified.results if result.job_id in valid_job_ids)
         artifact = GmailPersistenceResult(
-            schema_version="gmail.persistence_result.v1",
+            schema_version="gmail.persistence_result.v2",
             company_id=context.company_id,
             anchor_job_id=context.anchor_job_id,
+            gmail_account_id=context.gmail_account_id,
             total_fetched=len(processed.messages),
             classified_count=classified_count,
             unmatched_count=len(processed.messages) - classified_count,
@@ -99,7 +100,7 @@ def test_persist_applications():
         output_path = write_stage_artifact(
             "gmail",
             "company_sync",
-            "persistence_result.v1.json",
+            "persistence_result.v2.json",
             artifact,
         )
 

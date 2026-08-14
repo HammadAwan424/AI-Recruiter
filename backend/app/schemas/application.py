@@ -1,8 +1,7 @@
 from datetime import datetime
-import json
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.domain.enums import ApplicationDisposition, ApplicationStatus
 from app.schemas.extraction import ParsedResumeProfile
@@ -40,13 +39,6 @@ class ApplicationScreeningResponse(BaseModel):
     model_used: str
     prompt_version: str
     evaluated_at: datetime
-
-    @field_validator("evidence", "fit_flags", "weights_used", mode="before")
-    @classmethod
-    def decode_legacy_json(cls, value):
-        if isinstance(value, str):
-            return json.loads(value)
-        return value
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -89,19 +81,6 @@ class ApplicationResponse(BaseModel):
     updated_by: Optional[int] = None
     created_at: datetime
     updated_at: datetime
-
-    @field_validator("parsed_profile", mode="before")
-    @classmethod
-    def decode_legacy_profile_json(cls, value):
-        if isinstance(value, str):
-            value = json.loads(value)
-        if isinstance(value, dict) and "profile" not in value and "skills" in value:
-            return {
-                "schema_version": "extraction.parsed_resume_profile.v1",
-                "source_name": "legacy-application-profile",
-                "profile": value,
-            }
-        return value
 
     model_config = ConfigDict(from_attributes=True)
 

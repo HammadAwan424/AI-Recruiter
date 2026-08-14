@@ -146,9 +146,6 @@ class InterviewMetadataUpdate(BaseModel):
 
 
 class InterviewFeedbackCreate(BaseModel):
-    # interview_id is accepted for backward compatibility but the route path
-    # is authoritative and must match when supplied.
-    interview_id: Optional[int] = None
     interviewer_id: Optional[int] = None
     technical_score: float = Field(ge=0, le=10)
     communication_score: float = Field(ge=0, le=10)

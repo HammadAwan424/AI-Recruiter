@@ -1,9 +1,9 @@
 from sqlalchemy.orm import Session
 from typing import Optional, List
 from datetime import datetime
-from app.models.interview import InterviewModel, InterviewFeedback, InterviewSlot, InterviewInterviewers
+from app.models.interview import InterviewModel, InterviewSlot, InterviewInterviewers
 from app.models.application import Application
-from app.schemas.interview import InterviewCreate, FixedScheduleInterview, InterviewCreateRequest, SelfScheduleInterview, InterviewFeedbackCreate
+from app.schemas.interview import InterviewCreate, FixedScheduleInterview, InterviewCreateRequest, SelfScheduleInterview
 from app.utils.interview_crypto import generate_interview_token
 
 
@@ -82,25 +82,3 @@ def create_interview(
     db.commit()
     db.refresh(interview_model)
     return interview_model
-
-
-def create_interview_feedback(db: Session, feedback_in: InterviewFeedbackCreate, created_by: Optional[int] = None) -> InterviewFeedback:
-    assignment = (
-        db.query(InterviewInterviewers)
-        .filter_by(interview_id=feedback_in.interview_id, interviewer_id=feedback_in.interviewer_id)
-        .first()
-    )
-    if not assignment:
-        raise ValueError("Feedback can only be submitted by an assigned interviewer")
-
-    feedback = InterviewFeedback(
-        interview_interviewer_id=assignment.id,
-        technical_score=feedback_in.technical_score,
-        communication_score=feedback_in.communication_score,
-        notes=feedback_in.notes,
-        created_by=created_by
-    )
-    db.add(feedback)
-    db.commit()
-    db.refresh(feedback)
-    return feedback

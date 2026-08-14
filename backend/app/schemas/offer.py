@@ -1,8 +1,7 @@
 """Shared offer CRUD schemas.
 
-Approval and public candidate decision contracts live in
-``offer_approval.py`` and ``offer_public.py`` respectively. The imports below
-are compatibility re-exports for existing service/frontend imports.
+Approval and public candidate decision contracts live in their respective
+domain modules and are intentionally not re-exported here.
 """
 
 from datetime import date, datetime
@@ -11,22 +10,6 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.domain.enums import OfferStatus, SignatureType
-from app.schemas.offer_approval import (
-    ApprovedExecutiveOfferDecision,
-    ExecutiveOfferDecision,
-    OfferApprovalAction,
-    RejectedExecutiveOfferDecision,
-)
-from app.schemas.offer_public import (
-    CandidateOfferDecision,
-    DeclinedCandidateOfferDecision,
-    OfferDeclineRequest,
-    OfferPublicResponse,
-    OfferSignRequest,
-    SignedCandidateOfferDecision,
-)
-
-
 class OfferTemplateCreate(BaseModel):
     title: str = Field(min_length=1)
     department: str = "GLOBAL"
@@ -120,16 +103,4 @@ __all__ = [
     "OfferResponse",
     "OfferTemplateCreate",
     "OfferTemplateResponse",
-    # Compatibility re-exports; domain-specific code should import from the
-    # dedicated modules above.
-    "ApprovedExecutiveOfferDecision",
-    "RejectedExecutiveOfferDecision",
-    "ExecutiveOfferDecision",
-    "OfferApprovalAction",
-    "SignedCandidateOfferDecision",
-    "DeclinedCandidateOfferDecision",
-    "CandidateOfferDecision",
-    "OfferSignRequest",
-    "OfferDeclineRequest",
-    "OfferPublicResponse",
 ]

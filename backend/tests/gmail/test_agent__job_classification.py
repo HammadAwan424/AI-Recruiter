@@ -21,13 +21,13 @@ def test_classify_gmail_messages():
     context = read_stage_schema(
         "gmail",
         "company_sync",
-        "sync_context.v1.json",
+        "sync_context.v2.json",
         GmailSyncContext,
     )
     processed = read_stage_schema(
         "gmail",
         "company_sync",
-        "processed_messages.v1.json",
+        "processed_messages.v2.json",
         ProcessedGmailMessages,
     )
 

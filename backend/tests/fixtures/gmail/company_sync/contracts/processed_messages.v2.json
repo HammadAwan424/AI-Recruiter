@@ -1,7 +1,8 @@
 {
-  "schema_version": "gmail.processed_messages.v1",
+  "schema_version": "gmail.processed_messages.v2",
   "company_id": 1,
   "anchor_job_id": 10,
+  "gmail_account_id": 1,
   "messages": [
     {
       "gmail_message_id": "synthetic-message-1",

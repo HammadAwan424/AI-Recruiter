@@ -107,13 +107,13 @@ def get_after_date(db: Session, job_id: int) -> GmailSyncContext:
         else []
     )
     return GmailSyncContext(
-        schema_version="gmail.sync_context.v1",
+        schema_version="gmail.sync_context.v2",
         company_id=company.id if company else 0,
         gmail_account_id=gmail_account.id if gmail_account else 0,
         gmail_account_email=gmail_account.email if gmail_account else "",
         anchor_job_id=job_id,
         anchor_job_title=job.title if job else "",
-        gmail_last_read=last_read_ts,
+        mailbox_last_read=last_read_ts,
         after_date_query=after_date_query,
         jobs=[
             JobClassificationJob(
@@ -175,7 +175,7 @@ def get_deduped_mails(
             deduped_mails.append(header)
 
     return DedupedGmailMessages(
-        schema_version="gmail.deduped_messages.v1",
+        schema_version="gmail.deduped_messages.v2",
         company_id=sync_context.company_id,
         anchor_job_id=sync_context.anchor_job_id,
         gmail_account_id=sync_context.gmail_account_id,
@@ -337,7 +337,7 @@ def process_mails(
         )
 
     return ProcessedGmailMessages(
-        schema_version="gmail.processed_messages.v1",
+        schema_version="gmail.processed_messages.v2",
         company_id=deduped_messages.company_id,
         anchor_job_id=deduped_messages.anchor_job_id,
         gmail_account_id=deduped_messages.gmail_account_id,
@@ -485,13 +485,13 @@ def group_latest_applications(
             job_group[candidate_key] = app_data
 
     return GmailApplicationPlan(
-        schema_version="gmail.application_plan.v1",
+        schema_version="gmail.application_plan.v2",
         company_id=messages.company_id,
         anchor_job_id=messages.anchor_job_id,
         gmail_account_id=messages.gmail_account_id,
         batches=[
             GmailApplicationBatch(
-                schema_version="gmail.application_batch.v1",
+                schema_version="gmail.application_batch.v2",
                 job_id=job_id,
                 company_id=messages.company_id,
                 gmail_account_id=messages.gmail_account_id,
@@ -631,9 +631,10 @@ def fetch_job_application_emails_service(
         db.commit()
 
     return GmailSyncResult(
-        schema_version="gmail.sync_result.v1",
+        schema_version="gmail.sync_result.v2",
         company_id=company.id,
         anchor_job_id=job.id,
+        gmail_account_id=sync_context.gmail_account_id,
         fetched_messages=processed_messages.messages,
         total_fetched=len(processed_messages.messages),
         total_saved=total_saved,

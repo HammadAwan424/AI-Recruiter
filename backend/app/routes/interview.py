@@ -26,7 +26,7 @@ from app.schemas.interview import (
     InterviewFeedbackResponse,
 )
 from app.schemas.composite import InterviewerDetail, InterviewDetail
-from app.crud.interview import create_interview, create_interview_feedback
+from app.crud.interview import create_interview
 from app.utils.security import (
     get_current_user,
     require_permissions,
@@ -426,9 +426,6 @@ def submit_interview_feedback(
     db: Session = Depends(get_db),
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
-    if payload.interview_id is not None and payload.interview_id != interview.id:
-        raise HTTPException(status_code=400, detail="Payload interview_id does not match the URL")
-
     interviewer_id = payload.interviewer_id or current_user["user_id"]
 
     assignment = (

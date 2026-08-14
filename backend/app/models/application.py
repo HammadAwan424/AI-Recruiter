@@ -127,7 +127,7 @@ class ApplicationScreening(Base, BaseModelMixin):
 
     # ──── Structured Evidence, Fit Flags & Weights ────
     evidence: Mapped[dict] = mapped_column(JSON, nullable=False)
-    fit_flags: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    fit_flags: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
     weights_used: Mapped[dict] = mapped_column(JSON, nullable=False)
 
     # ──── Audit & Model Provenance Metadata ────

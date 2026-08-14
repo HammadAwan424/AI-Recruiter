@@ -17,18 +17,8 @@ ExecutiveOfferDecision = Annotated[
     Union[ApprovedExecutiveOfferDecision, RejectedExecutiveOfferDecision],
     Field(discriminator="decision"),
 ]
-
-
-class OfferApprovalAction(BaseModel):
-    """Compatibility name for the privileged approval command."""
-
-    decision: Literal["approved", "rejected"]
-    comments: Optional[str] = None
-
-
 __all__ = [
     "ApprovedExecutiveOfferDecision",
     "RejectedExecutiveOfferDecision",
     "ExecutiveOfferDecision",
-    "OfferApprovalAction",
 ]

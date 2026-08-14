@@ -36,32 +36,32 @@ class GmailMessageHeader(StrictSchema):
 
 
 class GmailSyncContext(StrictSchema):
-    schema_version: Literal["gmail.sync_context.v1"]
+    schema_version: Literal["gmail.sync_context.v2"]
     company_id: int
     anchor_job_id: int
     gmail_account_id: int
     gmail_account_email: str
     anchor_job_title: str
-    gmail_last_read: Optional[datetime] = None
+    mailbox_last_read: Optional[datetime] = None
     after_date_query: str
     jobs: List["JobClassificationJob"] = Field(default_factory=list)
 
 
 class DedupedGmailMessages(StrictSchema):
-    schema_version: Literal["gmail.deduped_messages.v1"]
+    schema_version: Literal["gmail.deduped_messages.v2"]
     company_id: int
     anchor_job_id: int
-    gmail_account_id: Optional[int] = None
+    gmail_account_id: int
     after_date_query: str
     deduped_mails: List[GmailMessageHeader] = Field(default_factory=list)
     duplicated_mails: List[GmailMessageHeader] = Field(default_factory=list)
 
 
 class ProcessedGmailMessages(StrictSchema):
-    schema_version: Literal["gmail.processed_messages.v1"]
+    schema_version: Literal["gmail.processed_messages.v2"]
     company_id: int
     anchor_job_id: int
-    gmail_account_id: Optional[int] = None
+    gmail_account_id: int
     messages: List[FetchedGmailMessage] = Field(default_factory=list)
 
 
@@ -115,25 +115,26 @@ class JobApplicationSyncSummary(StrictSchema):
 
 
 class GmailApplicationBatch(StrictSchema):
-    schema_version: Literal["gmail.application_batch.v1"]
+    schema_version: Literal["gmail.application_batch.v2"]
     job_id: int
-    company_id: Optional[int] = None
-    gmail_account_id: Optional[int] = None
+    company_id: int
+    gmail_account_id: int
     applications: List[FetchedEmailApplication] = Field(default_factory=list)
 
 
 class GmailApplicationPlan(StrictSchema):
-    schema_version: Literal["gmail.application_plan.v1"]
+    schema_version: Literal["gmail.application_plan.v2"]
     company_id: int
     anchor_job_id: int
-    gmail_account_id: Optional[int] = None
+    gmail_account_id: int
     batches: List[GmailApplicationBatch] = Field(default_factory=list)
 
 
 class GmailPersistenceResult(StrictSchema):
-    schema_version: Literal["gmail.persistence_result.v1"]
+    schema_version: Literal["gmail.persistence_result.v2"]
     company_id: int
     anchor_job_id: int
+    gmail_account_id: int
     total_fetched: int
     classified_count: int
     unmatched_count: int
@@ -145,7 +146,7 @@ class GmailPersistenceResult(StrictSchema):
 
 
 class GmailSyncResult(GmailPersistenceResult):
-    schema_version: Literal["gmail.sync_result.v1"]
+    schema_version: Literal["gmail.sync_result.v2"]
     fetched_messages: List[FetchedGmailMessage] = Field(default_factory=list)
 
 

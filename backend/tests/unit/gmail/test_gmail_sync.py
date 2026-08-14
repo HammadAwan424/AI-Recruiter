@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import patch
 
+from pydantic import ValidationError
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -18,6 +19,7 @@ from app.schemas.gmail import (
     FetchedGmailMessage,
     FetchedEmailApplication,
     GmailApplicationBatch,
+    GmailSyncContext,
     JobClassificationBatchResult,
     JobClassificationResult,
     ProcessedGmailMessages,
@@ -69,8 +71,21 @@ class GmailSyncTests(unittest.TestCase):
         context = get_after_date(self.db, self.job_one.id)
 
         self.assertEqual(context.after_date_query, "2026/08/10")
-        self.assertEqual(context.gmail_last_read, datetime(2026, 8, 10, 17, 45))
+        self.assertEqual(context.mailbox_last_read, datetime(2026, 8, 10, 17, 45))
         self.assertEqual(context.gmail_account_id, self.gmail_account.id)
+
+    def test_v1_mailbox_contract_is_rejected(self):
+        with self.assertRaises(ValidationError):
+            GmailSyncContext(
+                schema_version="gmail.sync_context.v1",
+                company_id=self.company.id,
+                gmail_account_id=self.gmail_account.id,
+                gmail_account_email=self.gmail_account.email,
+                anchor_job_id=self.job_one.id,
+                anchor_job_title=self.job_one.title,
+                gmail_last_read=None,
+                after_date_query="2026/08/10",
+            )
 
     def test_latest_message_is_selected_per_candidate_and_job(self):
         older = datetime(2026, 8, 10, 10, 0)
@@ -92,9 +107,10 @@ class GmailSyncTests(unittest.TestCase):
             ),
         ]
         processed = ProcessedGmailMessages(
-            schema_version="gmail.processed_messages.v1",
+            schema_version="gmail.processed_messages.v2",
             company_id=self.company.id,
             anchor_job_id=self.job_one.id,
+            gmail_account_id=self.gmail_account.id,
             messages=messages,
         )
         classifications = ClassifiedGmailMessages(
@@ -130,16 +146,20 @@ class GmailSyncTests(unittest.TestCase):
         persist_application_with_candidate(
             self.db,
             GmailApplicationBatch(
-                schema_version="gmail.application_batch.v1",
+                schema_version="gmail.application_batch.v2",
                 job_id=self.job_one.id,
+                company_id=self.company.id,
+                gmail_account_id=self.gmail_account.id,
                 applications=[first],
             ),
         )
         persist_application_with_candidate(
             self.db,
             GmailApplicationBatch(
-                schema_version="gmail.application_batch.v1",
+                schema_version="gmail.application_batch.v2",
                 job_id=self.job_one.id,
+                company_id=self.company.id,
+                gmail_account_id=self.gmail_account.id,
                 applications=[latest],
             ),
         )
@@ -169,15 +189,17 @@ class GmailSyncTests(unittest.TestCase):
         ]
 
         processed = ProcessedGmailMessages(
-            schema_version="gmail.processed_messages.v1",
+            schema_version="gmail.processed_messages.v2",
             company_id=self.company.id,
             anchor_job_id=self.job_one.id,
+            gmail_account_id=self.gmail_account.id,
             messages=fetched_messages,
         )
         deduped = DedupedGmailMessages(
-            schema_version="gmail.deduped_messages.v1",
+            schema_version="gmail.deduped_messages.v2",
             company_id=self.company.id,
             anchor_job_id=self.job_one.id,
+            gmail_account_id=self.gmail_account.id,
             after_date_query="2026/08/01",
             deduped_mails=[{"id": "matched"}, {"id": "unmatched"}],
         )

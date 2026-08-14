@@ -65,7 +65,7 @@ def test_prepare_sync_context():
         output_path = write_stage_artifact(
             "gmail",
             "company_sync",
-            "sync_context.v1.json",
+            "sync_context.v2.json",
             context,
         )
 

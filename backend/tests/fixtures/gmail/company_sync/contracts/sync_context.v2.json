@@ -1,11 +1,11 @@
 {
-  "schema_version": "gmail.sync_context.v1",
+  "schema_version": "gmail.sync_context.v2",
   "company_id": 1,
   "gmail_account_id": 1,
   "gmail_account_email": "recruiting@example.com",
   "anchor_job_id": 10,
   "anchor_job_title": "AI Engineer",
-  "gmail_last_read": "2026-08-05T14:30:00",
+  "mailbox_last_read": "2026-08-05T14:30:00",
   "after_date_query": "2026/08/05",
   "jobs": [
     {

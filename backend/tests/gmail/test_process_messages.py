@@ -20,7 +20,7 @@ def test_process_mails():
     deduped = read_stage_schema(
         "gmail",
         "company_sync",
-        "deduped_message_headers.v1.json",
+        "deduped_message_headers.v2.json",
         DedupedGmailMessages,
     )
 
@@ -36,7 +36,7 @@ def test_process_mails():
         output_path = write_stage_artifact(
             "gmail",
             "company_sync",
-            "processed_messages.v1.json",
+            "processed_messages.v2.json",
             artifact,
         )
 

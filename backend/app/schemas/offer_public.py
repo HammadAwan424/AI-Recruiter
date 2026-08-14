@@ -24,16 +24,6 @@ CandidateOfferDecision = Annotated[
 ]
 
 
-class OfferSignRequest(BaseModel):
-    signer_name: str = Field(min_length=1)
-    signature_type: SignatureType = SignatureType.TYPED
-    signature_data: str = Field(min_length=1)
-
-
-class OfferDeclineRequest(BaseModel):
-    decline_reason: str = Field(min_length=1)
-
-
 class OfferPublicResponse(BaseModel):
     """Candidate-safe response; it excludes internal approval/audit data."""
 
@@ -57,7 +47,5 @@ __all__ = [
     "SignedCandidateOfferDecision",
     "DeclinedCandidateOfferDecision",
     "CandidateOfferDecision",
-    "OfferSignRequest",
-    "OfferDeclineRequest",
     "OfferPublicResponse",
 ]

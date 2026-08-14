@@ -19,7 +19,7 @@ def test_get_deduped_mails():
     context = read_stage_schema(
         "gmail",
         "company_sync",
-        "sync_context.v1.json",
+        "sync_context.v2.json",
         GmailSyncContext,
     )
 
@@ -35,7 +35,7 @@ def test_get_deduped_mails():
         output_path = write_stage_artifact(
             "gmail",
             "company_sync",
-            "deduped_message_headers.v1.json",
+            "deduped_message_headers.v2.json",
             artifact,
         )
 
