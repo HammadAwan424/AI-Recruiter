@@ -111,6 +111,8 @@ class JobApplicationSyncSummary(StrictSchema):
     total_saved: int = 0
     new_applications: int = 0
     renewed_applications: int = 0
+    new_application_ids: List[int] = Field(default_factory=list)
+    renewed_application_ids: List[int] = Field(default_factory=list)
     failed_upserts: int = 0
 
 
@@ -141,6 +143,8 @@ class GmailPersistenceResult(StrictSchema):
     total_saved: int
     new_applications: int
     renewed_applications: int
+    new_application_ids: List[int] = Field(default_factory=list)
+    renewed_application_ids: List[int] = Field(default_factory=list)
     failed_upsert_count: int
     job_summaries: List[JobApplicationSyncSummary] = Field(default_factory=list)
 

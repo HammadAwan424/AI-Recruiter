@@ -31,15 +31,21 @@ export const CandidatePipelinePage: React.FC = () => {
     canDisposition,
     canOffer,
 
-    handleFetchNewCVs,
+    handleFetchAndEvaluate,
+    handleEvaluate,
     handleAdvanceStage,
     handleDropCandidate,
     handleHire,
     handleReject,
     pipelineStep,
     isFetchingNew,
+    isParsingActive,
     isScreeningActive,
+    pendingEvaluationCount,
+    newlyImportedIds,
   } = useCandidatePipeline();
+
+  const allCandidates = applications && applications.length > 0 ? applications : candidates;
 
   return (
     <div className="flex flex-col gap-5 p-4 sm:p-6 w-full max-w-[1700px] mx-auto min-h-screen">
@@ -47,9 +53,12 @@ export const CandidatePipelinePage: React.FC = () => {
         jobs={jobs}
         selectedJobId={selectedJobId}
         onSelectJob={setSelectedJobId}
-        onFetchNewCVs={handleFetchNewCVs}
+        onFetchAndEvaluate={handleFetchAndEvaluate}
+        onEvaluateCandidates={() => selectedJobId && handleEvaluate(selectedJobId)}
+        pendingEvaluationCount={pendingEvaluationCount}
         pipelineStep={pipelineStep}
         isFetchingNew={isFetchingNew}
+        isParsingActive={isParsingActive}
         isScreeningActive={isScreeningActive}
         visibleStageKeys={visibleStageKeys}
         onToggleStageVisibility={toggleStageVisibility}
@@ -57,7 +66,7 @@ export const CandidatePipelinePage: React.FC = () => {
       />
 
       <PipelineStatsSummary
-        applications={applications && applications.length > 0 ? applications : candidates}
+        applications={allCandidates}
       />
 
       {pipelineAlertMsg && (
@@ -76,11 +85,13 @@ export const CandidatePipelinePage: React.FC = () => {
         </Alert>
       ) : (
         <KanbanBoard
-          candidates={applications && applications.length > 0 ? applications : candidates}
+          candidates={allCandidates}
           stages={STAGES}
           visibleStageKeys={visibleStageKeys}
           canDisposition={canDisposition}
           canOffer={canOffer}
+          pipelineStep={pipelineStep}
+          newlyImportedIds={newlyImportedIds}
           onSelectCandidate={setSelectedCandidate}
           onAdvanceStage={handleAdvanceStage}
           onDropCandidate={handleDropCandidate}

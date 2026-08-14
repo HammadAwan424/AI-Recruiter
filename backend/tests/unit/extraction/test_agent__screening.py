@@ -14,7 +14,7 @@ from app.schemas.screening import EvidenceBlock, EvidenceSet
 class ScreeningAgentTests(unittest.TestCase):
     def test_sanitize_input_truncates_resume_text(self):
         state = {
-            "cv_text": "x" * 5000,
+            "cv_text": "x" * 20000,
             "job_title": "Engineer",
             "job_description": "",
             "job_skills": "Python",
@@ -25,7 +25,7 @@ class ScreeningAgentTests(unittest.TestCase):
 
         result = sanitize_input_node(state)
 
-        self.assertEqual(len(result["sanitized_cv"]), 4000)
+        self.assertEqual(len(result["sanitized_cv"]), 16000)
         self.assertEqual(result["error"], "")
 
     def test_validate_output_clamps_scores(self):

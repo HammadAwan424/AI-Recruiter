@@ -1,5 +1,14 @@
 import { baseApi } from "../../shared/api/baseApi";
-import { ApplicationListItem, ApplicationDetail, FetchApplicationsResponse } from "../../shared/types/candidate.types";
+import {
+  ApplicationListItem,
+  ApplicationDetail,
+  FetchApplicationsResponse,
+  ApplicationStatus,
+  ApplicationDisposition,
+  ScreeningEvaluationDetail,
+  ParsingLLMOutput,
+  CommentResponse,
+} from "../../shared/types/candidate.types";
 
 export const candidatesApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -21,7 +30,7 @@ export const candidatesApi = baseApi.injectEndpoints({
         { type: "Jobs", id: jobId },
       ],
     }),
-    parseApplications: builder.mutation<any[], { jobId: number; applicationIds: number[] }>({
+    parseApplications: builder.mutation<ParsingLLMOutput[], { jobId: number; applicationIds: number[] }>({
       query: ({ jobId, applicationIds }) => ({
         url: `/jobs/${jobId}/applications/parse`,
         method: "POST",
@@ -29,37 +38,55 @@ export const candidatesApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: (_result, _error, { jobId }) => [{ type: "Applications", id: jobId }],
     }),
-    screenApplications: builder.mutation<{ message: string }, number>({
+    screenApplications: builder.mutation<ScreeningEvaluationDetail[], number>({
       query: (jobId) => ({
         url: `/jobs/${jobId}/applications/screen`,
         method: "POST",
       }),
       invalidatesTags: (_result, _error, jobId) => [{ type: "Applications", id: jobId }],
     }),
+    screenSingleApplication: builder.mutation<ScreeningEvaluationDetail, { jobId: number; applicationId: number }>({
+      query: ({ jobId, applicationId }) => ({
+        url: `/jobs/${jobId}/applications/screen/${applicationId}`,
+        method: "POST",
+      }),
+      invalidatesTags: (_result, _error, { applicationId }) => [{ type: "Applications", id: applicationId }],
+    }),
     updateApplicationStage: builder.mutation<
-      { message: string; application_id: number; current_status: string; disposition?: string },
-      { jobId: number; applicationId: number; currentStatus?: string; disposition?: string }
+      { message: string; application_id: number; current_status: ApplicationStatus; disposition: ApplicationDisposition },
+      { jobId: number; applicationId: number; currentStatus?: ApplicationStatus; disposition?: ApplicationDisposition }
     >({
       query: ({ jobId, applicationId, currentStatus, disposition }) => ({
         url: `/jobs/${jobId}/applications/${applicationId}/stage`,
         method: "PUT",
         body: { current_status: currentStatus, disposition },
       }),
-      invalidatesTags: (_result, _error, { jobId }) => [{ type: "Applications", id: jobId }],
+      invalidatesTags: (_result, _error, { jobId, applicationId }) => [
+        { type: "Applications", id: jobId },
+        { type: "Applications", id: applicationId },
+      ],
     }),
-    hireCandidate: builder.mutation<{ message: string; email_sent?: boolean }, number>({
-      query: (applicationId) => ({
-        url: `/applications/${applicationId}/hire`,
-        method: "POST",
-      }),
-      invalidatesTags: ["Applications"],
+    listApplicationComments: builder.query<CommentResponse[], { jobId: number; applicationId: number }>({
+      query: ({ jobId, applicationId }) => `/jobs/${jobId}/applications/${applicationId}/comments`,
+      providesTags: (_result, _error, { applicationId }) => [{ type: "Applications", id: applicationId }],
     }),
-    rejectCandidate: builder.mutation<{ message: string }, number>({
-      query: (applicationId) => ({
-        url: `/applications/${applicationId}/reject`,
+    addApplicationComment: builder.mutation<CommentResponse, { jobId: number; applicationId: number; content: string }>({
+      query: ({ jobId, applicationId, content }) => ({
+        url: `/jobs/${jobId}/applications/${applicationId}/comments`,
         method: "POST",
+        body: { content },
       }),
-      invalidatesTags: ["Applications"],
+      invalidatesTags: (_result, _error, { applicationId }) => [{ type: "Applications", id: applicationId }],
+    }),
+    deleteApplicationComment: builder.mutation<
+      { message: string },
+      { jobId: number; applicationId: number; commentId: number }
+    >({
+      query: ({ jobId, applicationId, commentId }) => ({
+        url: `/jobs/${jobId}/applications/${applicationId}/comments/${commentId}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: (_result, _error, { applicationId }) => [{ type: "Applications", id: applicationId }],
     }),
   }),
 });
@@ -72,7 +99,9 @@ export const {
   useFetchNewCVsMutation,
   useParseApplicationsMutation,
   useScreenApplicationsMutation,
+  useScreenSingleApplicationMutation,
   useUpdateApplicationStageMutation,
-  useHireCandidateMutation,
-  useRejectCandidateMutation,
+  useListApplicationCommentsQuery,
+  useAddApplicationCommentMutation,
+  useDeleteApplicationCommentMutation,
 } = candidatesApi;

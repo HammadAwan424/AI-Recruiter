@@ -51,4 +51,4 @@ Full Description:
 {job_description}
 
 CANDIDATE RESUME / CV TEXT:
-{cv_text[:4000]}"""
+{cv_text}"""

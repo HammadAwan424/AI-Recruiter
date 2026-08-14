@@ -2,8 +2,9 @@ from datetime import date, datetime, timedelta
 from app.models.offer import Offer, OfferTemplate, OfferApproval
 from app.utils.offer_crypto import generate_secure_offer_token
 
+
 def seed_offers(db, users_context, applications, jobs):
-    print("🔹 [Level 5] Generating Offer Templates, Active Offers & Approvals...")
+    print("🔹 [Level 5] Generating Offer Templates, Active Offers, Approvals & Signatures (Batched)...")
     ceo_user = users_context["ceo"]
 
     # 1. Multi-Department Offer Templates
@@ -51,9 +52,8 @@ def seed_offers(db, users_context, applications, jobs):
         },
     ]
 
-    seeded_templates = []
-    for t_data in templates_data:
-        tmpl = OfferTemplate(
+    seeded_templates = [
+        OfferTemplate(
             company_id=ceo_user.company_id,
             title=t_data["title"],
             department=t_data["department"],
@@ -61,18 +61,17 @@ def seed_offers(db, users_context, applications, jobs):
             is_active=True,
             created_by=ceo_user.id,
         )
-        db.add(tmpl)
-        db.commit()
-        db.refresh(tmpl)
-        seeded_templates.append(tmpl)
+        for t_data in templates_data
+    ]
+    db.add_all(seeded_templates)
+    db.flush()
 
     main_template = seeded_templates[0]
-    offers_created = []
 
-    # 2. Offer for Candidate in 'offer_sent' stage (David Kim - Job 1, App 5)
+    # 2. Offer for Candidate in 'offer_sent' stage (David Kim - Job 1, App 5) -> Status: SENT
     app_sent = applications[4]
     token = generate_secure_offer_token()
-    offer1 = Offer(
+    offer_sent = Offer(
         application_id=app_sent.id,
         template_id=main_template.id if main_template else None,
         base_salary=145000.0,
@@ -83,7 +82,8 @@ def seed_offers(db, users_context, applications, jobs):
             "Dear David Kim,\n\n"
             "On behalf of AI Recruiter, I am delighted to extend to you a formal offer of employment for the position of Senior Full Stack Engineer within our Engineering department. We were exceptionally impressed by your technical expertise during the evaluation process.\n\n"
             "Your starting annual base salary will be $145,000. In addition, your package includes $10,000 Signing Bonus + 5,000 Options. Your targeted start date will be "
-            + str(date.today() + timedelta(days=14)) + ".\n\n"
+            + str(date.today() + timedelta(days=14))
+            + ".\n\n"
             "Sincerely,\nAI Recruiter Team"
         ),
         secure_token=token,
@@ -91,14 +91,10 @@ def seed_offers(db, users_context, applications, jobs):
         status="SENT",
         created_by=ceo_user.id,
     )
-    db.add(offer1)
-    db.commit()
-    db.refresh(offer1)
-    offers_created.append(offer1)
 
-    # 3. Offer Approval for Candidate in 'offer_approval' stage (Elena Rostova - Job 1, App 4)
+    # 3. Offer Approval for Candidate in 'offer_approval' stage (Elena Rostova - Job 1, App 4) -> Status: PENDING_APPROVAL
     app_approval = applications[3]
-    offer2 = Offer(
+    offer_pending = Offer(
         application_id=app_approval.id,
         template_id=main_template.id if main_template else None,
         base_salary=155000.0,
@@ -114,23 +110,54 @@ def seed_offers(db, users_context, applications, jobs):
         status="PENDING_APPROVAL",
         created_by=ceo_user.id,
     )
-    db.add(offer2)
-    db.commit()
-    db.refresh(offer2)
 
+    # 4. Signed Offer for Hired Candidate (Olivia Taylor - Job 1, App 6) -> Status: SIGNED
+    app_hired = applications[5]
+    offer_signed = Offer(
+        application_id=app_hired.id,
+        template_id=main_template.id if main_template else None,
+        base_salary=160000.0,
+        bonus_equity="$15,000 Signing Bonus + 8,000 Options",
+        start_date=date.today() - timedelta(days=5),
+        expiry_date=date.today() + timedelta(days=7),
+        offer_letter_text=(
+            "Dear Olivia Taylor,\n\n"
+            "On behalf of AI Recruiter, we are delighted to confirm your accepted offer of employment as Lead Full Stack Architect. "
+            "Welcome to the team!\n\n"
+            "Annual Base Salary: $160,000\n"
+            "Bonus / Equity: $15,000 Signing Bonus + 8,000 Options\n\n"
+            "Sincerely,\nAI Recruiter Executive Team"
+        ),
+        status="SIGNED",
+        signature_type="DRAWN",
+        signer_name="Olivia Taylor",
+        signed_at=datetime.utcnow() - timedelta(days=3),
+        audit_hash="SHA256:7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+        created_by=ceo_user.id,
+    )
+
+    # Bulk add offers to obtain IDs
+    offers = [offer_sent, offer_pending, offer_signed]
+    db.add_all(offers)
+    db.flush()
+
+    # Link approval to offer_pending
     appr2 = OfferApproval(
-        offer_id=offer2.id,
+        offer_id=offer_pending.id,
         approver_id=ceo_user.id,
         comments="Draft offer package approved by CEO.",
         created_by=ceo_user.id,
     )
     db.add(appr2)
     db.commit()
-    offers_created.append(offer2)
 
-    print(f"  ✓ Level 5 Complete: {len(seeded_templates)} Offer Templates, {len(offers_created)} Active Offers & Approvals created.")
+    print(
+        f"  ✓ Level 5 Complete: {len(seeded_templates)} Offer Templates, "
+        f"{len(offers)} Active Offers (1 SENT, 1 PENDING_APPROVAL, 1 SIGNED) in 1 transaction."
+    )
 
-    if offer1.secure_token:
-        print(f"\n🎉 Candidate Signing Test Link:\n   http://localhost:5173/offer/sign/{offer1.secure_token}\n")
+    if offer_sent.secure_token:
+        print(f"\n🎉 Candidate Offer Signing Test Link:\n   http://localhost:5173/offer/sign/{offer_sent.secure_token}")
+        print("🎉 Candidate Self-Scheduling Test Link:\n   http://localhost:5173/interviews/schedule/mock_self_sched_token_001\n")
 
-    return offers_created
+    return offers

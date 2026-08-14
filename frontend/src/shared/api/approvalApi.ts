@@ -1,17 +1,7 @@
 import { baseApi } from "./baseApi";
-import { OfferItem } from "../types/offer.types";
+import { OfferResponse, ExecutiveOfferDecision } from "../types/offer.types";
 
-export type ApprovedExecutiveDecision = {
-  decision: "approved";
-  comments?: string;
-};
-
-export type RejectedExecutiveDecision = {
-  decision: "rejected";
-  comments?: string;
-};
-
-export type ExecutiveOfferDecision = ApprovedExecutiveDecision | RejectedExecutiveDecision;
+export type { ExecutiveOfferDecision };
 
 export interface OfferApprovalRequest {
   offerId: number;
@@ -20,7 +10,7 @@ export interface OfferApprovalRequest {
 
 export const approvalApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    approveOfferAction: builder.mutation<OfferItem, OfferApprovalRequest>({
+    approveOfferAction: builder.mutation<OfferResponse, OfferApprovalRequest>({
       query: ({ offerId, payload }) => ({
         url: `/offers/${offerId}/decisions`,
         method: "POST",

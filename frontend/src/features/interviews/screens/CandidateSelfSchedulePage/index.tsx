@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { FaCalendarAlt, FaClock, FaCheckCircle, FaVideo, FaExclamationTriangle } from "react-icons/fa";
+import { FaCalendarAlt, FaCheckCircle, FaVideo, FaExclamationTriangle } from "react-icons/fa";
 import { getApiBaseUrl } from "../../../../shared/utils/config";
+import { InterviewPublicSlotResponse, InterviewResponse } from "../../../../shared/types/interview.types";
 
 export const CandidateSelfSchedulePage: React.FC = () => {
   const { token } = useParams<{ token: string }>();
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<InterviewPublicSlotResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [confirmedInterview, setConfirmedInterview] = useState<any>(null);
+  const [confirmedInterview, setConfirmedInterview] = useState<InterviewResponse | null>(null);
 
   useEffect(() => {
     fetchSlots();
@@ -24,7 +25,7 @@ export const CandidateSelfSchedulePage: React.FC = () => {
         const errJson = await res.json();
         throw new Error(errJson.detail || "Invalid or expired scheduling link");
       }
-      const json = await res.json();
+      const json: InterviewPublicSlotResponse = await res.json();
       setData(json);
     } catch (err: any) {
       setError(err.message);
@@ -36,7 +37,7 @@ export const CandidateSelfSchedulePage: React.FC = () => {
   const handleConfirmBooking = async () => {
     if (!selectedSlotId) return alert("Please select a time slot first.");
 
-    const selectedSlot = data?.available_slots?.find((s: any) => s.id === selectedSlotId);
+    const selectedSlot = data?.available_slots?.find((s) => s.id === selectedSlotId);
     if (!selectedSlot) return alert("Selected slot is invalid.");
 
     setSubmitting(true);
@@ -57,7 +58,7 @@ export const CandidateSelfSchedulePage: React.FC = () => {
         const errJson = await res.json();
         throw new Error(errJson.detail || "Failed to confirm interview booking");
       }
-      const result = await res.json();
+      const result: InterviewResponse = await res.json();
       setConfirmedInterview(result);
     } catch (err: any) {
       alert(err.message);
@@ -134,7 +135,7 @@ export const CandidateSelfSchedulePage: React.FC = () => {
 
         <div className="mb-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {data?.available_slots?.map((slot: any) => {
+            {data?.available_slots?.map((slot) => {
               const isSelected = selectedSlotId === slot.id;
               const startFormatted = slot.schedule_start
                 ? new Date(slot.schedule_start).toLocaleString()

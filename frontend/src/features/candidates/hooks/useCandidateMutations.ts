@@ -1,20 +1,35 @@
-import { useHireCandidateMutation, useRejectCandidateMutation } from "../api";
+import { useUpdateApplicationStageMutation } from "../api";
+import { ApplicationStatus, ApplicationDisposition } from "../../../shared/types/candidate.types";
 
 export const useCandidateMutations = () => {
-  const [hireApi, { isLoading: isHiring }] = useHireCandidateMutation();
-  const [rejectApi, { isLoading: isRejecting }] = useRejectCandidateMutation();
+  const [updateStageApi, { isLoading: isUpdatingStage }] = useUpdateApplicationStageMutation();
 
-  const hireCandidate = async (applicationId: number) => {
-    return await hireApi(applicationId).unwrap();
+  const updateStage = async (
+    jobId: number,
+    applicationId: number,
+    currentStatus?: ApplicationStatus,
+    disposition?: ApplicationDisposition
+  ) => {
+    return await updateStageApi({
+      jobId,
+      applicationId,
+      currentStatus,
+      disposition,
+    }).unwrap();
   };
 
-  const rejectCandidate = async (applicationId: number) => {
-    return await rejectApi(applicationId).unwrap();
+  const hireCandidate = async (jobId: number, applicationId: number) => {
+    return await updateStage(jobId, applicationId, "hired");
+  };
+
+  const rejectCandidate = async (jobId: number, applicationId: number) => {
+    return await updateStage(jobId, applicationId, undefined, "rejected");
   };
 
   return {
+    updateStage,
     hireCandidate,
     rejectCandidate,
-    isSubmitting: isHiring || isRejecting,
+    isSubmitting: isUpdatingStage,
   };
 };

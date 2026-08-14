@@ -14,43 +14,45 @@ from mock.level4_interviews import seed_interviews
 from mock.level5_offers import seed_offers
 
 def reset_database():
-    """Wipes all database tables cleanly using CASCADE before re-creating schema."""
-    print("🧹 Clearing database tables cleanly with SQL CASCADE...")
-    with engine.connect() as conn:
-        conn.execute(text("DROP TABLE IF EXISTS user_job_scopes CASCADE;"))
-        conn.execute(text("DROP TABLE IF EXISTS role_permissions CASCADE;"))
-        conn.execute(text("DROP TABLE IF EXISTS roles CASCADE;"))
-        conn.execute(text("DROP TABLE IF EXISTS permissions CASCADE;"))
-        conn.execute(text("DROP TABLE IF EXISTS job_distributions CASCADE;"))
-        conn.execute(text("DROP TABLE IF EXISTS offer_approvals CASCADE;"))
-        conn.execute(text("DROP TABLE IF EXISTS offers CASCADE;"))
-        conn.execute(text("DROP TABLE IF EXISTS gmail_accounts CASCADE;"))
-        conn.execute(text("DROP TABLE IF EXISTS offer_templates CASCADE;"))
-        conn.execute(text("DROP TABLE IF EXISTS interview_feedback CASCADE;"))
-        conn.execute(text("DROP TABLE IF EXISTS interview_interviewers CASCADE;"))
-        conn.execute(text("DROP TABLE IF EXISTS interviews CASCADE;"))
-        conn.execute(text("DROP TABLE IF EXISTS interviews_v2 CASCADE;"))
-        conn.execute(text("DROP TABLE IF EXISTS interview_slots CASCADE;"))
-        conn.execute(text("DROP TABLE IF EXISTS final_scores CASCADE;"))
-        conn.execute(text("DROP TABLE IF EXISTS candidate_requisitions CASCADE;"))
-        conn.execute(text("DROP TABLE IF EXISTS application_screenings CASCADE;"))
-        conn.execute(text("DROP TABLE IF EXISTS applications CASCADE;"))
-        conn.execute(text("DROP TABLE IF EXISTS jobs CASCADE;"))
-        conn.execute(text("DROP TABLE IF EXISTS candidates CASCADE;"))
-        conn.execute(text("DROP TABLE IF EXISTS users CASCADE;"))
-        conn.execute(text("DROP TABLE IF EXISTS companies CASCADE;"))
-        conn.commit()
+    """Wipes all database tables cleanly in a SINGLE batch SQL CASCADE command."""
+    print("🧹 Clearing database tables cleanly in a single SQL CASCADE batch...")
+    tables_to_drop = [
+        "user_job_scopes",
+        "role_permissions",
+        "roles",
+        "permissions",
+        "job_distributions",
+        "offer_approvals",
+        "offers",
+        "gmail_accounts",
+        "offer_templates",
+        "interview_feedback",
+        "interview_interviewers",
+        "interviews",
+        "interviews_v2",
+        "interview_slots",
+        "final_scores",
+        "candidate_requisitions",
+        "application_screenings",
+        "applications",
+        "jobs",
+        "candidates",
+        "users",
+        "companies",
+    ]
+    with engine.begin() as conn:
+        conn.execute(text(f"DROP TABLE IF EXISTS {', '.join(tables_to_drop)} CASCADE;"))
 
     Base.metadata.create_all(bind=engine)
-    print("  ✓ Database tables reset and recreated clean!")
+    print("  ✓ Database tables reset and recreated clean in 1 roundtrip!")
 
 def run_all():
-    print("🚀 Starting Clean 5-Level Database Mock Generation...")
+    print("🚀 Starting Clean 5-Level Database Mock Generation (High-Performance Batched)...")
     
-    # 1. Clear database tables
+    # 1. Clear database tables in a single batch
     reset_database()
 
-    # 2. Seed all 5 levels sequentially
+    # 2. Seed all 5 levels with batched transactions
     db = SessionLocal()
     try:
         # Level 1: Users & Candidates

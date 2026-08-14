@@ -1,15 +1,16 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
-import { FaShieldAlt, FaCheckCircle, FaTimesCircle, FaPrint, FaPen, FaFont, FaUndo, FaBuilding } from "react-icons/fa";
+import { FaShieldAlt, FaTimesCircle, FaPrint, FaPen, FaFont, FaUndo, FaBuilding } from "react-icons/fa";
 import { getApiBaseUrl } from "../../../../shared/utils/config";
+import { OfferPublicResponse, SignatureType } from "../../../../shared/types/offer.types";
 
 export const CandidateOfferSignPage: React.FC = () => {
   const { token } = useParams<{ token: string }>();
-  const [offer, setOffer] = useState<any>(null);
+  const [offer, setOffer] = useState<OfferPublicResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [sigType, setSigType] = useState<"DRAWN" | "TYPED">("DRAWN");
+  const [sigType, setSigType] = useState<SignatureType>("DRAWN");
   const [typedName, setTypedName] = useState("");
   const [legalConsent, setLegalConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -30,7 +31,7 @@ export const CandidateOfferSignPage: React.FC = () => {
     try {
       const res = await fetch(`${getApiBaseUrl()}/offers/public/${token}`);
       if (res.ok) {
-        const data = await res.json();
+        const data: OfferPublicResponse = await res.json();
         setOffer(data);
         setTypedName(data.candidate_name || "");
       } else {
@@ -119,7 +120,7 @@ export const CandidateOfferSignPage: React.FC = () => {
       });
 
       if (res.ok) {
-        const updatedData = await res.json();
+        const updatedData: OfferPublicResponse = await res.json();
         setOffer(updatedData);
       } else {
         const err = await res.json();
@@ -146,7 +147,7 @@ export const CandidateOfferSignPage: React.FC = () => {
       });
 
       if (res.ok) {
-        const updatedData = await res.json();
+        const updatedData: OfferPublicResponse = await res.json();
         setOffer(updatedData);
         setShowDeclineModal(false);
       }
@@ -208,9 +209,9 @@ export const CandidateOfferSignPage: React.FC = () => {
             <div className="mt-8 pt-6 border-t border-gray-300 font-sans text-xs text-gray-700 bg-gray-50 p-4 rounded-xl border">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[#04b869] font-bold flex items-center gap-2"><FaShieldAlt /> Digitally Signed Audit Certificate</span>
-                <span className="font-mono text-[10px] bg-gray-200 px-2 py-1 rounded">{offer.audit_hash}</span>
+                <span className="font-mono text-[10px] bg-gray-200 px-2 py-1 rounded">{offer.signed_at}</span>
               </div>
-              <p>Signer: <strong>{offer.signer_name}</strong></p>
+              <p>Signer: <strong>{offer.candidate_name}</strong></p>
             </div>
           )}
         </div>
@@ -267,6 +268,37 @@ export const CandidateOfferSignPage: React.FC = () => {
               <button onClick={handleSignOffer} disabled={submitting} className="px-6 py-3 rounded-xl bg-[#05DC7F] text-black font-bold text-sm">
                 {submitting ? "Processing..." : "Accept & Sign Offer"}
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Decline Modal */}
+        {showDeclineModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+            <div className="bg-[#111827] border border-red-500/40 rounded-2xl p-6 max-w-md w-full text-white space-y-4 shadow-2xl">
+              <h3 className="text-lg font-bold text-white">Decline Employment Offer</h3>
+              <p className="text-xs text-white/60">Please let us know the reason you are declining this offer:</p>
+              <textarea
+                value={declineReason}
+                onChange={(e) => setDeclineReason(e.target.value)}
+                rows={3}
+                placeholder="e.g. Accepted another position..."
+                className="w-full bg-[#1F2937] border border-white/10 rounded-xl p-3 text-xs text-white outline-none"
+              />
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  onClick={() => setShowDeclineModal(false)}
+                  className="px-4 py-2 rounded-xl bg-white/10 text-white text-xs"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeclineOffer}
+                  className="px-4 py-2 rounded-xl bg-red-500 text-white text-xs font-bold"
+                >
+                  Confirm Decline
+                </button>
+              </div>
             </div>
           </div>
         )}

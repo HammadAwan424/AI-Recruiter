@@ -67,6 +67,8 @@ def fetch_new_cvs(
         total_saved=sync_result.total_saved,
         new_applications=sync_result.new_applications,
         renewed_applications=sync_result.renewed_applications,
+        new_application_ids=sync_result.new_application_ids,
+        renewed_application_ids=sync_result.renewed_application_ids,
         classified_count=sync_result.classified_count,
         unmatched_count=sync_result.unmatched_count,
         failed_upsert_count=sync_result.failed_upsert_count,

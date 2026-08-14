@@ -30,11 +30,14 @@ class EvaluationState(TypedDict):
     error: str
 
 
+MAX_SCREENING_CV_CHARS = 16000
+
+
 # ──── Node 1: Input Sanitization ────
 def sanitize_input_node(state: EvaluationState) -> EvaluationState:
     raw_cv = state.get("cv_text") or ""
-    # Truncate CV text to 4000 characters for optimal LLM context window
-    sanitized = raw_cv[:4000].strip()
+    # Truncate CV text to 16000 characters (~4000 tokens) for comprehensive multi-page resume screening
+    sanitized = raw_cv[:MAX_SCREENING_CV_CHARS].strip()
     return {**state, "sanitized_cv": sanitized, "error": ""}
 
 

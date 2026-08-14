@@ -1,17 +1,18 @@
 export type UserRole =
   | "superadmin"
   | "ceo"
-  | "hr_manager"
   | "recruiter"
   | "hiring_manager"
   | "interviewer"
   | "employee";
 
+export type UserStatus = "pending" | "active" | "inactive" | "rejected";
+
 export interface AuthUser {
   user_id: number;
   email: string;
   role: UserRole;
-  company_id?: number;
+  company_id?: number | null;
   full_name?: string;
 }
 

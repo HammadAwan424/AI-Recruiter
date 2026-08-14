@@ -1,4 +1,5 @@
 import { baseApi } from "../../shared/api/baseApi";
+import { UserRole } from "../../shared/types/auth.types";
 import {
   CompanyUsersResponse,
   UserCreatePayload,
@@ -12,12 +13,12 @@ export const usersApi = baseApi.injectEndpoints({
       query: () => "/auth/me",
       providesTags: ["Users"],
     }),
-    getCompanyUsers: builder.query<CompanyUsersResponse, string | void>({
+    getCompanyUsers: builder.query<CompanyUsersResponse, UserRole | string | void>({
       query: (role) => (role ? `/users?role=${role}` : "/users"),
       providesTags: ["Users"],
     }),
     createCompanyUser: builder.mutation<
-      { message: string; user_id: number; full_name: string; email: string; role: string },
+      { message: string; user_id: number; full_name: string; email: string; role: UserRole; company_id: number },
       UserCreatePayload
     >({
       query: (payload) => ({
@@ -28,7 +29,7 @@ export const usersApi = baseApi.injectEndpoints({
       invalidatesTags: ["Users"],
     }),
     updateUserRole: builder.mutation<
-      { message: string; user_id: number; role: string },
+      { message: string; user_id: number; role: UserRole },
       { userId: number; payload: UserRoleUpdatePayload }
     >({
       query: ({ userId, payload }) => ({

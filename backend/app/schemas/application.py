@@ -117,6 +117,8 @@ class FetchApplicationsResponse(BaseModel):
     total_saved: int
     new_applications: int
     renewed_applications: int
+    new_application_ids: list[int] = Field(default_factory=list)
+    renewed_application_ids: list[int] = Field(default_factory=list)
     classified_count: int
     unmatched_count: int
     failed_upsert_count: int

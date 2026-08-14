@@ -1,3 +1,5 @@
+import { UserRole } from "./auth.types";
+
 export type PermissionKey =
   | "*"
   | "user:"
@@ -29,18 +31,27 @@ export type PermissionKey =
 
 export type JobScope = "own" | "all";
 
-export interface Role {
-  id: number;
-  name: string;
-  company_id: number | null;
-  description?: string;
+export interface RoleBase {
+  name: UserRole;
+  description?: string | null;
   job_scope: JobScope;
+}
+
+export interface RoleResponse extends RoleBase {
+  id: number;
+  company_id: number | null;
+  created_by?: number | null;
+  updated_by?: number | null;
+  created_at?: string;
+  updated_at?: string;
   permissions: PermissionKey[];
 }
 
+export type Role = RoleResponse;
+
 export interface RolesListResponse {
-  company_id: number;
-  roles: Role[];
+  company_id: number | null;
+  roles: RoleResponse[];
 }
 
 export interface RolePermissionUpdatePayload {

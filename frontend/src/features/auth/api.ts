@@ -1,5 +1,6 @@
 import { baseApi } from "../../shared/api/baseApi";
-import { AuthUser } from "../../shared/types/auth.types";
+import { UserRole } from "../../shared/types/auth.types";
+import { CEOSignupPayload } from "../../shared/types/user.types";
 
 export interface LoginPayload {
   email: string;
@@ -9,19 +10,13 @@ export interface LoginPayload {
 export interface LoginResponse {
   access_token: string;
   token_type: string;
-  role: string;
-  company_id?: number;
+  role: UserRole;
+  company_id?: number | null;
   user_id: number;
   full_name?: string;
 }
 
-export interface SignupPayload {
-  company_name: string;
-  email: string;
-  password: string;
-  confirm_password: string;
-  full_name: string;
-}
+export type SignupPayload = CEOSignupPayload;
 
 export interface SignupResponse {
   message: string;

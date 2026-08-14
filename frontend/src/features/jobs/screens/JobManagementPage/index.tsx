@@ -20,11 +20,11 @@ export const JobManagementPage: React.FC = () => {
   const { jobs, isLoading, refetch } = useJobs();
   const { createJob, deleteJob } = useJobMutations();
 
-  const publishedJobs = jobs.filter((j) => j.status === "published" || j.status === "open");
+  const publishedJobs = jobs.filter((j) => j.status === "published");
   const pendingJobs = jobs.filter((j) => j.status === "pending_approval");
 
   const filteredJobs = jobs.filter((j) => {
-    if (statusFilter === "PUBLISHED") return j.status === "published" || j.status === "open";
+    if (statusFilter === "PUBLISHED") return j.status === "published";
     if (statusFilter === "PENDING_APPROVAL") return j.status === "pending_approval";
     return true;
   });

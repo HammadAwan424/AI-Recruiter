@@ -15,7 +15,7 @@ export const JobPortalPage: React.FC = () => {
   useEffect(() => {
     const fetchJobs = async () => {
       try {
-        const response = await fetch(`${getApiBaseUrl()}/recruitment/public/jobs`);
+        const response = await fetch(`${getApiBaseUrl()}/jobs/public/all`);
         const data = await response.json();
         setJobs(data.jobs || []);
       } catch (err) {

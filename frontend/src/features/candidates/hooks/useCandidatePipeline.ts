@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useCandidates } from "./useCandidates";
 import { useCandidateMutations } from "./useCandidateMutations";
 import { useGetJobsQuery } from "../../jobs/api";
@@ -15,17 +15,23 @@ import {
 } from "../api";
 import {
   useScheduleInterviewMutation,
-  useAssignInterviewerMutation,
   useSubmitInterviewFeedbackMutation,
 } from "../../interviews/api";
 import { useApproveOfferActionMutation } from "../../../shared/api/approvalApi";
 import { useDeleteOfferMutation } from "../../offers/api";
+import { ApplicationStatus, ApplicationListItem } from "../../../shared/types/candidate.types";
+
+import {
+  getCandidateEvaluationStatus,
+  requiresParsing,
+  requiresScreening,
+} from "../utils/evaluationStatus";
 
 export interface PipelineStageConfig {
-  key: string;
+  key: ApplicationStatus;
   label: string;
   color: string;
-  nextStage?: string;
+  nextStage?: ApplicationStatus;
 }
 
 export const STAGES: PipelineStageConfig[] = [
@@ -42,13 +48,13 @@ export const useCandidatePipeline = () => {
   const jobs = jobsData?.jobs || [];
 
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
-  const [selectedCandidate, setSelectedCandidate] = useState<any | null>(null);
-  const [offerModalCandidate, setOfferModalCandidate] = useState<any | null>(null);
-  const [assignModalCandidate, setAssignModalCandidate] = useState<any | null>(null);
-  const [scorecardCandidate, setScorecardCandidate] = useState<any | null>(null);
+  const [selectedCandidate, setSelectedCandidate] = useState<ApplicationListItem | null>(null);
+  const [offerModalCandidate, setOfferModalCandidate] = useState<ApplicationListItem | null>(null);
+  const [assignModalCandidate, setAssignModalCandidate] = useState<ApplicationListItem | null>(null);
+  const [scorecardCandidate, setScorecardCandidate] = useState<ApplicationListItem | null>(null);
 
   // Column Visibility Selection State (Defaults to all columns visible)
-  const [visibleStageKeys, setVisibleStageKeys] = useState<string[]>([
+  const [visibleStageKeys, setVisibleStageKeys] = useState<ApplicationStatus[]>([
     "applied",
     "screening",
     "interview",
@@ -70,6 +76,7 @@ export const useCandidatePipeline = () => {
 
   const [pipelineAlertMsg, setPipelineAlertMsg] = useState<string | null>(null);
   const [pipelineStep, setPipelineStep] = useState<"idle" | "fetching" | "parsing" | "screening">("idle");
+  const [newlyImportedIds, setNewlyImportedIds] = useState<number[]>([]);
 
   const { applications, candidates, isLoading, isError } = useCandidates(selectedJobId);
   const { hireCandidate, rejectCandidate } = useCandidateMutations();
@@ -80,7 +87,6 @@ export const useCandidatePipeline = () => {
   const [triggerGetApplications] = useLazyGetApplicationsQuery();
 
   const [scheduleInterview, { isLoading: isScheduling }] = useScheduleInterviewMutation();
-  const [assignInterviewer] = useAssignInterviewerMutation();
   const [submitInterviewFeedback, { isLoading: isSubmittingScorecard }] = useSubmitInterviewFeedbackMutation();
   const [approveOfferAction] = useApproveOfferActionMutation();
   const [deleteOffer] = useDeleteOfferMutation();
@@ -99,7 +105,13 @@ export const useCandidatePipeline = () => {
     }
   }, [jobs, selectedJobId]);
 
-  const toggleStageVisibility = (stageKey: string) => {
+  // Calculate count of applications in active job that are pending evaluation (un-screened)
+  const pendingEvaluationCount = useMemo(() => {
+    const activeList = applications && applications.length > 0 ? applications : candidates;
+    return activeList.filter((app) => requiresScreening(app)).length;
+  }, [applications, candidates]);
+
+  const toggleStageVisibility = (stageKey: ApplicationStatus) => {
     setVisibleStageKeys((prev) =>
       prev.includes(stageKey)
         ? prev.length > 1
@@ -109,36 +121,74 @@ export const useCandidatePipeline = () => {
     );
   };
 
-  const handleFetchNewCVs = async () => {
-    if (!selectedJobId) return;
+  /**
+   * Action 1: FETCH (Server-Calculated)
+   * Connects to Gmail, fetches unread candidate emails, extracts PDFs,
+   * runs the AI Job Classifier to route candidates to requisitions.
+   */
+  const handleFetch = async (jobId: number) => {
     setPipelineAlertMsg(null);
     setPipelineStep("fetching");
     try {
-      // 1. Fetch applications from Gmail
-      const fetchRes = await fetchNewApplications(selectedJobId).unwrap();
-      
-      // Persist feedback message from fetching stage (will NOT be updated/overwritten)
+      const fetchRes = await fetchNewApplications(jobId).unwrap();
       const fetchedMsg = `Fetched ${fetchRes.total_saved} application(s) (${fetchRes.new_applications} new, ${fetchRes.renewed_applications} renewed).`;
       setPipelineAlertMsg(fetchedMsg);
-
-      // 2. Refetch list to retrieve newly created/renewed application IDs
-      const freshApps = await triggerGetApplications(selectedJobId, true).unwrap();
-      const targetAppIds = freshApps
-        .filter((app: any) => app.disposition !== "rejected" && (app.current_status === "applied" || !app.current_status))
-        .map((app: any) => app.id);
-
-      if (targetAppIds.length > 0) {
-        setPipelineStep("parsing");
-        await parseApplications({ jobId: selectedJobId, applicationIds: targetAppIds }).unwrap();
+      if (fetchRes.new_application_ids && fetchRes.new_application_ids.length > 0) {
+        setNewlyImportedIds((prev) => Array.from(new Set([...prev, ...fetchRes.new_application_ids!])));
       }
-
-      // 3. Run AI Screening evaluation
-      setPipelineStep("screening");
-      await screenJobApplications(selectedJobId).unwrap();
+      return fetchRes;
     } catch (err: any) {
-      setPipelineAlertMsg(`⚠️ Pipeline error: ${err?.data?.detail || err?.message || "Error during fetch pipeline"}`);
+      setPipelineAlertMsg(`⚠️ Fetch error: ${err?.data?.detail || err?.message || "Error during email fetch"}`);
+      throw err;
     } finally {
       setPipelineStep("idle");
+    }
+  };
+
+  /**
+   * Action 2: EVALUATION (Client-Passed Parsing + Screening)
+   * Step 1: Client passes unparsed application IDs to POST /jobs/{jobId}/applications/parse
+   * Step 2: Client triggers POST /jobs/{jobId}/applications/screen to score all parsed applications
+   */
+  const handleEvaluate = async (jobId: number, targetAppIds?: number[]) => {
+    setPipelineAlertMsg(null);
+
+    try {
+      // 1. Resolve application IDs that require parsing via centralized helper
+      let appIdsToParse = targetAppIds;
+      if (!appIdsToParse || appIdsToParse.length === 0) {
+        const freshApps = await triggerGetApplications(jobId, true).unwrap();
+        appIdsToParse = freshApps.filter((app) => requiresParsing(app)).map((app) => app.id);
+      }
+
+      // Step A: Parse unparsed applications
+      if (appIdsToParse && appIdsToParse.length > 0) {
+        setPipelineStep("parsing");
+        await parseApplications({ jobId, applicationIds: appIdsToParse }).unwrap();
+      }
+
+      // Step B: Screen all applications for the active requisition
+      setPipelineStep("screening");
+      await screenJobApplications(jobId).unwrap();
+      setPipelineAlertMsg(`✅ Candidate evaluation completed for requisition #${jobId}.`);
+    } catch (err: any) {
+      setPipelineAlertMsg(`⚠️ Evaluation error: ${err?.data?.detail || err?.message || "Error during evaluation"}`);
+    } finally {
+      setPipelineStep("idle");
+    }
+  };
+
+  /**
+   * Action 1 + 2 Combined: FETCH & EVALUATE
+   * Runs the full automated ingest and evaluation for the selected job.
+   */
+  const handleFetchAndEvaluate = async () => {
+    if (!selectedJobId) return;
+    try {
+      await handleFetch(selectedJobId);
+      await handleEvaluate(selectedJobId);
+    } catch {
+      // Error messages handled within individual action steps
     }
   };
 
@@ -167,16 +217,16 @@ export const useCandidatePipeline = () => {
     }
   };
 
-  const handleDropCandidate = async (candidateId: number, targetStageKey: string) => {
-    const allCandidateItems: any[] = (applications && applications.length > 0) ? applications : candidates;
-    const candidate = allCandidateItems.find((c: any) => c.candidate_id === candidateId || c.id === candidateId);
+  const handleDropCandidate = async (candidateId: number, targetStageKey: ApplicationStatus) => {
+    const allCandidateItems: ApplicationListItem[] = (applications && applications.length > 0) ? applications : candidates;
+    const candidate = allCandidateItems.find((c) => c.candidate_id === candidateId || c.id === candidateId);
     if (!candidate) return;
 
-    const currentStatus = candidate.current_status || candidate.status;
+    const currentStatus = candidate.current_status || (candidate as any).stage;
     if (currentStatus === targetStageKey) return;
 
     const activeJobId = candidate.job_id || selectedJobId;
-    const appId = candidate.id || candidate.application_id;
+    const appId = candidate.id;
     if (!activeJobId || !appId) return;
 
     if ((targetStageKey === "offer_approval" || targetStageKey === "offer_sent") && !canOffer) {
@@ -190,9 +240,9 @@ export const useCandidatePipeline = () => {
       return;
     }
 
-    // 2. Intercept dropping onto offer_sent -> Execute Executive Approval & Dispatch Email (Same as Offer Approvals tab action)
+    // 2. Intercept dropping onto offer_sent -> Execute Executive Approval & Dispatch Email
     if (targetStageKey === "offer_sent") {
-      const offerId = candidate.offer?.id || candidate.offer_id;
+      const offerId = (candidate as any).offer?.id || (candidate as any).offer_id;
       setPipelineAlertMsg(null);
 
       if (offerId) {
@@ -220,9 +270,9 @@ export const useCandidatePipeline = () => {
       return;
     }
 
-    // 3. Intercept dragging backwards from offer_approval -> interview: Delete offer + approval & revert application stage
+    // 3. Intercept dragging backwards from offer_approval -> interview: Delete offer & revert stage
     if (currentStatus === "offer_approval" && targetStageKey === "interview") {
-      const offerId = candidate.offer?.id || candidate.offer_id;
+      const offerId = (candidate as any).offer?.id || (candidate as any).offer_id;
       setPipelineAlertMsg(null);
 
       if (offerId) {
@@ -272,27 +322,20 @@ export const useCandidatePipeline = () => {
 
     setPipelineAlertMsg(null);
     try {
-      if (assignModalCandidate.interview_id) {
-        await assignInterviewer({
-          interviewId: assignModalCandidate.interview_id,
-          payload: { interviewer_ids: interviewerIds },
-        }).unwrap();
-      } else {
-        const expiresAt = new Date();
-        expiresAt.setDate(expiresAt.getDate() + 7);
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7);
 
-        await scheduleInterview({
-          payload: {
-            application_id: assignModalCandidate.application_id || assignModalCandidate.id,
-            schedule_type: "self_schedule",
-            meeting_type: "GOOGLE_MEET",
-            self_schedule_token_expires_at: expiresAt.toISOString(),
-            interviewer_ids: interviewerIds,
-          },
-        }).unwrap();
-      }
+      await scheduleInterview({
+        payload: {
+          application_id: assignModalCandidate.id,
+          schedule_type: "self_schedule",
+          meeting_type: "GOOGLE_MEET",
+          self_schedule_token_expires_at: expiresAt.toISOString(),
+          interviewer_ids: interviewerIds,
+        },
+      }).unwrap();
 
-      setPipelineAlertMsg(`Interviewers assigned successfully! Ready for feedback submission.`);
+      setPipelineAlertMsg(`Interview scheduled & candidate invitation generated!`);
       setAssignModalCandidate(null);
     } catch (err: any) {
       setPipelineAlertMsg(`⚠️ Interview assignment error: ${err?.data?.detail || "Error"}`);
@@ -300,7 +343,7 @@ export const useCandidatePipeline = () => {
   };
 
   const handleConfirmSubmitScorecard = async () => {
-    const interviewId = scorecardCandidate?.interview_id || (scorecardCandidate?.interviews && scorecardCandidate.interviews[0]?.id);
+    const interviewId = (scorecardCandidate as any)?.interview_id || (scorecardCandidate?.interviews && scorecardCandidate.interviews[0]?.id);
     if (!scorecardCandidate || !interviewId) return;
     setPipelineAlertMsg(null);
     try {
@@ -320,12 +363,12 @@ export const useCandidatePipeline = () => {
 
   const handleHire = async (candidate: any) => {
     const activeJobId = candidate.job_id || selectedJobId;
-    const appId = candidate.application_id || candidate.id;
+    const appId = candidate.id || candidate.application_id;
     if (!activeJobId || !appId) return;
     setPipelineAlertMsg(null);
     try {
-      const res = await hireCandidate(appId);
-      setPipelineAlertMsg(`✅ Candidate hired successfully! ${res?.email_sent ? "Offer letter sent!" : ""}`);
+      await hireCandidate(activeJobId, appId);
+      setPipelineAlertMsg(`✅ Candidate #${appId} hired successfully!`);
     } catch (err: any) {
       setPipelineAlertMsg(`⚠️ Could not process hire action: ${err?.data?.detail || "Error"}`);
     }
@@ -333,12 +376,12 @@ export const useCandidatePipeline = () => {
 
   const handleReject = async (candidate: any) => {
     const activeJobId = candidate.job_id || selectedJobId;
-    const appId = candidate.application_id || candidate.id;
+    const appId = candidate.id || candidate.application_id;
     if (!activeJobId || !appId) return;
     if (!window.confirm(`Are you sure you want to reject candidate #${appId}?`)) return;
     setPipelineAlertMsg(null);
     try {
-      await rejectCandidate(appId);
+      await rejectCandidate(activeJobId, appId);
       setPipelineAlertMsg(`Candidate #${appId} has been rejected.`);
     } catch (err: any) {
       setPipelineAlertMsg(`⚠️ Could not process reject action: ${err?.data?.detail || "Error"}`);
@@ -387,14 +430,19 @@ export const useCandidatePipeline = () => {
 
     pipelineStep,
     isFetchingNew,
+    isParsingActive,
     isScreeningActive,
     isScheduling,
     isSubmittingScorecard,
     canDisposition,
     canOffer,
     companyUsers,
+    pendingEvaluationCount,
+    newlyImportedIds,
 
-    handleFetchNewCVs,
+    handleFetch,
+    handleEvaluate,
+    handleFetchAndEvaluate,
     handleAdvanceStage,
     handleDropCandidate,
     handleConfirmInterviewAssignment,

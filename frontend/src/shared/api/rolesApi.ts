@@ -1,5 +1,5 @@
 import { baseApi } from "./baseApi";
-import { RolesListResponse, RolePermissionUpdatePayload, Role } from "../types/role.types";
+import { RolesListResponse, RolePermissionUpdatePayload, JobScope } from "../types/role.types";
 
 export const rolesApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -8,7 +8,7 @@ export const rolesApi = baseApi.injectEndpoints({
       providesTags: ["Roles"],
     }),
     updateRolePermissions: builder.mutation<
-      { message: string; role_id: number; permissions: string[] },
+      { message: string; role_id: number; job_scope?: JobScope; permissions: string[] },
       { roleId: number; payload: RolePermissionUpdatePayload }
     >({
       query: ({ roleId, payload }) => ({

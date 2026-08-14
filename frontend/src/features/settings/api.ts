@@ -1,17 +1,11 @@
 import { baseApi } from "../../shared/api/baseApi";
+import { UserDetail } from "../../shared/types/user.types";
 
-export interface MyProfile {
-  id: number;
-  full_name: string;
-  email: string;
-  role: string;
-  department?: string;
+export interface MyProfileResponse extends UserDetail {
   company_name?: string;
-  company?: {
-    id: number;
-    name: string;
-  };
 }
+
+export type MyProfile = MyProfileResponse;
 
 export interface MyProfileUpdatePayload {
   full_name?: string;
@@ -22,11 +16,14 @@ export interface MyProfileUpdatePayload {
 
 export const settingsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    getMyProfile: builder.query<MyProfile, void>({
+    getMyProfile: builder.query<MyProfileResponse, void>({
       query: () => "/auth/me",
       providesTags: ["Users"],
     }),
-    updateMyProfile: builder.mutation<{ message: string; full_name: string; email: string; company_name: string }, MyProfileUpdatePayload>({
+    updateMyProfile: builder.mutation<
+      { message: string; full_name: string; email: string; company_name: string },
+      MyProfileUpdatePayload
+    >({
       query: (payload) => ({
         url: "/auth/me",
         method: "PUT",

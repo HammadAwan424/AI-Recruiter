@@ -1,51 +1,28 @@
 import React from "react";
 import { UserCheck, Briefcase, GraduationCap, Award, Cpu, AlertTriangle, Calendar, Building2 } from "lucide-react";
-
-interface WorkHistoryEntry {
-  title?: string;
-  job_title?: string;
-  company?: string;
-  company_name?: string;
-  start_date?: string;
-  end_date?: string;
-  duration?: string;
-  key_responsibilities?: string[];
-}
-
-interface EducationEntry {
-  degree?: string;
-  institution?: string;
-  year?: string;
-}
-
-interface ParsedProfile {
-  skills?: string[];
-  work_history?: WorkHistoryEntry[];
-  education?: EducationEntry[];
-  certifications?: string[];
-  needs_review?: boolean;
-  review_reason?: string;
-}
+import { ParsedResumeProfile, ParsingLLMOutput } from "../../../../shared/types/candidate.types";
 
 interface ParsedProfileSectionProps {
-  parsedProfile?: string | ParsedProfile;
+  parsedProfile?: string | ParsedResumeProfile | ParsingLLMOutput | any;
 }
 
 export const ParsedProfileSection: React.FC<ParsedProfileSectionProps> = ({ parsedProfile }) => {
   if (!parsedProfile) return null;
 
-  let profile: ParsedProfile | null = null;
+  let rawObj: any = null;
   if (typeof parsedProfile === "string") {
     try {
-      profile = JSON.parse(parsedProfile);
+      rawObj = JSON.parse(parsedProfile);
     } catch (e) {
       return null;
     }
   } else {
-    profile = parsedProfile;
+    rawObj = parsedProfile;
   }
 
-  if (!profile) return null;
+  if (!rawObj) return null;
+
+  const profile: ParsingLLMOutput = rawObj.profile || rawObj;
 
   const {
     skills = [],
@@ -54,7 +31,7 @@ export const ParsedProfileSection: React.FC<ParsedProfileSectionProps> = ({ pars
     certifications = [],
     needs_review = false,
     review_reason = "",
-  } = profile;
+  } = profile || {};
 
   if (
     skills.length === 0 &&
@@ -123,7 +100,7 @@ export const ParsedProfileSection: React.FC<ParsedProfileSectionProps> = ({ pars
             <Briefcase size={14} className="text-amber-400" /> Work Experience
           </p>
           <div className="space-y-2.5">
-            {work_history.map((job, idx) => {
+            {work_history.map((job: any, idx: number) => {
               const title = job.title || job.job_title || "Position";
               const company = job.company || job.company_name || "Company";
               const duration =
@@ -150,7 +127,7 @@ export const ParsedProfileSection: React.FC<ParsedProfileSectionProps> = ({ pars
                   </p>
                   {job.key_responsibilities && job.key_responsibilities.length > 0 && (
                     <ul className="list-disc list-inside text-white/70 text-[11px] space-y-0.5 pt-1 border-t border-white/5 mt-1.5">
-                      {job.key_responsibilities.map((resp, rIdx) => (
+                      {job.key_responsibilities.map((resp: string, rIdx: number) => (
                         <li key={rIdx}>{resp}</li>
                       ))}
                     </ul>
@@ -170,7 +147,7 @@ export const ParsedProfileSection: React.FC<ParsedProfileSectionProps> = ({ pars
               <GraduationCap size={14} className="text-emerald-400" /> Education
             </p>
             <div className="space-y-2">
-              {education.map((edu, idx) => (
+              {education.map((edu: any, idx: number) => (
                 <div
                   key={idx}
                   className="p-3 rounded-2xl bg-white/[0.03] border border-white/10 border-l-2 border-l-emerald-400 hover:border-white/20 transition-all duration-200 text-xs space-y-1 shadow-md"

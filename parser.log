@@ -1,0 +1,156 @@
+2026-08-14 12:45:57 [WARNING] app.agents.parsing.parser: Empty or missing CV text provided for resume parsing.
+2026-08-14 12:45:57 [INFO] app.agents.parsing.parser: Starting structured resume parsing (CV length: 16 chars)...
+2026-08-14 12:45:57 [INFO] app.agents.parsing.parser: Resume parsing (structured) token usage: input=0 prompt=0 uncached_input=0 cached=0 cache_write=0 output=0 completion=0 visible_output=0 reasoning=0 audio_input=0 audio_output=0 accepted_prediction=0 rejected_prediction=0 total=0 
+2026-08-14 12:45:57 [INFO] app.agents.parsing.parser: <object object at 0x7fc3c3562a80>
+2026-08-14 12:45:57 [INFO] app.agents.parsing.parser: skills=['Python'] work_history=[] education=[] certifications=[] needs_review=False review_reason=None
+2026-08-14 12:45:57 [INFO] app.agents.parsing.parser: Primary structured parsing succeeded: 1 skills, 0 work entries, 0 education entries extracted.
+2026-08-14 12:46:42 [WARNING] app.agents.parsing.parser: Empty or missing CV text provided for resume parsing.
+2026-08-14 12:46:42 [INFO] app.agents.parsing.parser: Starting structured resume parsing (CV length: 16 chars)...
+2026-08-14 12:46:42 [INFO] app.agents.parsing.parser: Resume parsing (structured) token usage: input=0 prompt=0 uncached_input=0 cached=0 cache_write=0 output=0 completion=0 visible_output=0 reasoning=0 audio_input=0 audio_output=0 accepted_prediction=0 rejected_prediction=0 total=0 
+2026-08-14 12:46:42 [INFO] app.agents.parsing.parser: <object object at 0x7fbba6d56a80>
+2026-08-14 12:46:42 [INFO] app.agents.parsing.parser: skills=['Python'] work_history=[] education=[] certifications=[] needs_review=False review_reason=None
+2026-08-14 12:46:42 [INFO] app.agents.parsing.parser: Primary structured parsing succeeded: 1 skills, 0 work entries, 0 education entries extracted.
+2026-08-14 13:02:01 [WARNING] app.agents.parsing.parser: Empty or missing CV text provided for resume parsing.
+2026-08-14 13:02:01 [INFO] app.agents.parsing.parser: Starting structured resume parsing (CV length: 16 chars)...
+2026-08-14 13:02:01 [INFO] app.agents.parsing.parser: Resume parsing (structured) token usage: input=0 prompt=0 uncached_input=0 cached=0 cache_write=0 output=0 completion=0 visible_output=0 reasoning=0 audio_input=0 audio_output=0 accepted_prediction=0 rejected_prediction=0 total=0 
+2026-08-14 13:02:01 [INFO] app.agents.parsing.parser: <object object at 0x7f09a1d66a80>
+2026-08-14 13:02:01 [INFO] app.agents.parsing.parser: skills=['Python'] work_history=[] education=[] certifications=[] needs_review=False review_reason=None
+2026-08-14 13:02:01 [INFO] app.agents.parsing.parser: Primary structured parsing succeeded: 1 skills, 0 work entries, 0 education entries extracted.
+2026-08-14 14:37:11 [WARNING] app.agents.parsing.parser: Empty or missing CV text provided for resume parsing.
+2026-08-14 14:37:11 [INFO] app.agents.parsing.parser: Starting structured resume parsing (CV length: 16 chars)...
+2026-08-14 14:37:11 [INFO] app.agents.parsing.parser: Resume parsing (structured) token usage: input=0 prompt=0 uncached_input=0 cached=0 cache_write=0 output=0 completion=0 visible_output=0 reasoning=0 audio_input=0 audio_output=0 accepted_prediction=0 rejected_prediction=0 total=0 
+2026-08-14 14:37:11 [INFO] app.agents.parsing.parser: <object object at 0x7fe68c166a80>
+2026-08-14 14:37:11 [INFO] app.agents.parsing.parser: skills=['Python'] work_history=[] education=[] certifications=[] needs_review=False review_reason=None
+2026-08-14 14:37:11 [INFO] app.agents.parsing.parser: Primary structured parsing succeeded: 1 skills, 0 work entries, 0 education entries extracted.
+2026-08-14 14:41:33 [WARNING] app.agents.parsing.parser: Empty or missing CV text provided for resume parsing.
+2026-08-14 14:41:33 [INFO] app.agents.parsing.parser: Starting structured resume parsing (CV length: 16 chars)...
+2026-08-14 14:41:33 [INFO] app.agents.parsing.parser: Resume parsing (structured) token usage: input=0 prompt=0 uncached_input=0 cached=0 cache_write=0 output=0 completion=0 visible_output=0 reasoning=0 audio_input=0 audio_output=0 accepted_prediction=0 rejected_prediction=0 total=0 
+2026-08-14 14:41:33 [INFO] app.agents.parsing.parser: <object object at 0x7f65aeb5ea80>
+2026-08-14 14:41:33 [INFO] app.agents.parsing.parser: skills=['Python'] work_history=[] education=[] certifications=[] needs_review=False review_reason=None
+2026-08-14 14:41:33 [INFO] app.agents.parsing.parser: Primary structured parsing succeeded: 1 skills, 0 work entries, 0 education entries extracted.
+2026-08-14 15:00:20 [WARNING] app.agents.parsing.parser: Empty or missing CV text provided for resume parsing.
+2026-08-14 15:00:20 [INFO] app.agents.parsing.parser: Starting structured resume parsing (CV length: 16 chars)...
+2026-08-14 15:00:20 [INFO] app.agents.parsing.parser: Resume parsing (structured) token usage: input=0 prompt=0 uncached_input=0 cached=0 cache_write=0 output=0 completion=0 visible_output=0 reasoning=0 audio_input=0 audio_output=0 accepted_prediction=0 rejected_prediction=0 total=0 
+2026-08-14 15:00:20 [INFO] app.agents.parsing.parser: <object object at 0x7f6b86f46a80>
+2026-08-14 15:00:20 [INFO] app.agents.parsing.parser: skills=['Python'] work_history=[] education=[] certifications=[] needs_review=False review_reason=None
+2026-08-14 15:00:20 [INFO] app.agents.parsing.parser: Primary structured parsing succeeded: 1 skills, 0 work entries, 0 education entries extracted.
+2026-08-14 15:13:54 [WARNING] app.agents.parsing.parser: Empty or missing CV text provided for resume parsing.
+2026-08-14 15:13:54 [INFO] app.agents.parsing.parser: Starting structured resume parsing (CV length: 16 chars)...
+2026-08-14 15:13:54 [INFO] app.agents.parsing.parser: Resume parsing (structured) token usage: input=0 prompt=0 uncached_input=0 cached=0 cache_write=0 output=0 completion=0 visible_output=0 reasoning=0 audio_input=0 audio_output=0 accepted_prediction=0 rejected_prediction=0 total=0 
+2026-08-14 15:13:54 [INFO] app.agents.parsing.parser: <object object at 0x7f4bf635aa80>
+2026-08-14 15:13:54 [INFO] app.agents.parsing.parser: skills=['Python'] work_history=[] education=[] certifications=[] needs_review=False review_reason=None
+2026-08-14 15:13:54 [INFO] app.agents.parsing.parser: Primary structured parsing succeeded: 1 skills, 0 work entries, 0 education entries extracted.
+2026-08-14 15:17:04 [WARNING] app.agents.parsing.parser: Empty or missing CV text provided for resume parsing.
+2026-08-14 15:17:04 [INFO] app.agents.parsing.parser: Starting structured resume parsing (CV length: 16 chars)...
+2026-08-14 15:17:04 [INFO] app.agents.parsing.parser: Resume parsing (structured) token usage: input=0 prompt=0 uncached_input=0 cached=0 cache_write=0 output=0 completion=0 visible_output=0 reasoning=0 audio_input=0 audio_output=0 accepted_prediction=0 rejected_prediction=0 total=0 
+2026-08-14 15:17:04 [INFO] app.agents.parsing.parser: <object object at 0x7f27d6766a80>
+2026-08-14 15:17:04 [INFO] app.agents.parsing.parser: skills=['Python'] work_history=[] education=[] certifications=[] needs_review=False review_reason=None
+2026-08-14 15:17:04 [INFO] app.agents.parsing.parser: Primary structured parsing succeeded: 1 skills, 0 work entries, 0 education entries extracted.
+2026-08-14 15:18:57 [WARNING] app.agents.parsing.parser: Empty or missing CV text provided for resume parsing.
+2026-08-14 15:18:57 [INFO] app.agents.parsing.parser: Starting structured resume parsing (CV length: 16 chars)...
+2026-08-14 15:18:57 [INFO] app.agents.parsing.parser: Resume parsing (structured) token usage: input=0 prompt=0 uncached_input=0 cached=0 cache_write=0 output=0 completion=0 visible_output=0 reasoning=0 audio_input=0 audio_output=0 accepted_prediction=0 rejected_prediction=0 total=0 
+2026-08-14 15:18:57 [INFO] app.agents.parsing.parser: <object object at 0x7fc50c946a80>
+2026-08-14 15:18:57 [INFO] app.agents.parsing.parser: skills=['Python'] work_history=[] education=[] certifications=[] needs_review=False review_reason=None
+2026-08-14 15:18:57 [INFO] app.agents.parsing.parser: Primary structured parsing succeeded: 1 skills, 0 work entries, 0 education entries extracted.
+2026-08-14 15:24:07 [WARNING] app.agents.parsing.parser: Empty or missing CV text provided for resume parsing.
+2026-08-14 15:24:07 [INFO] app.agents.parsing.parser: Starting structured resume parsing (CV length: 16 chars)...
+2026-08-14 15:24:07 [INFO] app.agents.parsing.parser: Resume parsing (structured) token usage: input=0 prompt=0 uncached_input=0 cached=0 cache_write=0 output=0 completion=0 visible_output=0 reasoning=0 audio_input=0 audio_output=0 accepted_prediction=0 rejected_prediction=0 total=0 
+2026-08-14 15:24:07 [INFO] app.agents.parsing.parser: <object object at 0x7f807b962a80>
+2026-08-14 15:24:07 [INFO] app.agents.parsing.parser: skills=['Python'] work_history=[] education=[] certifications=[] needs_review=False review_reason=None
+2026-08-14 15:24:07 [INFO] app.agents.parsing.parser: Primary structured parsing succeeded: 1 skills, 0 work entries, 0 education entries extracted.
+2026-08-14 15:28:19 [WARNING] app.agents.parsing.parser: Empty or missing CV text provided for resume parsing.
+2026-08-14 15:28:19 [INFO] app.agents.parsing.parser: Starting structured resume parsing (CV length: 16 chars)...
+2026-08-14 15:28:19 [INFO] app.agents.parsing.parser: Resume parsing (structured) token usage: input=0 prompt=0 uncached_input=0 cached=0 cache_write=0 output=0 completion=0 visible_output=0 reasoning=0 audio_input=0 audio_output=0 accepted_prediction=0 rejected_prediction=0 total=0 
+2026-08-14 15:28:19 [INFO] app.agents.parsing.parser: <object object at 0x7fd14255ea80>
+2026-08-14 15:28:19 [INFO] app.agents.parsing.parser: skills=['Python'] work_history=[] education=[] certifications=[] needs_review=False review_reason=None
+2026-08-14 15:28:19 [INFO] app.agents.parsing.parser: Primary structured parsing succeeded: 1 skills, 0 work entries, 0 education entries extracted.
+2026-08-14 15:37:47 [WARNING] app.agents.parsing.parser: Empty or missing CV text provided for resume parsing.
+2026-08-14 15:37:48 [INFO] app.agents.parsing.parser: Starting structured resume parsing (CV length: 16 chars)...
+2026-08-14 15:37:48 [INFO] app.agents.parsing.parser: Resume parsing (structured) token usage: input=0 prompt=0 uncached_input=0 cached=0 cache_write=0 output=0 completion=0 visible_output=0 reasoning=0 audio_input=0 audio_output=0 accepted_prediction=0 rejected_prediction=0 total=0 
+2026-08-14 15:37:48 [INFO] app.agents.parsing.parser: <object object at 0x7fa33555aa80>
+2026-08-14 15:37:48 [INFO] app.agents.parsing.parser: skills=['Python'] work_history=[] education=[] certifications=[] needs_review=False review_reason=None
+2026-08-14 15:37:48 [INFO] app.agents.parsing.parser: Primary structured parsing succeeded: 1 skills, 0 work entries, 0 education entries extracted.
+2026-08-14 15:39:44 [WARNING] app.agents.parsing.parser: Empty or missing CV text provided for resume parsing.
+2026-08-14 15:39:44 [INFO] app.agents.parsing.parser: Starting structured resume parsing (CV length: 16 chars)...
+2026-08-14 15:39:44 [INFO] app.agents.parsing.parser: Resume parsing (structured) token usage: input=0 prompt=0 uncached_input=0 cached=0 cache_write=0 output=0 completion=0 visible_output=0 reasoning=0 audio_input=0 audio_output=0 accepted_prediction=0 rejected_prediction=0 total=0 
+2026-08-14 15:39:44 [INFO] app.agents.parsing.parser: <object object at 0x7f50c1f82a80>
+2026-08-14 15:39:44 [INFO] app.agents.parsing.parser: skills=['Python'] work_history=[] education=[] certifications=[] needs_review=False review_reason=None
+2026-08-14 15:39:44 [INFO] app.agents.parsing.parser: Primary structured parsing succeeded: 1 skills, 0 work entries, 0 education entries extracted.
+2026-08-14 15:53:09 [WARNING] app.agents.parsing.parser: Empty or missing CV text provided for resume parsing.
+2026-08-14 15:53:09 [INFO] app.agents.parsing.parser: Starting structured resume parsing (CV length: 16 chars)...
+2026-08-14 15:53:09 [INFO] app.agents.parsing.parser: Resume parsing (structured) token usage: input=0 prompt=0 uncached_input=0 cached=0 cache_write=0 output=0 completion=0 visible_output=0 reasoning=0 audio_input=0 audio_output=0 accepted_prediction=0 rejected_prediction=0 total=0 
+2026-08-14 15:53:09 [INFO] app.agents.parsing.parser: <object object at 0x7ff469182a80>
+2026-08-14 15:53:09 [INFO] app.agents.parsing.parser: skills=['Python'] work_history=[] education=[] certifications=[] needs_review=False review_reason=None
+2026-08-14 15:53:09 [INFO] app.agents.parsing.parser: Primary structured parsing succeeded: 1 skills, 0 work entries, 0 education entries extracted.
+2026-08-14 15:54:27 [WARNING] app.agents.parsing.parser: Empty or missing CV text provided for resume parsing.
+2026-08-14 15:54:27 [INFO] app.agents.parsing.parser: Starting structured resume parsing (CV length: 16 chars)...
+2026-08-14 15:54:27 [INFO] app.agents.parsing.parser: Resume parsing (structured) token usage: input=0 prompt=0 uncached_input=0 cached=0 cache_write=0 output=0 completion=0 visible_output=0 reasoning=0 audio_input=0 audio_output=0 accepted_prediction=0 rejected_prediction=0 total=0 
+2026-08-14 15:54:27 [INFO] app.agents.parsing.parser: <object object at 0x7f4d5155ea80>
+2026-08-14 15:54:27 [INFO] app.agents.parsing.parser: skills=['Python'] work_history=[] education=[] certifications=[] needs_review=False review_reason=None
+2026-08-14 15:54:27 [INFO] app.agents.parsing.parser: Primary structured parsing succeeded: 1 skills, 0 work entries, 0 education entries extracted.
+2026-08-14 15:55:50 [WARNING] app.agents.parsing.parser: Empty or missing CV text provided for resume parsing.
+2026-08-14 15:55:50 [INFO] app.agents.parsing.parser: Starting structured resume parsing (CV length: 16 chars)...
+2026-08-14 15:55:50 [INFO] app.agents.parsing.parser: Resume parsing (structured) token usage: input=0 prompt=0 uncached_input=0 cached=0 cache_write=0 output=0 completion=0 visible_output=0 reasoning=0 audio_input=0 audio_output=0 accepted_prediction=0 rejected_prediction=0 total=0 
+2026-08-14 15:55:50 [INFO] app.agents.parsing.parser: <object object at 0x7fb843d66a80>
+2026-08-14 15:55:50 [INFO] app.agents.parsing.parser: skills=['Python'] work_history=[] education=[] certifications=[] needs_review=False review_reason=None
+2026-08-14 15:55:50 [INFO] app.agents.parsing.parser: Primary structured parsing succeeded: 1 skills, 0 work entries, 0 education entries extracted.
+2026-08-14 16:01:53 [WARNING] app.agents.parsing.parser: Empty or missing CV text provided for resume parsing.
+2026-08-14 16:01:53 [INFO] app.agents.parsing.parser: Starting structured resume parsing (CV length: 16 chars)...
+2026-08-14 16:01:53 [INFO] app.agents.parsing.parser: Resume parsing (structured) token usage: input=0 prompt=0 uncached_input=0 cached=0 cache_write=0 output=0 completion=0 visible_output=0 reasoning=0 audio_input=0 audio_output=0 accepted_prediction=0 rejected_prediction=0 total=0 
+2026-08-14 16:01:53 [INFO] app.agents.parsing.parser: <object object at 0x7f93c675ea80>
+2026-08-14 16:01:53 [INFO] app.agents.parsing.parser: skills=['Python'] work_history=[] education=[] certifications=[] needs_review=False review_reason=None
+2026-08-14 16:01:53 [INFO] app.agents.parsing.parser: Primary structured parsing succeeded: 1 skills, 0 work entries, 0 education entries extracted.
+2026-08-14 16:14:23 [WARNING] app.agents.parsing.parser: Empty or missing CV text provided for resume parsing.
+2026-08-14 16:14:23 [INFO] app.agents.parsing.parser: Starting structured resume parsing (CV length: 16 chars)...
+2026-08-14 16:14:23 [INFO] app.agents.parsing.parser: Resume parsing (structured) token usage: input=0 prompt=0 uncached_input=0 cached=0 cache_write=0 output=0 completion=0 visible_output=0 reasoning=0 audio_input=0 audio_output=0 accepted_prediction=0 rejected_prediction=0 total=0 
+2026-08-14 16:14:23 [INFO] app.agents.parsing.parser: <object object at 0x7f1cccf42a80>
+2026-08-14 16:14:23 [INFO] app.agents.parsing.parser: skills=['Python'] work_history=[] education=[] certifications=[] needs_review=False review_reason=None
+2026-08-14 16:14:23 [INFO] app.agents.parsing.parser: Primary structured parsing succeeded: 1 skills, 0 work entries, 0 education entries extracted.
+2026-08-14 16:18:59 [WARNING] app.agents.parsing.parser: Empty or missing CV text provided for resume parsing.
+2026-08-14 16:18:59 [INFO] app.agents.parsing.parser: Starting structured resume parsing (CV length: 16 chars)...
+2026-08-14 16:18:59 [INFO] app.agents.parsing.parser: Resume parsing (structured) token usage: input=0 prompt=0 uncached_input=0 cached=0 cache_write=0 output=0 completion=0 visible_output=0 reasoning=0 audio_input=0 audio_output=0 accepted_prediction=0 rejected_prediction=0 total=0 
+2026-08-14 16:18:59 [INFO] app.agents.parsing.parser: <object object at 0x7f6e6355aa80>
+2026-08-14 16:18:59 [INFO] app.agents.parsing.parser: skills=['Python'] work_history=[] education=[] certifications=[] needs_review=False review_reason=None
+2026-08-14 16:18:59 [INFO] app.agents.parsing.parser: Primary structured parsing succeeded: 1 skills, 0 work entries, 0 education entries extracted.
+2026-08-14 16:21:04 [WARNING] app.agents.parsing.parser: Empty or missing CV text provided for resume parsing.
+2026-08-14 16:21:04 [INFO] app.agents.parsing.parser: Starting structured resume parsing (CV length: 16 chars)...
+2026-08-14 16:21:04 [INFO] app.agents.parsing.parser: Resume parsing (structured) token usage: input=0 prompt=0 uncached_input=0 cached=0 cache_write=0 output=0 completion=0 visible_output=0 reasoning=0 audio_input=0 audio_output=0 accepted_prediction=0 rejected_prediction=0 total=0 
+2026-08-14 16:21:04 [INFO] app.agents.parsing.parser: <object object at 0x7fba8796ea80>
+2026-08-14 16:21:04 [INFO] app.agents.parsing.parser: skills=['Python'] work_history=[] education=[] certifications=[] needs_review=False review_reason=None
+2026-08-14 16:21:04 [INFO] app.agents.parsing.parser: Primary structured parsing succeeded: 1 skills, 0 work entries, 0 education entries extracted.
+2026-08-14 16:22:29 [WARNING] app.agents.parsing.parser: Empty or missing CV text provided for resume parsing.
+2026-08-14 16:22:29 [INFO] app.agents.parsing.parser: Starting structured resume parsing (CV length: 16 chars)...
+2026-08-14 16:22:29 [INFO] app.agents.parsing.parser: Resume parsing (structured) token usage: input=0 prompt=0 uncached_input=0 cached=0 cache_write=0 output=0 completion=0 visible_output=0 reasoning=0 audio_input=0 audio_output=0 accepted_prediction=0 rejected_prediction=0 total=0 
+2026-08-14 16:22:29 [INFO] app.agents.parsing.parser: <object object at 0x7f3bbc562a80>
+2026-08-14 16:22:29 [INFO] app.agents.parsing.parser: skills=['Python'] work_history=[] education=[] certifications=[] needs_review=False review_reason=None
+2026-08-14 16:22:29 [INFO] app.agents.parsing.parser: Primary structured parsing succeeded: 1 skills, 0 work entries, 0 education entries extracted.
+2026-08-14 16:32:40 [WARNING] app.agents.parsing.parser: Empty or missing CV text provided for resume parsing.
+2026-08-14 16:32:40 [INFO] app.agents.parsing.parser: Starting structured resume parsing (CV length: 16 chars)...
+2026-08-14 16:32:40 [INFO] app.agents.parsing.parser: Resume parsing (structured) token usage: input=0 prompt=0 uncached_input=0 cached=0 cache_write=0 output=0 completion=0 visible_output=0 reasoning=0 audio_input=0 audio_output=0 accepted_prediction=0 rejected_prediction=0 total=0 
+2026-08-14 16:32:40 [INFO] app.agents.parsing.parser: <object object at 0x7f0c78b36a80>
+2026-08-14 16:32:40 [INFO] app.agents.parsing.parser: skills=['Python'] work_history=[] education=[] certifications=[] needs_review=False review_reason=None
+2026-08-14 16:32:40 [INFO] app.agents.parsing.parser: Primary structured parsing succeeded: 1 skills, 0 work entries, 0 education entries extracted.
+2026-08-14 16:37:09 [WARNING] app.agents.parsing.parser: Empty or missing CV text provided for resume parsing.
+2026-08-14 16:37:09 [INFO] app.agents.parsing.parser: Starting structured resume parsing (CV length: 16 chars)...
+2026-08-14 16:37:09 [INFO] app.agents.parsing.parser: Resume parsing (structured) token usage: input=0 prompt=0 uncached_input=0 cached=0 cache_write=0 output=0 completion=0 visible_output=0 reasoning=0 audio_input=0 audio_output=0 accepted_prediction=0 rejected_prediction=0 total=0 
+2026-08-14 16:37:09 [INFO] app.agents.parsing.parser: <object object at 0x7f1f99d76a70>
+2026-08-14 16:37:09 [INFO] app.agents.parsing.parser: skills=['Python'] work_history=[] education=[] certifications=[] needs_review=False review_reason=None
+2026-08-14 16:37:09 [INFO] app.agents.parsing.parser: Primary structured parsing succeeded: 1 skills, 0 work entries, 0 education entries extracted.
+2026-08-14 16:38:01 [WARNING] app.agents.parsing.parser: Empty or missing CV text provided for resume parsing.
+2026-08-14 16:38:01 [INFO] app.agents.parsing.parser: Starting structured resume parsing (CV length: 16 chars)...
+2026-08-14 16:38:01 [INFO] app.agents.parsing.parser: Resume parsing (structured) token usage: input=0 prompt=0 uncached_input=0 cached=0 cache_write=0 output=0 completion=0 visible_output=0 reasoning=0 audio_input=0 audio_output=0 accepted_prediction=0 rejected_prediction=0 total=0 
+2026-08-14 16:38:01 [INFO] app.agents.parsing.parser: <object object at 0x7ff572982a70>
+2026-08-14 16:38:01 [INFO] app.agents.parsing.parser: skills=['Python'] work_history=[] education=[] certifications=[] needs_review=False review_reason=None
+2026-08-14 16:38:01 [INFO] app.agents.parsing.parser: Primary structured parsing succeeded: 1 skills, 0 work entries, 0 education entries extracted.
+2026-08-14 16:38:44 [WARNING] app.agents.parsing.parser: Empty or missing CV text provided for resume parsing.
+2026-08-14 16:38:44 [INFO] app.agents.parsing.parser: Starting structured resume parsing (CV length: 16 chars)...
+2026-08-14 16:38:44 [INFO] app.agents.parsing.parser: Resume parsing (structured) token usage: input=0 prompt=0 uncached_input=0 cached=0 cache_write=0 output=0 completion=0 visible_output=0 reasoning=0 audio_input=0 audio_output=0 accepted_prediction=0 rejected_prediction=0 total=0 
+2026-08-14 16:38:44 [INFO] app.agents.parsing.parser: <object object at 0x7f46ed0cde80>
+2026-08-14 16:38:44 [INFO] app.agents.parsing.parser: skills=['Python'] work_history=[] education=[] certifications=[] needs_review=False review_reason=None
+2026-08-14 16:38:44 [INFO] app.agents.parsing.parser: Primary structured parsing succeeded: 1 skills, 0 work entries, 0 education entries extracted.
+2026-08-14 16:39:20 [WARNING] app.agents.parsing.parser: Empty or missing CV text provided for resume parsing.
+2026-08-14 16:39:20 [INFO] app.agents.parsing.parser: Starting structured resume parsing (CV length: 16 chars)...
+2026-08-14 16:39:20 [INFO] app.agents.parsing.parser: Resume parsing (structured) token usage: input=0 prompt=0 uncached_input=0 cached=0 cache_write=0 output=0 completion=0 visible_output=0 reasoning=0 audio_input=0 audio_output=0 accepted_prediction=0 rejected_prediction=0 total=0 
+2026-08-14 16:39:20 [INFO] app.agents.parsing.parser: <object object at 0x7fb6eb5c9e80>
+2026-08-14 16:39:20 [INFO] app.agents.parsing.parser: skills=['Python'] work_history=[] education=[] certifications=[] needs_review=False review_reason=None
+2026-08-14 16:39:20 [INFO] app.agents.parsing.parser: Primary structured parsing succeeded: 1 skills, 0 work entries, 0 education entries extracted.

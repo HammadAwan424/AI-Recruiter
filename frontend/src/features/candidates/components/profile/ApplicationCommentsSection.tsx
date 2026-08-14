@@ -1,15 +1,9 @@
 import React from "react";
 import { MessageSquare } from "lucide-react";
+import { CommentResponse } from "../../../../shared/types/candidate.types";
 
 interface ApplicationCommentsSectionProps {
-  comments?: Array<{
-    id: number;
-    application_id: number;
-    author_id: number;
-    author_name?: string;
-    content: string;
-    created_at: string;
-  }>;
+  comments?: CommentResponse[];
 }
 
 export const ApplicationCommentsSection: React.FC<ApplicationCommentsSectionProps> = ({ comments }) => {
@@ -32,7 +26,9 @@ export const ApplicationCommentsSection: React.FC<ApplicationCommentsSectionProp
             <div className="flex-1 min-w-0">
               <div className="flex justify-between items-center mb-0.5">
                 <span className="text-white font-bold text-xs">{comment.author_name || `User #${comment.author_id}`}</span>
-                <span className="text-white/40 text-[10px]">{comment.created_at}</span>
+                <span className="text-white/40 text-[10px]">
+                  {comment.created_at ? new Date(comment.created_at).toLocaleString() : ""}
+                </span>
               </div>
               <p className="text-white/80 text-xs leading-relaxed">{comment.content}</p>
             </div>

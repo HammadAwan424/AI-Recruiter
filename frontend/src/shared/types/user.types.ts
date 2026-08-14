@@ -1,36 +1,43 @@
+import { UserRole, UserStatus } from "./auth.types";
 import { PermissionKey } from "./role.types";
-import { JobPost } from "./job.types";
+import type { JobResponse } from "./job.types";
 
-export type UserRole =
-  | "superadmin"
-  | "ceo"
-  | "hr_manager"
-  | "recruiter"
-  | "hiring_manager"
-  | "interviewer"
-  | "employee";
+export type { UserRole, UserStatus };
 
-export interface CompanyUser {
+export interface CompanyMinimalResponse {
+  id: number;
+  name: string;
+}
+
+export interface UserResponse {
   id: number;
   full_name: string;
   email: string;
-  phone?: string;
   role: UserRole;
-  department?: string;
-  status: "active" | "inactive" | "fired" | string;
-  joining_date?: string;
-  permissions?: PermissionKey[];
+  company_id?: number | null;
+  phone?: string | null;
+  department?: string | null;
+  joining_date?: string | null;
+  status: UserStatus;
+  created_at?: string;
+  updated_at?: string;
 }
 
-export interface UserDetail extends CompanyUser {
+/**
+ * CompanyUser is an alias of UserResponse for backward compatibility across components.
+ */
+export type CompanyUser = UserResponse;
+
+export interface UserDetail extends UserResponse {
+  company?: CompanyMinimalResponse | null;
   permissions: PermissionKey[];
-  assigned_jobs: JobPost[];
+  assigned_jobs: JobResponse[];
 }
 
 export interface CompanyUsersResponse {
-  company_id: number;
+  company_id: number | null;
   total_users: number;
-  users: CompanyUser[];
+  users: UserResponse[];
 }
 
 export interface UserCreatePayload {
@@ -44,4 +51,12 @@ export interface UserCreatePayload {
 
 export interface UserRoleUpdatePayload {
   role: UserRole;
+}
+
+export interface CEOSignupPayload {
+  full_name: string;
+  email: string;
+  company_name: string;
+  password: string;
+  confirm_password: string;
 }

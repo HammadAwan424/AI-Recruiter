@@ -1,20 +1,14 @@
 import { baseApi } from "../../shared/api/baseApi";
-import { JobPost, JobDetail, JobCreatePayload, JobsListResponse } from "../../shared/types/job.types";
+import {
+  JobResponse,
+  JobDetail,
+  JobCreatePayload,
+  JobsListResponse,
+  GenerateJDPayload,
+  GenerateJDResponse,
+} from "../../shared/types/job.types";
 
-export interface GenerateJDPayload {
-  title: string;
-  department?: string;
-  employment_type?: string;
-  experience?: string;
-  skills?: string;
-  salary_range?: string;
-  additional_info?: string;
-}
-
-export interface GenerateJDResponse {
-  full_description: string;
-  keywords: string;
-}
+export type { GenerateJDPayload, GenerateJDResponse };
 
 export const jobsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -33,7 +27,7 @@ export const jobsApi = baseApi.injectEndpoints({
         body: payload,
       }),
     }),
-    createJob: builder.mutation<JobPost, JobCreatePayload>({
+    createJob: builder.mutation<JobResponse, JobCreatePayload>({
       query: (payload) => ({
         url: "/jobs",
         method: "POST",

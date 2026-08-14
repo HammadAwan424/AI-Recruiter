@@ -363,6 +363,8 @@ def persist_application_with_candidate(
     total_saved = 0
     new_applications = 0
     renewed_applications = 0
+    new_application_ids: List[int] = []
+    renewed_application_ids: List[int] = []
     application_batch = GmailApplicationBatch.model_validate(application_batch)
 
     for app_data in application_batch.applications:
@@ -412,8 +414,9 @@ def persist_application_with_candidate(
             if file_path:
                 existing_app.cv_pdf_path = file_path
             renewed_applications += 1
+            renewed_application_ids.append(existing_app.id)
         else:
-            create_application_db(
+            new_app = create_application_db(
                 db,
                 candidate_id=candidate.id,
                 job_id=application_batch.job_id,
@@ -427,6 +430,7 @@ def persist_application_with_candidate(
                 created_by=created_by
             )
             new_applications += 1
+            new_application_ids.append(new_app.id)
 
         total_saved += 1
 
@@ -436,6 +440,8 @@ def persist_application_with_candidate(
         total_saved=total_saved,
         new_applications=new_applications,
         renewed_applications=renewed_applications,
+        new_application_ids=new_application_ids,
+        renewed_application_ids=renewed_application_ids,
     )
 
 
@@ -587,6 +593,8 @@ def fetch_job_application_emails_service(
     total_saved = 0
     new_applications = 0
     renewed_applications = 0
+    all_new_app_ids: List[int] = []
+    all_renewed_app_ids: List[int] = []
     failed_upsert_count = 0
     job_summaries: List[JobApplicationSyncSummary] = []
 
@@ -601,6 +609,8 @@ def fetch_job_application_emails_service(
             total_saved += summary.total_saved
             new_applications += summary.new_applications
             renewed_applications += summary.renewed_applications
+            all_new_app_ids.extend(summary.new_application_ids)
+            all_renewed_app_ids.extend(summary.renewed_application_ids)
         except Exception:
             db.rollback()
             summary.failed_upserts = len(application_batch.applications)
@@ -640,6 +650,8 @@ def fetch_job_application_emails_service(
         total_saved=total_saved,
         new_applications=new_applications,
         renewed_applications=renewed_applications,
+        new_application_ids=all_new_app_ids,
+        renewed_application_ids=all_renewed_app_ids,
         classified_count=classified_count,
         unmatched_count=unmatched_count,
         failed_upsert_count=failed_upsert_count,

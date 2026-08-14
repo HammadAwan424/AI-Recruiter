@@ -12,6 +12,8 @@ interface KanbanBoardProps {
   visibleStageKeys: string[];
   canDisposition: boolean;
   canOffer: boolean;
+  pipelineStep?: "idle" | "fetching" | "parsing" | "screening" | string;
+  newlyImportedIds?: number[];
   onSelectCandidate: (candidate: any) => void;
   onAdvanceStage: (candidate: any, currentStageKey: string) => void;
   onDropCandidate: (candidateId: number, targetStageKey: string) => void;
@@ -22,6 +24,8 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   candidates,
   stages,
   visibleStageKeys,
+  pipelineStep = "idle",
+  newlyImportedIds = [],
   onSelectCandidate,
   onDropCandidate,
 }) => {
@@ -127,6 +131,11 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
   const renderCardVariant = (candidate: any, stage: PipelineStageConfig, isDraggable: boolean) => {
     const resolved = resolveCardVariant(candidate, stage.key as PipelineStageKey);
+    const isNewlyImported = Boolean(
+      newlyImportedIds &&
+      newlyImportedIds.length > 0 &&
+      (newlyImportedIds.includes(candidate.id) || newlyImportedIds.includes(candidate.candidate_id))
+    );
 
     if (resolved.stage === "interview") {
       return (
@@ -134,6 +143,8 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
           key={candidate.id || candidate.candidate_id}
           candidate={candidate}
           isDraggable={isDraggable}
+          pipelineStep={pipelineStep}
+          isNewlyImported={isNewlyImported}
           onSelectCandidate={onSelectCandidate}
         />
       );
@@ -145,7 +156,10 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
         candidate={candidate}
         variant={resolved.variant as "normal" | "rejected"}
         screening={stage.key !== "applied"}
+        stageKey={stage.key}
         isDraggable={isDraggable}
+        pipelineStep={pipelineStep}
+        isNewlyImported={isNewlyImported}
         onSelectCandidate={onSelectCandidate}
       />
     );

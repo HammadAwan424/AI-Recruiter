@@ -1,29 +1,32 @@
 import { baseApi } from "../../shared/api/baseApi";
+import { UserStatus } from "../../shared/types/auth.types";
 
-export interface CompanyUser {
+export interface CEOResponse {
   id: number;
   full_name: string;
   email: string;
   company_name: string;
   days_left?: number | null;
-  status?: string;
+  status: UserStatus;
+  approved_at?: string | null;
+  expires_at?: string | null;
 }
 
 export const superadminApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    getApprovedCeos: builder.query<CompanyUser[], void>({
+    getApprovedCeos: builder.query<CEOResponse[], void>({
       query: () => "/admin/ceos?status=active",
       providesTags: ["Users"],
     }),
-    getPendingCeos: builder.query<CompanyUser[], void>({
+    getPendingCeos: builder.query<CEOResponse[], void>({
       query: () => "/admin/ceos?status=pending",
       providesTags: ["Users"],
     }),
-    getInactiveCeos: builder.query<CompanyUser[], void>({
+    getInactiveCeos: builder.query<CEOResponse[], void>({
       query: () => "/admin/ceos?status=inactive",
       providesTags: ["Users"],
     }),
-    getRejectedCeos: builder.query<CompanyUser[], void>({
+    getRejectedCeos: builder.query<CEOResponse[], void>({
       query: () => "/admin/ceos?status=rejected",
       providesTags: ["Users"],
     }),

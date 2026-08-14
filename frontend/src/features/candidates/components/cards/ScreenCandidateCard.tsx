@@ -7,21 +7,30 @@ export interface ScreenCandidateCardProps {
   variant: "normal" | "rejected";
   screening?: boolean;
   isDraggable?: boolean;
+  stageKey?: string;
+  pipelineStep?: "idle" | "fetching" | "parsing" | "screening" | string;
+  isNewlyImported?: boolean;
   onSelectCandidate: (candidate: any) => void;
 }
 
 export const ScreenCandidateCard: React.FC<ScreenCandidateCardProps> = ({
   candidate,
   isDraggable = true,
+  stageKey,
+  pipelineStep = "idle",
+  isNewlyImported = false,
   onSelectCandidate,
 }) => {
   return (
     <BaseCandidateCard
       candidate={candidate}
+      stageKey={stageKey}
       onSelectCandidate={onSelectCandidate}
       showMatchScore={true}
       profileButtonLabel="View Profile"
       isDraggable={isDraggable}
+      pipelineStep={pipelineStep}
+      isNewlyImported={isNewlyImported}
     />
   );
 };

@@ -3,8 +3,6 @@ import {
   Box,
   Typography,
   Stack,
-  Chip,
-  Link,
   Button,
   FormControl,
   InputLabel,
@@ -14,39 +12,17 @@ import {
   ListItemText,
   Alert,
   CircularProgress,
+  Tooltip,
 } from "@mui/material";
-import { Calendar, Clock, Video, Users, CheckCircle2, UserPlus, Plus, Link as LinkIcon, CalendarCheck } from "lucide-react";
+import { Calendar, UserPlus, Plus, Link as LinkIcon, CalendarCheck, Clock, CheckCircle2 } from "lucide-react";
 import { useScheduleInterviewMutation, useGetInterviewersWithSlotsQuery } from "../../../interviews/api";
-import { InterviewerDetail, InterviewSlot } from "../../../../shared/types/interview.types";
+import { InterviewDetail, InterviewerDetail, InterviewSlot } from "../../../../shared/types/interview.types";
 
 interface InterviewRoundsSectionProps {
   applicationId: number;
   jobId: number;
   currentStatus: string;
-  interviews?: Array<{
-    id: number;
-    schedule_start?: string;
-    schedule_end?: string;
-    meeting_type: string;
-    meeting_link: string;
-    self_schedule_token?: string;
-    status: string;
-    interviewer_assignments?: Array<{
-      interviewer_id: number;
-      interviewer: {
-        id: number;
-        full_name: string;
-        email: string;
-      };
-      feedback?: {
-        id: number;
-        technical_score: number;
-        communication_score: number;
-        notes?: string;
-        created_at?: string;
-      };
-    }>;
-  }>;
+  interviews?: InterviewDetail[];
 }
 
 export const InterviewRoundsSection: React.FC<InterviewRoundsSectionProps> = ({
@@ -69,16 +45,19 @@ export const InterviewRoundsSection: React.FC<InterviewRoundsSectionProps> = ({
   const [selectedInterviewerIds, setSelectedInterviewerIds] = useState<number[]>([]);
   const [selectedInterviewerId, setSelectedInterviewerId] = useState<number | "">("");
   const [selectedSlotId, setSelectedSlotId] = useState<number | "">("");
-  const [scheduledDate, setScheduledDate] = useState<string>("");
-  const [scheduledTime, setScheduledTime] = useState<string>("");
   const [scheduleMsg, setScheduleMsg] = useState<string | null>(null);
 
   // Currently selected interviewer detail in custom slot mode
   const currentInterviewerDetail = interviewers.find((u) => u.id === selectedInterviewerId);
   const availableSlotsForInterviewer: InterviewSlot[] = currentInterviewerDetail?.available_slots || [];
 
-  const handleSelectSlot = (slotId: number) => {
-    setSelectedSlotId(slotId);
+  const isSlotMatchingJob = (slot: InterviewSlot) => {
+    return slot.job_id === jobId || slot.job_id == null;
+  };
+
+  const handleSelectSlot = (slot: InterviewSlot) => {
+    if (!isSlotMatchingJob(slot)) return;
+    setSelectedSlotId(slot.id);
   };
 
   const handleConfirmSchedule = async (e: React.FormEvent) => {
@@ -285,11 +264,14 @@ export const InterviewRoundsSection: React.FC<InterviewRoundsSectionProps> = ({
                         label="Select Interviewer"
                       >
                         <MenuItem value="">-- Select Interviewer --</MenuItem>
-                        {interviewers.map((interviewer: InterviewerDetail) => (
-                          <MenuItem key={interviewer.id} value={interviewer.id}>
-                            {interviewer.full_name} ({interviewer.available_slots.length} available slots)
-                          </MenuItem>
-                        ))}
+                        {interviewers.map((interviewer: InterviewerDetail) => {
+                          const eligibleCount = (interviewer.available_slots || []).filter(isSlotMatchingJob).length;
+                          return (
+                            <MenuItem key={interviewer.id} value={interviewer.id}>
+                              {interviewer.full_name} ({eligibleCount} eligible slot{eligibleCount === 1 ? "" : "s"} for this job)
+                            </MenuItem>
+                          );
+                        })}
                       </Select>
                     </FormControl>
 
@@ -303,25 +285,64 @@ export const InterviewRoundsSection: React.FC<InterviewRoundsSectionProps> = ({
                           <Alert severity="warning" sx={{ py: 0.5, fontSize: 12 }}>
                             No unbooked slots found for this interviewer.
                           </Alert>
+                        ) : availableSlotsForInterviewer.filter(isSlotMatchingJob).length === 0 ? (
+                          <Alert severity="info" sx={{ py: 0.5, fontSize: 12 }}>
+                            This interviewer has no slots configured for this job or universal scope.
+                          </Alert>
                         ) : (
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto p-2 bg-black/60 rounded-xl border border-gray-800">
                             {availableSlotsForInterviewer.map((slot) => {
+                              const isMatch = isSlotMatchingJob(slot);
                               const isSelected = selectedSlotId === slot.id;
+
+                              if (!isMatch) {
+                                return (
+                                  <Tooltip
+                                    key={slot.id}
+                                    title={`This slot is assigned to "${slot.job?.title || "another job"}" and cannot be booked for this candidate.`}
+                                    arrow
+                                    placement="top"
+                                  >
+                                    <div className="p-2.5 rounded-lg border border-gray-800/60 bg-gray-950/80 text-gray-500 opacity-40 cursor-not-allowed text-xs flex flex-col gap-1 select-none">
+                                      <div className="font-semibold flex items-center justify-between text-gray-500">
+                                        <span>{slot.schedule_start ? new Date(slot.schedule_start).toLocaleString() : ""}</span>
+                                        <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-gray-900 border border-gray-800 text-gray-400">
+                                          Locked
+                                        </span>
+                                      </div>
+                                      <div className="text-[10px] text-gray-600 truncate">
+                                        {slot.job ? `Scope: ${slot.job.title}` : "Other Requisition"}
+                                      </div>
+                                    </div>
+                                  </Tooltip>
+                                );
+                              }
+
                               return (
                                 <div
                                   key={slot.id}
-                                  onClick={() => handleSelectSlot(slot.id)}
+                                  onClick={() => handleSelectSlot(slot)}
                                   className={`p-2.5 rounded-lg border cursor-pointer transition text-xs flex flex-col gap-1 ${
                                     isSelected
-                                      ? "bg-[#05DC7F]/20 border-[#05DC7F] text-white"
-                                      : "bg-gray-900/90 border-gray-800 hover:border-gray-700 text-gray-300"
+                                      ? "bg-[#05DC7F]/20 border-[#05DC7F] text-white shadow-[0_0_10px_rgba(5,220,127,0.2)]"
+                                      : "bg-gray-900/90 border-gray-800 hover:border-[#05DC7F]/60 text-gray-300"
                                   }`}
                                 >
                                   <div className="font-semibold flex items-center justify-between">
                                     <span>{slot.schedule_start ? new Date(slot.schedule_start).toLocaleString() : ""}</span>
+                                    {slot.job_id === jobId && (
+                                      <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-[#05DC7F]/15 border border-[#05DC7F]/30 text-[#05DC7F]">
+                                        Job Slot
+                                      </span>
+                                    )}
+                                    {slot.job_id == null && (
+                                      <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-cyan-500/15 border border-cyan-500/30 text-cyan-300">
+                                        Universal
+                                      </span>
+                                    )}
                                   </div>
                                   <div className="text-[10px] text-gray-400">
-                                    {slot.job ? `Scope: ${slot.job.title}` : "Universal Slot"}
+                                    {slot.job ? `Scope: ${slot.job.title}` : "Universal Scope (Any Job)"}
                                   </div>
                                 </div>
                               );
@@ -365,24 +386,62 @@ export const InterviewRoundsSection: React.FC<InterviewRoundsSectionProps> = ({
       <div className="space-y-4">
         {interviews.map((interview, index) => {
           const assignments = interview.interviewer_assignments || [];
+          const isSelfSchedulePending =
+            interview.status === "AWAITING_SELECTION" ||
+            (!interview.schedule_start && Boolean(interview.self_schedule_token));
+
           return (
-            <div key={interview.id} className="space-y-3">
-              {/* Round Title & Date Header (No separator line, no status pills) */}
+            <div key={interview.id} className="space-y-3 p-3.5 rounded-xl bg-white/[0.02] border border-white/5">
+              {/* Round Title & Status Header */}
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <span className="px-2.5 py-1 rounded-lg bg-[#05DC7F]/20 text-[#05DC7F] border border-[#05DC7F]/40 text-xs font-bold font-mono">
                     Round {index + 1}
                   </span>
-                  {interview.schedule_start && (
-                    <span className="text-xs text-white/50 flex items-center gap-1">
-                      <Calendar size={13} className="text-[#05DC7F]" />
-                      {new Date(interview.schedule_start).toLocaleString()}
+                  {interview.round_label && interview.round_label !== `Round ${index + 1}` && (
+                    <span className="text-xs font-medium text-white/80">
+                      {interview.round_label}
                     </span>
                   )}
                 </div>
+
+                <div className="flex items-center gap-2">
+                  {isSelfSchedulePending ? (
+                    <span className="px-2.5 py-1 rounded-lg bg-amber-500/15 text-amber-300 border border-amber-500/30 text-xs font-semibold flex items-center gap-1.5">
+                      <Clock size={12} className="text-amber-400" /> Self-Schedule Pending
+                    </span>
+                  ) : interview.status === "COMPLETED" ? (
+                    <span className="px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-xs font-semibold flex items-center gap-1.5">
+                      <CheckCircle2 size={12} className="text-emerald-400" /> Completed
+                    </span>
+                  ) : interview.schedule_start ? (
+                    <span className="text-xs text-white/70 flex items-center gap-1.5 bg-white/5 px-2.5 py-1 rounded-lg border border-white/10 font-medium">
+                      <Calendar size={13} className="text-[#05DC7F]" />
+                      {new Date(interview.schedule_start).toLocaleString()}
+                    </span>
+                  ) : null}
+                </div>
               </div>
 
-              {/* Scorecards List (Score-focused, no panel header, no meeting link, no nested black boxes) */}
+              {/* Explicit Notice when Candidate has not yet selected their self-schedule time */}
+              {isSelfSchedulePending && (
+                <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-300 text-xs">
+                  <Clock size={15} className="shrink-0 text-amber-400 mt-0.5" />
+                  <div className="space-y-0.5">
+                    <p className="font-semibold text-amber-200">Awaiting Candidate Time Selection</p>
+                    <p className="text-amber-300/80 text-[11px] leading-relaxed">
+                      A self-scheduling link was dispatched to the candidate. The confirmed date and time will appear here automatically once the candidate chooses an available slot.
+                      {interview.token_expires_at && (
+                        <span className="block text-white/50 text-[10px] mt-0.5">
+                          Invitation token expires: {new Date(interview.token_expires_at).toLocaleDateString()}
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Scorecards List */}
               {assignments.length > 0 && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {assignments.map((asgn) => {

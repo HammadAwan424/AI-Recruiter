@@ -1,9 +1,9 @@
-from datetime import datetime, timedelta
 from app.models.job import Job
 from app.models.rbac import UserJobScope
 
+
 def seed_jobs(db, users_context):
-    print("🔹 [Level 2] Generating Job Postings & Assigning UserJobScopes...")
+    print("🔹 [Level 2] Generating Job Postings & Assigning UserJobScopes (Batched)...")
     ceo_user = users_context["ceo"]
     recruiter = users_context["recruiter"]
     hm = users_context["hm"]
@@ -38,7 +38,7 @@ Preferred Qualifications:
 - Bachelor's degree in Computer Science, Software Engineering, or related technical field.
 - Familiarity with AI/LLM integration, LangChain, or vector search databases.
 - Prior experience working in high-growth SaaS startups or Agile development teams.""",
-            "keywords": "React, TypeScript, Python, FastAPI, PostgreSQL, Docker, AWS, REST API, System Design"
+            "keywords": "React, TypeScript, Python, FastAPI, PostgreSQL, Docker, AWS, REST API, System Design",
         },
         {
             "title": "AI / ML Engineer",
@@ -68,13 +68,12 @@ Preferred Qualifications:
 - Master's or Bachelor's degree in Artificial Intelligence, Computer Science, Data Science, or related field.
 - Experience with structured output function calling and tool-use LLM bindings.
 - Track record of deploying production AI microservices on cloud infrastructure (AWS/GCP).""",
-            "keywords": "Python, PyTorch, LangChain, LangGraph, LLM, RAG, Transformers, Machine Learning, Deep Learning"
-        }
+            "keywords": "Python, PyTorch, LangChain, LangGraph, LLM, RAG, Transformers, Machine Learning, Deep Learning",
+        },
     ]
 
-    jobs = []
-    for item in jobs_def:
-        job = Job(
+    jobs = [
+        Job(
             company_id=ceo_user.company_id,
             title=item["title"],
             department=item["department"],
@@ -85,21 +84,25 @@ Preferred Qualifications:
             full_description=item["full_description"],
             keywords=item["keywords"],
             status="published",
-            created_by=ceo_user.id
+            created_by=ceo_user.id,
         )
-        db.add(job)
-        db.commit()
-        db.refresh(job)
-        jobs.append(job)
+        for item in jobs_def
+    ]
+    db.add_all(jobs)
+    db.flush()
 
-        # Seed UserJobScopes for recruiter, hiring manager, and interviewer
+    scopes = []
+    for job in jobs:
         for scoped_user in (recruiter, hm, interviewer):
-            db.add(UserJobScope(
-                user_id=scoped_user.id,
-                job_id=job.id,
-                created_by=ceo_user.id
-            ))
-        db.commit()
+            scopes.append(
+                UserJobScope(
+                    user_id=scoped_user.id,
+                    job_id=job.id,
+                    created_by=ceo_user.id,
+                )
+            )
+    db.add_all(scopes)
+    db.commit()
 
-    print(f"  ✓ Level 2 Complete: {len(jobs)} Jobs created & UserJobScopes assigned.")
+    print(f"  ✓ Level 2 Complete: {len(jobs)} Jobs created & UserJobScopes assigned in 1 transaction.")
     return jobs

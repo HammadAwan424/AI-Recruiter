@@ -14,6 +14,9 @@ load_dotenv()
 logger = get_logger(__name__, "parser.log")
 
 
+MAX_PARSING_CV_CHARS = 16000
+
+
 def parse_resume_structured(
     resume: ExtractedResumeText,
 ) -> ParsedResumeProfile:
@@ -21,7 +24,7 @@ def parse_resume_structured(
     Parse a validated extracted-resume schema into a structured profile.
     """
     validated_resume = ExtractedResumeText.model_validate(resume)
-    sanitized_cv = validated_resume.cv_text.strip()[:4000]
+    sanitized_cv = validated_resume.cv_text.strip()[:MAX_PARSING_CV_CHARS]
     if not sanitized_cv:
         logger.warning("Empty or missing CV text provided for resume parsing.")
         return ParsedResumeProfile(

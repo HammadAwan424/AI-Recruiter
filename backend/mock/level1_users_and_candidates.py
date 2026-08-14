@@ -1,4 +1,6 @@
+from datetime import datetime, timedelta
 from app.models.company import Company
+from app.models.gmail_account import GmailAccount
 from app.models.user import User
 from app.models.candidate import Candidate
 from app.models.rbac import Role, RolePermission
@@ -7,37 +9,50 @@ from app.utils.security_seeder import seed_default_roles, DEFAULT_ROLE_PERMISSIO
 
 
 def seed_users_and_candidates(db):
-    print("🔹 [Level 1] Generating Root Company, RBAC Users & Candidates...")
+    print("🔹 [Level 1] Generating Root Company, Gmail Mailbox, RBAC Users & Candidates (Batched)...")
 
     # 1. Company
     company = Company(name="AI Recruiter")
     db.add(company)
-    db.commit()
-    db.refresh(company)
+    db.flush()
 
-    # 2. Seed Default Company Roles via Security Seeder
+    # 2. Company Gmail Mailbox
+    gmail_account = GmailAccount(
+        company_id=company.id,
+        email="recruitment@airecruiter.com",
+        provider="gmail",
+        is_active=True,
+        last_read=datetime.utcnow() - timedelta(days=3),
+    )
+    db.add(gmail_account)
+
+    # 3. Seed Default Company Roles via Security Seeder
     seed_default_roles(
         db,
         company_id=company.id,
         roles_list=DEFAULT_ROLES,
-        role_permissions_map=DEFAULT_ROLE_PERMISSIONS
+        role_permissions_map=DEFAULT_ROLE_PERMISSIONS,
     )
 
     # Seed Platform Superadmin Role (Company-independent)
-    superadmin_role = Role(name="superadmin", description="Platform Super Admin Role", job_scope="all", company_id=None)
+    superadmin_role = Role(
+        name="superadmin",
+        description="Platform Super Admin Role",
+        job_scope="all",
+        company_id=None,
+    )
     db.add(superadmin_role)
     db.flush()
     db.add(RolePermission(role_id=superadmin_role.id, permission_key="superadmin"))
     db.add(RolePermission(role_id=superadmin_role.id, permission_key="*"))
-    db.commit()
 
-    # 3. Users Across All Roles
+    # 4. Users Across All Roles
     admin = User(
         full_name="Super Admin",
         email="admin@airecruiter.com",
         password=hash_password("admin123"),
         role="superadmin",
-        status="active"
+        status="active",
     )
     ceo = User(
         full_name="Sarah Jenkins (CEO)",
@@ -45,7 +60,7 @@ def seed_users_and_candidates(db):
         password=hash_password("ceo123"),
         role="ceo",
         company_id=company.id,
-        status="active"
+        status="active",
     )
     recruiter = User(
         full_name="Rachel Vance (Lead Recruiter)",
@@ -53,7 +68,7 @@ def seed_users_and_candidates(db):
         password=hash_password("recruiter123"),
         role="recruiter",
         company_id=company.id,
-        status="active"
+        status="active",
     )
     hm = User(
         full_name="Henry Miller (Hiring Manager)",
@@ -61,7 +76,7 @@ def seed_users_and_candidates(db):
         password=hash_password("hm123"),
         role="hiring_manager",
         company_id=company.id,
-        status="active"
+        status="active",
     )
     interviewer = User(
         full_name="Ian Thorne (Lead Tech Interviewer)",
@@ -69,18 +84,11 @@ def seed_users_and_candidates(db):
         password=hash_password("interviewer123"),
         role="interviewer",
         company_id=company.id,
-        status="active"
+        status="active",
     )
     db.add_all([admin, ceo, recruiter, hm, interviewer])
-    db.commit()
 
-    db.refresh(admin)
-    db.refresh(ceo)
-    db.refresh(recruiter)
-    db.refresh(hm)
-    db.refresh(interviewer)
-
-    # 4. Candidates (14 Candidates - 7 for Job 1, 7 for Job 2)
+    # 5. Candidates (14 Candidates - 7 for Job 1, 7 for Job 2)
     candidate_data = [
         # Job 1 Candidates
         ("Alex Johnson", "alex.j@example.com", "+1 (555) 234-5678"),
@@ -101,23 +109,23 @@ def seed_users_and_candidates(db):
         ("Sebastian Cross", "sebastian.c@example.com", "+1 (555) 333-7777"),
     ]
 
-    candidates = []
-    for name, email, phone in candidate_data:
-        cand = Candidate(
+    candidates = [
+        Candidate(
             company_id=company.id,
             full_name=name,
             email=email,
             normalized_email=email.strip().lower(),
             phone=phone,
         )
-        db.add(cand)
-        candidates.append(cand)
-
+        for name, email, phone in candidate_data
+    ]
+    db.add_all(candidates)
     db.commit()
-    for cand in candidates:
-        db.refresh(cand)
 
-    print(f"  ✓ Level 1 Complete: 1 Company ('{company.name}'), 5 Users (Admin, CEO, Recruiter, HM, Interviewer), {len(candidates)} Candidates.")
+    print(
+        f"  ✓ Level 1 Complete: 1 Company ('{company.name}'), 1 Mailbox ('{gmail_account.email}'), "
+        f"5 Users (Admin, CEO, Recruiter, HM, Interviewer), {len(candidates)} Candidates."
+    )
     return {
         "admin": admin,
         "ceo": ceo,
@@ -125,5 +133,6 @@ def seed_users_and_candidates(db):
         "hm": hm,
         "interviewer": interviewer,
         "candidates": candidates,
-        "company": company
+        "company": company,
+        "gmail_account": gmail_account,
     }

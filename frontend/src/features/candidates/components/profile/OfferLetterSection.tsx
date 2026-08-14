@@ -1,26 +1,9 @@
 import React from "react";
 import { FileCheck, DollarSign, Calendar, ShieldCheck, PenTool } from "lucide-react";
+import { OfferResponse } from "../../../../shared/types/offer.types";
 
 interface OfferLetterSectionProps {
-  offer?: {
-    id: number;
-    base_salary: number;
-    bonus_equity?: string;
-    start_date?: string;
-    expiry_date?: string;
-    offer_letter_text: string;
-    signature_type?: string;
-    signer_name?: string;
-    signed_at?: string;
-    decline_reason?: string;
-    audit_hash?: string;
-    approval?: {
-      id: number;
-      approver_name?: string;
-      comments?: string;
-      decided_at?: string;
-    };
-  };
+  offer?: OfferResponse | null;
 }
 
 export const OfferLetterSection: React.FC<OfferLetterSectionProps> = ({ offer }) => {

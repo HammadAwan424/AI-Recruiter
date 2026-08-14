@@ -1,21 +1,24 @@
 import { baseApi } from "../../shared/api/baseApi";
 import {
-  InterviewItem,
-  InterviewSlot,
+  InterviewDetail,
+  InterviewResponse,
+  InterviewSlotDetail,
   SlotCreatePayload,
   InterviewerDetail,
   InterviewCreateRequest,
   InterviewPublicSlotResponse,
   InterviewerSlotAssignment,
+  InterviewFeedbackResponse,
+  InterviewFeedbackCreatePayload,
 } from "../../shared/types/interview.types";
 
 export const interviewsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    getInterviews: builder.query<InterviewItem[], void>({
+    getInterviews: builder.query<InterviewDetail[], void>({
       query: () => "/interviews",
       providesTags: ["Interviews"],
     }),
-    getInterviewSlots: builder.query<InterviewSlot[], void>({
+    getInterviewSlots: builder.query<InterviewSlotDetail[], void>({
       query: () => "/interviews/slots",
       providesTags: ["Interviews"],
     }),
@@ -23,7 +26,7 @@ export const interviewsApi = baseApi.injectEndpoints({
       query: (jobId) => (jobId ? `/interviews/interviewers?job_id=${jobId}` : "/interviews/interviewers"),
       providesTags: ["Interviews"],
     }),
-    createSlot: builder.mutation<InterviewSlot, SlotCreatePayload>({
+    createSlot: builder.mutation<InterviewSlotDetail, SlotCreatePayload>({
       query: (payload) => ({
         url: "/interviews/slots",
         method: "POST",
@@ -31,7 +34,7 @@ export const interviewsApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ["Interviews"],
     }),
-    updateSlot: builder.mutation<InterviewSlot, { slotId: number; payload: SlotCreatePayload }>({
+    updateSlot: builder.mutation<InterviewSlotDetail, { slotId: number; payload: SlotCreatePayload }>({
       query: ({ slotId, payload }) => ({
         url: `/interviews/slots/${slotId}`,
         method: "PUT",
@@ -46,7 +49,7 @@ export const interviewsApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ["Interviews"],
     }),
-    scheduleInterview: builder.mutation<InterviewItem, InterviewCreateRequest>({
+    scheduleInterview: builder.mutation<InterviewResponse, InterviewCreateRequest>({
       query: (request) => ({
         url: "/interviews",
         method: "POST",
@@ -58,7 +61,7 @@ export const interviewsApi = baseApi.injectEndpoints({
       query: (token) => `/interviews/public/slots/${token}`,
       providesTags: ["Interviews"],
     }),
-    confirmCandidateSchedule: builder.mutation<InterviewItem, { token: string; assignments: InterviewerSlotAssignment[] }>({
+    confirmCandidateSchedule: builder.mutation<InterviewResponse, { token: string; assignments: InterviewerSlotAssignment[] }>({
       query: ({ token, assignments }) => ({
         url: `/interviews/public/schedule/${token}`,
         method: "POST",
@@ -66,20 +69,9 @@ export const interviewsApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ["Interviews", "Applications"],
     }),
-    assignInterviewer: builder.mutation<
-      { message: string },
-      { interviewId: number; payload: { interviewer_ids: number[] } }
-    >({
-      query: ({ interviewId, payload }) => ({
-        url: `/interviews/${interviewId}/assign-interviewer`,
-        method: "POST",
-        body: payload,
-      }),
-      invalidatesTags: ["Interviews", "Applications"],
-    }),
     submitInterviewFeedback: builder.mutation<
-      { message: string },
-      { interviewId: number; technical_score: number; communication_score: number; notes?: string }
+      InterviewFeedbackResponse,
+      { interviewId: number } & InterviewFeedbackCreatePayload
     >({
       query: ({ interviewId, ...body }) => ({
         url: `/interviews/${interviewId}/feedback`,
@@ -88,7 +80,7 @@ export const interviewsApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ["Interviews", "Applications"],
     }),
-    generateSelfScheduleLink: builder.mutation<{ self_schedule_token: string }, number>({
+    generateSelfScheduleLink: builder.mutation<InterviewResponse, number>({
       query: (interviewId) => ({
         url: `/interviews/${interviewId}/self-schedule-link`,
         method: "POST",
@@ -109,7 +101,6 @@ export const {
   useScheduleInterviewMutation,
   useGetPublicScheduleSlotsQuery,
   useConfirmCandidateScheduleMutation,
-  useAssignInterviewerMutation,
   useSubmitInterviewFeedbackMutation,
   useGenerateSelfScheduleLinkMutation,
 } = interviewsApi;

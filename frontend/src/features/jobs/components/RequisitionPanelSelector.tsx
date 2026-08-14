@@ -27,10 +27,9 @@ export const RequisitionPanelSelector: React.FC<RequisitionPanelSelectorProps> =
 
   const allCompanyUsers = propCompanyUsers || allUsersData?.users || [];
 
-  // Eligible Hiring Managers
   const eligibleManagers = (hmRoleData?.users && hmRoleData.users.length > 0)
     ? hmRoleData.users
-    : allCompanyUsers.filter((u) => u.role === "hiring_manager" || u.role === "hr_manager");
+    : allCompanyUsers.filter((u) => u.role === "hiring_manager");
   const managerList = eligibleManagers.length > 0 ? eligibleManagers : allCompanyUsers;
   const selectedManager = allCompanyUsers.find((u) => u.id === hiringManagerId);
 

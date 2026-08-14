@@ -11,19 +11,21 @@ import {
   FaFileAlt,
   FaEdit,
   FaArrowLeft,
+  FaLock,
 } from "react-icons/fa";
+import { Tooltip } from "@mui/material";
 import { useOffers } from "../../hooks/useOffers";
 import { useOfferMutations } from "../../hooks/useOfferMutations";
 import { useGetJobsQuery } from "../../../jobs/api";
 import { useGetApplicationsQuery } from "../../../candidates/api";
 import { OfferItem, OfferTemplate } from "../../../../shared/types/offer.types";
 import { usePermission } from "../../../../shared/hooks/usePermission";
-import { OFFER_PERMISSIONS } from "../../permissions";
 import { getDraggableEvaluator } from "../../../../shared/utils/candidateEvaluation";
 import { InterviewCandidateCard } from "../../../candidates/components/cards/InterviewCandidateCard";
 import { RequestOfferApprovalModal } from "../../../../shared/components/RequestOfferApprovalModal";
 import { CandidateProfile } from "../../../../shared/components/CandidateProfile";
 import { OfferTemplateEditor } from "../../components/OfferTemplateEditor";
+import { getOfferAccessDescriptor } from "../../utils/offerPresentation";
 
 export const OfferManagementPage: React.FC = () => {
   const { offers, templates, isLoading } = useOffers();
@@ -48,8 +50,9 @@ export const OfferManagementPage: React.FC = () => {
   const applications = Array.isArray(applicationsData) ? applicationsData : [];
 
   const { hasPermission } = usePermission();
-  const canGenerateOffer = hasPermission(OFFER_PERMISSIONS.GENERATE);
-  const canApproveOffer = hasPermission(OFFER_PERMISSIONS.APPROVE);
+  const access = getOfferAccessDescriptor(hasPermission);
+  const canGenerateOffer = access.canGenerate;
+  const canApproveOffer = access.canApprove;
 
   const { createOfferTemplate, updateOfferTemplate, approveOfferAction } = useOfferMutations();
 
@@ -82,25 +85,30 @@ export const OfferManagementPage: React.FC = () => {
     (app) => app.current_status === "offer_approval" || app.stage === "offer_approval"
   );
 
-  const pendingApprovalOffers: OfferItem[] = awaitingApprovalApps.map((app) => {
-    const matchedOffer = offers.find((o) => o.application_id === app.id || (app.offer && o.id === app.offer.id));
-    if (matchedOffer) return matchedOffer;
-
-    return {
-      id: app.offer?.id || app.id,
-      application_id: app.id,
-      candidate_id: app.candidate_id,
-      candidate_name: app.candidate?.full_name || "Candidate",
-      job_id: app.job_id,
-      job_title: app.job?.title || "Position",
-      department: app.job?.department || "Engineering",
-      base_salary: app.offer?.base_salary || 0,
-      bonus_equity: app.offer?.bonus_equity || "None",
-      start_date: app.offer?.start_date || "Pending",
-      offer_letter_text: app.offer?.offer_letter_text || "Offer package awaiting executive review.",
-      status: "PENDING_APPROVAL",
-    };
-  });
+  const pendingApprovalOffers: OfferItem[] = (() => {
+    const list: OfferItem[] = [...offers.filter((o) => o.status === "PENDING_APPROVAL")];
+    for (const app of awaitingApprovalApps) {
+      if (!list.some((o) => o.application_id === app.id)) {
+        list.push({
+          id: (app as any).offer?.id || app.id,
+          application_id: app.id,
+          candidate_id: app.candidate_id,
+          candidate_name: app.candidate?.full_name || app.candidate_name || "Candidate",
+          job_id: app.job_id,
+          job_title: app.job?.title || app.job_title || "Position",
+          department: app.job?.department || "Engineering",
+          base_salary: (app as any).offer?.base_salary || 0,
+          bonus_equity: (app as any).offer?.bonus_equity || "None",
+          start_date: (app as any).offer?.start_date || "Pending",
+          offer_letter_text: (app as any).offer?.offer_letter_text || "Offer package awaiting executive review.",
+          status: "PENDING_APPROVAL",
+          created_at: app.created_at,
+          updated_at: app.updated_at,
+        });
+      }
+    }
+    return list;
+  })();
 
   const handleTabSelect = (tab: "CREATION" | "APPROVAL") => {
     setActiveTab(tab);
@@ -322,6 +330,14 @@ export const OfferManagementPage: React.FC = () => {
                 </div>
               </div>
 
+              {/* Explicit Offer Creation Permission Notice for Unauthorized Users */}
+              {access.creationNotice && (
+                <div className="flex items-center gap-3 p-3.5 rounded-xl bg-amber-950/40 border border-amber-500/30 text-amber-300 text-xs">
+                  <FaLock className="shrink-0 text-amber-400" size={14} />
+                  <span>{access.creationNotice}</span>
+                </div>
+              )}
+
               {isAppsLoading ? (
                 <div className="p-8 text-center text-white/60">Loading candidates...</div>
               ) : interviewedCandidates.length === 0 ? (
@@ -349,13 +365,20 @@ export const OfferManagementPage: React.FC = () => {
               candidate={selectedCandidateForCreation}
               onClose={() => setSelectedCandidateForCreation(null)}
               actionButton={
-                canGenerateOffer && (
+                access.canGenerate ? (
                   <button
                     onClick={() => setShowRequestApprovalModal(true)}
                     className="px-6 py-2.5 rounded-xl bg-[#05DC7F] text-black font-bold hover:bg-[#04b869] transition shadow-[0_0_20px_rgba(5,220,127,0.4)] text-sm flex items-center gap-2"
                   >
-                    <FaPaperPlane /> Request Approval
+                    <FaPaperPlane /> {access.creationButtonLabel}
                   </button>
+                ) : (
+                  <Tooltip title={access.creationButtonTooltip} arrow placement="top">
+                    <div className="px-5 py-2.5 rounded-xl bg-zinc-800/80 border border-zinc-700/60 text-zinc-400 text-xs font-semibold flex items-center gap-2 cursor-not-allowed">
+                      <FaLock size={12} className="text-zinc-500" />
+                      <span>{access.creationButtonLabel}</span>
+                    </div>
+                  </Tooltip>
                 )
               }
             />
@@ -407,8 +430,14 @@ export const OfferManagementPage: React.FC = () => {
                         <p><span className="text-white/40">Bonus/Equity:</span> {offer.bonus_equity || "None"}</p>
                       </div>
 
-                      <button className="w-full py-2 bg-amber-500/20 text-amber-300 font-semibold rounded-xl text-xs hover:bg-amber-500/30 transition flex items-center justify-center gap-1.5 border border-amber-500/40">
-                        <FaEye /> Inspect & Approve Offer
+                      <button
+                        className={`w-full py-2 font-semibold rounded-xl text-xs transition flex items-center justify-center gap-1.5 border ${
+                          access.canApprove
+                            ? "bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 border-amber-500/40"
+                            : "bg-white/5 text-white/70 hover:bg-white/10 border-white/10"
+                        }`}
+                      >
+                        <FaEye /> {access.approvalCardActionLabel}
                       </button>
                     </div>
                   ))}
@@ -441,14 +470,18 @@ export const OfferManagementPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {canApproveOffer && (
+                  {access.canApprove ? (
                     <div className="flex gap-3">
                       <button
                         onClick={() => setShowApproveConfirmModal(true)}
                         className="px-6 py-3 rounded-xl bg-[#05DC7F] text-black font-bold hover:bg-[#04b869] transition shadow-[0_0_20px_rgba(5,220,127,0.4)] text-sm flex items-center gap-2"
                       >
-                        <FaCheck /> Approve & Send Offer
+                        <FaCheck /> {access.approvalDetailActionLabel}
                       </button>
+                    </div>
+                  ) : (
+                    <div className="px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white/50 text-xs font-semibold flex items-center gap-2">
+                      <FaLock size={12} className="text-white/40" /> {access.approvalDetailNotice}
                     </div>
                   )}
                 </div>

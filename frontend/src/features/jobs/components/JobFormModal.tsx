@@ -19,7 +19,7 @@ import {
   Chip,
 } from "@mui/material";
 import { X, Briefcase, Plus, Save, Sparkles, ArrowLeft, ArrowRight, CheckCircle2, Lock, ShieldCheck } from "lucide-react";
-import { JobDetail } from "../../../shared/types/job.types";
+import { JobDetail, JobCreatePayload } from "../../../shared/types/job.types";
 import { useCreateJobMutation, useUpdateJobMutation, useGenerateJobDescriptionMutation } from "../api";
 import { useGetCompanyUsersQuery } from "../../users/api";
 import { RequisitionPanelSelector } from "./RequisitionPanelSelector";
@@ -82,7 +82,7 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
       setKeywords(initialJob.keywords || "");
 
       const assignedUsers = initialJob.assigned_users || [];
-      const hm = assignedUsers.find((u) => u.role === "hiring_manager" || u.role === "hr_manager");
+      const hm = assignedUsers.find((u) => u.role === "hiring_manager");
       const recruiters = assignedUsers.filter((u) => u.role === "recruiter" || u.role === "employee");
 
       setHiringManagerId(hm ? hm.id : null);
@@ -140,7 +140,7 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
       return;
     }
 
-    const payload = {
+    const payload: JobCreatePayload = {
       title,
       department,
       employment_type: employmentType,
