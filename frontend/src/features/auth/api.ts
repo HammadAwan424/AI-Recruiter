@@ -24,6 +24,35 @@ export interface SignupResponse {
   user_id: number;
 }
 
+export interface MailboxStatusResponse {
+  is_connected: boolean;
+  mailbox_email: string | null;
+  provider: string;
+  is_active: boolean;
+  is_primary?: boolean;
+  last_read?: string | null;
+}
+
+export interface GoogleAuthUrlResponse {
+  auth_url: string;
+  state: string;
+  redirect_uri: string;
+}
+
+export interface ExchangeGoogleCodePayload {
+  code: string;
+  state?: string;
+  redirect_uri?: string;
+}
+
+export interface ExchangeGoogleCodeResponse {
+  status: string;
+  message: string;
+  mailbox_email: string;
+  company_id: number;
+  is_connected: boolean;
+}
+
 export const authApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     login: builder.mutation<LoginResponse, LoginPayload>({
@@ -32,6 +61,7 @@ export const authApi = baseApi.injectEndpoints({
         method: "POST",
         body: credentials,
       }),
+      invalidatesTags: ["Mailbox"],
     }),
     signup: builder.mutation<SignupResponse, SignupPayload>({
       query: (payload) => ({
@@ -40,7 +70,44 @@ export const authApi = baseApi.injectEndpoints({
         body: payload,
       }),
     }),
+    getGoogleAuthUrl: builder.query<GoogleAuthUrlResponse, string | void>({
+      query: (redirectUri) => ({
+        url: redirectUri ? `/auth/google/url?redirect_uri=${encodeURIComponent(redirectUri)}` : "/auth/google/url",
+        method: "GET",
+      }),
+    }),
+    exchangeGoogleCode: builder.mutation<ExchangeGoogleCodeResponse, ExchangeGoogleCodePayload>({
+      query: (payload) => ({
+        url: "/auth/google/exchange",
+        method: "POST",
+        body: payload,
+      }),
+      invalidatesTags: ["Mailbox"],
+    }),
+    getMailboxStatus: builder.query<MailboxStatusResponse, void>({
+      query: () => ({
+        url: "/auth/google/status",
+        method: "GET",
+      }),
+      providesTags: ["Mailbox"],
+    }),
+    disconnectMailbox: builder.mutation<{ message: string; is_connected: boolean }, void>({
+      query: () => ({
+        url: "/auth/google/disconnect",
+        method: "POST",
+      }),
+      invalidatesTags: ["Mailbox"],
+    }),
   }),
 });
 
-export const { useLoginMutation, useSignupMutation } = authApi;
+export const {
+  useLoginMutation,
+  useSignupMutation,
+  useGetGoogleAuthUrlQuery,
+  useLazyGetGoogleAuthUrlQuery,
+  useExchangeGoogleCodeMutation,
+  useGetMailboxStatusQuery,
+  useDisconnectMailboxMutation,
+} = authApi;
+

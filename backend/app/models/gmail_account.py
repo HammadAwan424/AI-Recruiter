@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import DateTime, ForeignKey, String, UniqueConstraint
+from sqlalchemy import DateTime, ForeignKey, String, UniqueConstraint, Boolean, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -24,7 +24,9 @@ class GmailAccount(Base, BaseModelMixin):
     )
     email: Mapped[str] = mapped_column(String, nullable=False, index=True)
     provider: Mapped[str] = mapped_column(String, default="gmail", nullable=False)
-    is_active: Mapped[bool] = mapped_column(default=True, nullable=False, index=True)
+    token_json: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"), nullable=False, index=True)
+    is_primary: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"), nullable=False, index=True)
     last_read: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, index=True)
 
     created_by: Mapped[Optional[int]] = mapped_column(

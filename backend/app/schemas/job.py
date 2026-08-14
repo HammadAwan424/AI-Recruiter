@@ -32,6 +32,7 @@ class JobUpdate(BaseModel):
     salary_range: Optional[str] = None
     full_description: Optional[str] = None
     keywords: Optional[str] = None
+    status: Optional[JobStatus] = None
     hiring_manager_id: Optional[int] = None
     recruiter_ids: Optional[list[int]] = None
     interviewer_ids: Optional[list[int]] = None

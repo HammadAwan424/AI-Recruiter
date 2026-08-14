@@ -15,6 +15,8 @@ import { CircuitBackground } from "../../../../shared/components/CircuitBackgrou
 import { PasswordInput } from "../../../../shared/components/PasswordInput";
 import logo from "../../../../images/logo.png";
 
+import { formatApiError } from "../../../../shared/utils/errorUtils";
+
 export const SignupPage: React.FC = () => {
   const navigate = useNavigate();
   const { signupUser, isLoading } = useAuthMutation();
@@ -36,6 +38,11 @@ export const SignupPage: React.FC = () => {
       return;
     }
 
+    if (password.length < 8) {
+      setErrorMsg("Password must be at least 8 characters long.");
+      return;
+    }
+
     if (password !== confirmPassword) {
       setErrorMsg("Passwords do not match.");
       return;
@@ -52,7 +59,7 @@ export const SignupPage: React.FC = () => {
 
       setIsPendingApproval(true);
     } catch (err: any) {
-      setErrorMsg(err?.data?.detail || "Registration failed. Email may already be in use.");
+      setErrorMsg(formatApiError(err, "Registration failed. Email may already be in use."));
     }
   };
 

@@ -16,7 +16,8 @@ from app.routes import (
     offer as offer_routes,
     template as template_routes,
     approval as approval_routes,
-    interview as interview_routes
+    interview as interview_routes,
+    google_oauth
 )
 
 from app.utils.logger import get_logger
@@ -49,6 +50,7 @@ app.add_middleware(
 
 # ──── Routers ────
 app.include_router(auth.router)
+app.include_router(google_oauth.router)
 app.include_router(admin.router)
 app.include_router(user_routes.router)
 app.include_router(job_routes.router)

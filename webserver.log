@@ -33,3 +33,83 @@
 2026-08-14 16:39:23 [INFO] httpx: HTTP Request: GET http://testserver/auth/google/status "HTTP/1.1 200 OK"
 2026-08-14 16:39:23 [INFO] root: POST /auth/login - Status: 200 - 580.18ms
 2026-08-14 16:39:23 [INFO] httpx: HTTP Request: POST http://testserver/auth/login "HTTP/1.1 200 OK"
+2026-08-14 16:54:09 [WARNING] app.agents.parsing.parser: Empty or missing CV text provided for resume parsing.
+2026-08-14 16:54:09 [INFO] app.agents.parsing.parser: Starting structured resume parsing (CV length: 16 chars)...
+2026-08-14 16:54:09 [INFO] app.agents.parsing.parser: Resume parsing (structured) token usage: input=0 prompt=0 uncached_input=0 cached=0 cache_write=0 output=0 completion=0 visible_output=0 reasoning=0 audio_input=0 audio_output=0 accepted_prediction=0 rejected_prediction=0 total=0 
+2026-08-14 16:54:09 [INFO] app.agents.parsing.parser: <object object at 0x7f4547fd5e80>
+2026-08-14 16:54:09 [INFO] app.agents.parsing.parser: skills=['Python'] work_history=[] education=[] certifications=[] needs_review=False review_reason=None
+2026-08-14 16:54:09 [INFO] app.agents.parsing.parser: Primary structured parsing succeeded: 1 skills, 0 work entries, 0 education entries extracted.
+2026-08-14 16:54:09 [INFO] app.services.gmail.fetch_mails: Gmail message unmatched was not assigned to a company job: 
+2026-08-14 16:54:10 [INFO] root: GET /auth/google/url - Status: 200 - 13.53ms
+2026-08-14 16:54:10 [INFO] httpx: HTTP Request: GET http://testserver/auth/google/url "HTTP/1.1 200 OK"
+2026-08-14 16:54:11 [INFO] root: POST /auth/login - Status: 200 - 576.35ms
+2026-08-14 16:54:11 [INFO] httpx: HTTP Request: POST http://testserver/auth/login "HTTP/1.1 200 OK"
+2026-08-14 16:54:11 [INFO] root: GET /auth/google/status - Status: 200 - 4.29ms
+2026-08-14 16:54:11 [INFO] httpx: HTTP Request: GET http://testserver/auth/google/status "HTTP/1.1 200 OK"
+2026-08-14 16:54:12 [INFO] app.routes.google_oauth: Company #1 successfully linked Google mailbox: careers@testacme.com
+2026-08-14 16:54:12 [INFO] root: POST /auth/google/exchange - Status: 200 - 10.27ms
+2026-08-14 16:54:12 [INFO] httpx: HTTP Request: POST http://testserver/auth/google/exchange "HTTP/1.1 200 OK"
+2026-08-14 16:54:12 [INFO] root: GET /auth/google/status - Status: 200 - 6.25ms
+2026-08-14 16:54:12 [INFO] httpx: HTTP Request: GET http://testserver/auth/google/status "HTTP/1.1 200 OK"
+2026-08-14 16:54:13 [INFO] root: POST /auth/login - Status: 200 - 459.30ms
+2026-08-14 16:54:13 [INFO] httpx: HTTP Request: POST http://testserver/auth/login "HTTP/1.1 200 OK"
+2026-08-14 17:07:02 [WARNING] app.agents.parsing.parser: Empty or missing CV text provided for resume parsing.
+2026-08-14 17:07:02 [INFO] app.agents.parsing.parser: Starting structured resume parsing (CV length: 16 chars)...
+2026-08-14 17:07:02 [INFO] app.agents.parsing.parser: Resume parsing (structured) token usage: input=0 prompt=0 uncached_input=0 cached=0 cache_write=0 output=0 completion=0 visible_output=0 reasoning=0 audio_input=0 audio_output=0 accepted_prediction=0 rejected_prediction=0 total=0 
+2026-08-14 17:07:02 [INFO] app.agents.parsing.parser: <object object at 0x7f7a941b5e80>
+2026-08-14 17:07:02 [INFO] app.agents.parsing.parser: skills=['Python'] work_history=[] education=[] certifications=[] needs_review=False review_reason=None
+2026-08-14 17:07:02 [INFO] app.agents.parsing.parser: Primary structured parsing succeeded: 1 skills, 0 work entries, 0 education entries extracted.
+2026-08-14 17:07:03 [INFO] app.services.gmail.fetch_mails: Gmail message unmatched was not assigned to a company job: 
+2026-08-14 17:07:03 [INFO] root: GET /auth/google/url - Status: 200 - 12.82ms
+2026-08-14 17:07:03 [INFO] httpx: HTTP Request: GET http://testserver/auth/google/url "HTTP/1.1 200 OK"
+2026-08-14 17:07:04 [INFO] root: POST /auth/login - Status: 200 - 456.24ms
+2026-08-14 17:07:04 [INFO] httpx: HTTP Request: POST http://testserver/auth/login "HTTP/1.1 200 OK"
+2026-08-14 17:07:05 [INFO] root: GET /auth/google/status - Status: 200 - 4.14ms
+2026-08-14 17:07:05 [INFO] httpx: HTTP Request: GET http://testserver/auth/google/status "HTTP/1.1 200 OK"
+2026-08-14 17:07:06 [INFO] app.routes.google_oauth: Company #1 successfully linked Google mailbox: careers@testacme.com
+2026-08-14 17:07:06 [INFO] root: POST /auth/google/exchange - Status: 200 - 47.22ms
+2026-08-14 17:07:06 [INFO] httpx: HTTP Request: POST http://testserver/auth/google/exchange "HTTP/1.1 200 OK"
+2026-08-14 17:07:06 [INFO] root: GET /auth/google/status - Status: 200 - 14.62ms
+2026-08-14 17:07:06 [INFO] httpx: HTTP Request: GET http://testserver/auth/google/status "HTTP/1.1 200 OK"
+2026-08-14 17:07:06 [INFO] root: POST /auth/login - Status: 200 - 894.71ms
+2026-08-14 17:07:06 [INFO] httpx: HTTP Request: POST http://testserver/auth/login "HTTP/1.1 200 OK"
+2026-08-14 17:15:33 [WARNING] app.agents.parsing.parser: Empty or missing CV text provided for resume parsing.
+2026-08-14 17:15:33 [INFO] app.agents.parsing.parser: Starting structured resume parsing (CV length: 16 chars)...
+2026-08-14 17:15:33 [INFO] app.agents.parsing.parser: Resume parsing (structured) token usage: input=0 prompt=0 uncached_input=0 cached=0 cache_write=0 output=0 completion=0 visible_output=0 reasoning=0 audio_input=0 audio_output=0 accepted_prediction=0 rejected_prediction=0 total=0 
+2026-08-14 17:15:33 [INFO] app.agents.parsing.parser: <object object at 0x7f9af6bd9e80>
+2026-08-14 17:15:33 [INFO] app.agents.parsing.parser: skills=['Python'] work_history=[] education=[] certifications=[] needs_review=False review_reason=None
+2026-08-14 17:15:33 [INFO] app.agents.parsing.parser: Primary structured parsing succeeded: 1 skills, 0 work entries, 0 education entries extracted.
+2026-08-14 17:15:34 [INFO] app.services.gmail.fetch_mails: Gmail message unmatched was not assigned to a company job: 
+2026-08-14 17:15:35 [INFO] root: GET /auth/google/url - Status: 200 - 21.79ms
+2026-08-14 17:15:35 [INFO] httpx: HTTP Request: GET http://testserver/auth/google/url "HTTP/1.1 200 OK"
+2026-08-14 17:15:36 [INFO] root: POST /auth/login - Status: 200 - 777.62ms
+2026-08-14 17:15:36 [INFO] httpx: HTTP Request: POST http://testserver/auth/login "HTTP/1.1 200 OK"
+2026-08-14 17:15:38 [INFO] root: GET /auth/google/status - Status: 200 - 6.95ms
+2026-08-14 17:15:38 [INFO] httpx: HTTP Request: GET http://testserver/auth/google/status "HTTP/1.1 200 OK"
+2026-08-14 17:15:39 [INFO] app.routes.google_oauth: Company #1 successfully linked Google mailbox: careers@testacme.com
+2026-08-14 17:15:39 [INFO] root: POST /auth/google/exchange - Status: 200 - 17.61ms
+2026-08-14 17:15:39 [INFO] httpx: HTTP Request: POST http://testserver/auth/google/exchange "HTTP/1.1 200 OK"
+2026-08-14 17:15:39 [INFO] root: GET /auth/google/status - Status: 200 - 6.54ms
+2026-08-14 17:15:39 [INFO] httpx: HTTP Request: GET http://testserver/auth/google/status "HTTP/1.1 200 OK"
+2026-08-14 17:15:39 [INFO] root: POST /auth/login - Status: 200 - 906.30ms
+2026-08-14 17:15:39 [INFO] httpx: HTTP Request: POST http://testserver/auth/login "HTTP/1.1 200 OK"
+2026-08-14 17:18:35 [WARNING] app.agents.parsing.parser: Empty or missing CV text provided for resume parsing.
+2026-08-14 17:18:35 [INFO] app.agents.parsing.parser: Starting structured resume parsing (CV length: 16 chars)...
+2026-08-14 17:18:35 [INFO] app.agents.parsing.parser: Resume parsing (structured) token usage: input=0 prompt=0 uncached_input=0 cached=0 cache_write=0 output=0 completion=0 visible_output=0 reasoning=0 audio_input=0 audio_output=0 accepted_prediction=0 rejected_prediction=0 total=0 
+2026-08-14 17:18:35 [INFO] app.agents.parsing.parser: <object object at 0x7f6480ad5e80>
+2026-08-14 17:18:35 [INFO] app.agents.parsing.parser: skills=['Python'] work_history=[] education=[] certifications=[] needs_review=False review_reason=None
+2026-08-14 17:18:35 [INFO] app.agents.parsing.parser: Primary structured parsing succeeded: 1 skills, 0 work entries, 0 education entries extracted.
+2026-08-14 17:18:36 [INFO] app.services.gmail.fetch_mails: Gmail message unmatched was not assigned to a company job: 
+2026-08-14 17:18:37 [INFO] root: GET /auth/google/url - Status: 200 - 16.39ms
+2026-08-14 17:18:37 [INFO] httpx: HTTP Request: GET http://testserver/auth/google/url "HTTP/1.1 200 OK"
+2026-08-14 17:18:39 [INFO] root: POST /auth/login - Status: 200 - 698.58ms
+2026-08-14 17:18:39 [INFO] httpx: HTTP Request: POST http://testserver/auth/login "HTTP/1.1 200 OK"
+2026-08-14 17:18:40 [INFO] root: GET /auth/google/status - Status: 200 - 5.53ms
+2026-08-14 17:18:40 [INFO] httpx: HTTP Request: GET http://testserver/auth/google/status "HTTP/1.1 200 OK"
+2026-08-14 17:18:41 [INFO] app.routes.google_oauth: Company #1 successfully linked Google mailbox: careers@testacme.com
+2026-08-14 17:18:41 [INFO] root: POST /auth/google/exchange - Status: 200 - 14.00ms
+2026-08-14 17:18:41 [INFO] httpx: HTTP Request: POST http://testserver/auth/google/exchange "HTTP/1.1 200 OK"
+2026-08-14 17:18:41 [INFO] root: GET /auth/google/status - Status: 200 - 7.93ms
+2026-08-14 17:18:41 [INFO] httpx: HTTP Request: GET http://testserver/auth/google/status "HTTP/1.1 200 OK"
+2026-08-14 17:18:41 [INFO] root: POST /auth/login - Status: 200 - 719.49ms
+2026-08-14 17:18:41 [INFO] httpx: HTTP Request: POST http://testserver/auth/login "HTTP/1.1 200 OK"

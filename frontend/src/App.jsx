@@ -11,6 +11,7 @@ import { CandidateSelfSchedulePage } from "./features/interviews/screens/Candida
 
 import { LoginPage } from "./features/auth/screens/LoginPage";
 import { SignupPage } from "./features/auth/screens/SignupPage";
+import { GoogleCallbackPage } from "./features/auth/screens/GoogleCallbackPage";
 import { CompanyManagementPage } from "./features/superadmin/screens/CompanyManagementPage";
 import { UserManagementPage } from "./features/users/screens/UserManagementPage";
 import { JobManagementPage } from "./features/jobs/screens/JobManagementPage";
@@ -43,6 +44,7 @@ function App() {
         {/* Auth Feature Public Routes */}
         <Route path="/" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
+        <Route path="/auth/google/callback" element={<GoogleCallbackPage />} />
 
         {/* Public Portal & Signature Routes */}
         <Route path="/jobs/portal" element={<JobPortalPage />} />

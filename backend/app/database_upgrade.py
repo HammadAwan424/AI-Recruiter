@@ -146,6 +146,8 @@ def upgrade_existing_schema(engine: Engine) -> UpgradeReport:
             ("candidates", "normalized_email", "VARCHAR(320)"),
             ("applications", "gmail_account_id", "INTEGER"),
             ("offers", "status", "VARCHAR(32) DEFAULT 'PENDING_APPROVAL'"),
+            ("gmail_accounts", "token_json", "TEXT"),
+            ("gmail_accounts", "is_primary", "BOOLEAN DEFAULT TRUE"),
         ):
             if _add_column_if_missing(connection, table, column, definition):
                 added_columns.append(f"{table}.{column}")
@@ -166,8 +168,8 @@ def upgrade_existing_schema(engine: Engine) -> UpgradeReport:
         ))
 
         connection.execute(text(
-            "INSERT INTO gmail_accounts (company_id, email, provider, is_active) "
-            "SELECT c.id, 'company-' || c.id || '@gmail.local', 'gmail', TRUE "
+            "INSERT INTO gmail_accounts (company_id, email, provider, is_active, is_primary) "
+            "SELECT c.id, 'company-' || c.id || '@gmail.local', 'gmail', TRUE, TRUE "
             "FROM companies c "
             "WHERE NOT EXISTS ("
             "  SELECT 1 FROM gmail_accounts ga WHERE ga.company_id = c.id"

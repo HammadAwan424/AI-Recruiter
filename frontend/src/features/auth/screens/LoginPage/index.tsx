@@ -15,6 +15,8 @@ import { useAuth } from "../../../../shared/context/AuthContext";
 import { CircuitBackground } from "../../../../shared/components/CircuitBackground";
 import { PasswordInput } from "../../../../shared/components/PasswordInput";
 import logo from "../../../../images/logo.png";
+import { formatApiError } from "../../../../shared/utils/errorUtils";
+import { MailboxOnboardingModal } from "../../components/MailboxOnboardingModal";
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -24,16 +26,17 @@ export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [showMailboxModal, setShowMailboxModal] = useState(false);
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && !showMailboxModal) {
       if (role === "superadmin") {
         navigate("/admin/companies", { replace: true });
       } else {
-        navigate("/settings", { replace: true });
+        navigate("/jobs", { replace: true });
       }
     }
-  }, [isAuthenticated, role, navigate]);
+  }, [isAuthenticated, role, navigate, showMailboxModal]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,11 +52,13 @@ export const LoginPage: React.FC = () => {
       
       if (res.role === "superadmin") {
         navigate("/admin/companies");
+      } else if ((res as any).requires_mailbox_setup) {
+        setShowMailboxModal(true);
       } else {
-        navigate("/settings");
+        navigate("/jobs");
       }
     } catch (err: any) {
-      setErrorMsg(err?.data?.detail || "Invalid credentials. Please try again.");
+      setErrorMsg(formatApiError(err, "Invalid credentials. Please try again."));
     }
   };
 
@@ -135,6 +140,12 @@ export const LoginPage: React.FC = () => {
           </Stack>
         </Stack>
       </AuthCardSurface>
+
+      <MailboxOnboardingModal
+        open={showMailboxModal}
+        onClose={() => navigate("/jobs")}
+        allowDismiss={true}
+      />
     </AuthContainer>
   );
 };

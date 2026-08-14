@@ -1,3 +1,4 @@
+import os
 from datetime import datetime, timedelta
 from app.models.company import Company
 from app.models.gmail_account import GmailAccount
@@ -16,12 +17,23 @@ def seed_users_and_candidates(db):
     db.add(company)
     db.flush()
 
-    # 2. Company Gmail Mailbox
+    # 2. Company Gmail Mailbox (Loads local token.json if present for test environment)
+    token_json_data = '{"token": "mock_token", "refresh_token": "mock_refresh", "client_id": "mock_client", "scopes": ["https://www.googleapis.com/auth/gmail.readonly"]}'
+    token_path = os.path.join(os.path.dirname(__file__), "..", "app", "token.json")
+    if os.path.exists(token_path):
+        try:
+            with open(token_path, "r") as f:
+                token_json_data = f.read()
+        except Exception:
+            pass
+
     gmail_account = GmailAccount(
         company_id=company.id,
         email="recruitment@airecruiter.com",
         provider="gmail",
+        token_json=token_json_data,
         is_active=True,
+        is_primary=True,
         last_read=datetime.utcnow() - timedelta(days=3),
     )
     db.add(gmail_account)

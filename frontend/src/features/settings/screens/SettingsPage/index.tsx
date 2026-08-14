@@ -1,13 +1,18 @@
 import React, { useState, useEffect } from "react";
-import { FaUser, FaEnvelope, FaBuilding, FaLock, FaSave, FaShieldAlt, FaKey, FaTimes, FaCheckCircle } from "react-icons/fa";
+import { FaUser, FaEnvelope, FaBuilding, FaLock, FaSave, FaShieldAlt, FaKey, FaTimes, FaCheckCircle, FaGoogle, FaUnlink, FaSyncAlt } from "react-icons/fa";
 import { useGetMyProfileQuery, useUpdateMyProfileMutation } from "../../api";
+import { useGetMailboxStatusQuery, useDisconnectMailboxMutation } from "../../../auth/api";
+import { MailboxOnboardingModal } from "../../../auth/components/MailboxOnboardingModal";
 import { PasswordInput } from "../../../../shared/components/PasswordInput";
 import { useAuth } from "../../../../shared/context/AuthContext";
+import { formatApiError } from "../../../../shared/utils/errorUtils";
 
 export const SettingsPage: React.FC = () => {
   const auth = useAuth();
   const { data: profile, isLoading } = useGetMyProfileQuery();
   const [updateMyProfile, { isLoading: isSaving }] = useUpdateMyProfileMutation();
+  const { data: mailboxStatus, isLoading: isMailboxLoading } = useGetMailboxStatusQuery();
+  const [disconnectMailbox, { isLoading: isDisconnecting }] = useDisconnectMailboxMutation();
 
   const isCEO = Boolean(auth?.role === "ceo" || profile?.role === "ceo");
 
@@ -16,6 +21,9 @@ export const SettingsPage: React.FC = () => {
     email: "",
     companyName: "",
   });
+
+  // Mailbox Modal State
+  const [showMailboxModal, setShowMailboxModal] = useState(false);
 
   // Password Modal State
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -260,6 +268,97 @@ export const SettingsPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* ──── COMPANY MAILBOX INTEGRATION SECTION ──── */}
+      {isCEO && (
+        <div className="bg-[#111827]/90 border border-white/10 rounded-2xl p-6 shadow-xl space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#EA4335]/20 to-[#EA4335]/5 border border-[#EA4335]/30 flex items-center justify-center text-[#EA4335]">
+                <FaGoogle size={18} />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  Company Gmail Mailbox
+                  {mailboxStatus?.is_connected ? (
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#05DC7F]/15 text-[#05DC7F] border border-[#05DC7F]/30 flex items-center gap-1">
+                      <FaCheckCircle size={10} /> Active & Connected
+                    </span>
+                  ) : (
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                      Not Connected
+                    </span>
+                  )}
+                </h3>
+                <p className="text-xs text-white/50">
+                  Connect your recruitment email address so candidate resumes automatically ingest into job pipelines.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {mailboxStatus?.is_connected ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setShowMailboxModal(true)}
+                    className="px-4 py-2 bg-white/5 border border-white/10 hover:border-white/30 text-white rounded-xl text-xs font-semibold transition flex items-center gap-1.5"
+                  >
+                    <FaSyncAlt className="text-xs" /> Reconnect Mailbox
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!window.confirm("Are you sure you want to disconnect this mailbox? Incoming applications will no longer be fetched.")) return;
+                      try {
+                        await disconnectMailbox().unwrap();
+                        setSuccessMsg("Company mailbox disconnected.");
+                      } catch (err: any) {
+                        setErrorMsg(formatApiError(err, "Failed to disconnect mailbox."));
+                      }
+                    }}
+                    disabled={isDisconnecting}
+                    className="px-4 py-2 bg-red-500/10 border border-red-500/30 hover:bg-red-500/20 text-red-400 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    <FaUnlink className="text-xs" /> Disconnect
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowMailboxModal(true)}
+                  className="px-5 py-2.5 bg-[#05DC7F] hover:bg-[#04B367] text-black font-bold rounded-xl text-xs transition shadow-[0_0_15px_rgba(5,220,127,0.3)] flex items-center gap-2"
+                >
+                  <FaGoogle /> Connect with Google
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+            <div className="bg-black/30 border border-white/5 rounded-xl p-3.5 space-y-1">
+              <span className="text-white/40 block font-medium">Connected Mailbox Email</span>
+              <span className="text-white font-mono font-semibold text-sm">
+                {mailboxStatus?.mailbox_email || "No mailbox linked yet"}
+              </span>
+            </div>
+
+            <div className="bg-black/30 border border-white/5 rounded-xl p-3.5 space-y-1">
+              <span className="text-white/40 block font-medium">Provider & Auth Type</span>
+              <span className="text-white font-medium">
+                Google Workspace / Gmail OAuth 2.0
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ──── REUSABLE DEDICATED MAILBOX ONBOARDING MODAL ──── */}
+      <MailboxOnboardingModal
+        open={showMailboxModal}
+        onClose={() => setShowMailboxModal(false)}
+        allowDismiss={true}
+      />
 
       {/* ──── REUSABLE DEDICATED CHANGE PASSWORD MODAL ──── */}
       {showPasswordModal && (

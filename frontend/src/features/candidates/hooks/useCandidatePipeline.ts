@@ -20,6 +20,7 @@ import {
 import { useApproveOfferActionMutation } from "../../../shared/api/approvalApi";
 import { useDeleteOfferMutation } from "../../offers/api";
 import { ApplicationStatus, ApplicationListItem } from "../../../shared/types/candidate.types";
+import { formatApiError } from "../../../shared/utils/errorUtils";
 
 import {
   getCandidateEvaluationStatus,
@@ -138,7 +139,7 @@ export const useCandidatePipeline = () => {
       }
       return fetchRes;
     } catch (err: any) {
-      setPipelineAlertMsg(`⚠️ Fetch error: ${err?.data?.detail || err?.message || "Error during email fetch"}`);
+      setPipelineAlertMsg(`⚠️ Fetch error: ${formatApiError(err, "Error during email fetch")}`);
       throw err;
     } finally {
       setPipelineStep("idle");
@@ -172,7 +173,7 @@ export const useCandidatePipeline = () => {
       await screenJobApplications(jobId).unwrap();
       setPipelineAlertMsg(`✅ Candidate evaluation completed for requisition #${jobId}.`);
     } catch (err: any) {
-      setPipelineAlertMsg(`⚠️ Evaluation error: ${err?.data?.detail || err?.message || "Error during evaluation"}`);
+      setPipelineAlertMsg(`⚠️ Evaluation error: ${formatApiError(err, "Error during evaluation")}`);
     } finally {
       setPipelineStep("idle");
     }
@@ -253,7 +254,7 @@ export const useCandidatePipeline = () => {
           }).unwrap();
           setPipelineAlertMsg("✅ Offer approved & email dispatched to candidate! Stage updated to Offer Sent.");
         } catch (err: any) {
-          setPipelineAlertMsg(`⚠️ Executive offer approval failed: ${err?.data?.detail || "Error"}`);
+          setPipelineAlertMsg(`⚠️ Executive offer approval failed: ${formatApiError(err, "Error")}`);
         }
       } else {
         try {
@@ -264,7 +265,7 @@ export const useCandidatePipeline = () => {
           }).unwrap();
           setPipelineAlertMsg(`Application #${appId} stage successfully updated to 'OFFER SENT'.`);
         } catch (err: any) {
-          setPipelineAlertMsg(`⚠️ Stage update failed: ${err?.data?.detail || "Error"}`);
+          setPipelineAlertMsg(`⚠️ Stage update failed: ${formatApiError(err, "Error")}`);
         }
       }
       return;
@@ -280,7 +281,7 @@ export const useCandidatePipeline = () => {
           await deleteOffer(offerId).unwrap();
           setPipelineAlertMsg("✅ Offer & approval deleted! Candidate reverted to Interview stage.");
         } catch (err: any) {
-          setPipelineAlertMsg(`⚠️ Failed to delete offer: ${err?.data?.detail || "Error"}`);
+          setPipelineAlertMsg(`⚠️ Failed to delete offer: ${formatApiError(err, "Error")}`);
         }
       } else {
         try {
@@ -291,7 +292,7 @@ export const useCandidatePipeline = () => {
           }).unwrap();
           setPipelineAlertMsg(`Application #${appId} stage updated to 'INTERVIEW'.`);
         } catch (err: any) {
-          setPipelineAlertMsg(`⚠️ Stage update failed: ${err?.data?.detail || "Error"}`);
+          setPipelineAlertMsg(`⚠️ Stage update failed: ${formatApiError(err, "Error")}`);
         }
       }
       return;
@@ -307,7 +308,7 @@ export const useCandidatePipeline = () => {
 
       setPipelineAlertMsg(`Application #${appId} successfully moved to stage '${targetStageKey.replace("_", " ").toUpperCase()}'.`);
     } catch (err: any) {
-      setPipelineAlertMsg(`⚠️ Stage update failed: ${err?.data?.detail || "Error"}`);
+      setPipelineAlertMsg(`⚠️ Stage update failed: ${formatApiError(err, "Error")}`);
     }
   };
 
@@ -338,7 +339,7 @@ export const useCandidatePipeline = () => {
       setPipelineAlertMsg(`Interview scheduled & candidate invitation generated!`);
       setAssignModalCandidate(null);
     } catch (err: any) {
-      setPipelineAlertMsg(`⚠️ Interview assignment error: ${err?.data?.detail || "Error"}`);
+      setPipelineAlertMsg(`⚠️ Interview assignment error: ${formatApiError(err, "Error")}`);
     }
   };
 
@@ -357,7 +358,7 @@ export const useCandidatePipeline = () => {
       setPipelineAlertMsg(`Scorecard submitted! Interview completed.`);
       setScorecardCandidate(null);
     } catch (err: any) {
-      setPipelineAlertMsg(`⚠️ Scorecard submission error: ${err?.data?.detail || "Error"}`);
+      setPipelineAlertMsg(`⚠️ Scorecard submission error: ${formatApiError(err, "Error")}`);
     }
   };
 
@@ -370,7 +371,7 @@ export const useCandidatePipeline = () => {
       await hireCandidate(activeJobId, appId);
       setPipelineAlertMsg(`✅ Candidate #${appId} hired successfully!`);
     } catch (err: any) {
-      setPipelineAlertMsg(`⚠️ Could not process hire action: ${err?.data?.detail || "Error"}`);
+      setPipelineAlertMsg(`⚠️ Could not process hire action: ${formatApiError(err, "Error")}`);
     }
   };
 
@@ -384,7 +385,7 @@ export const useCandidatePipeline = () => {
       await rejectCandidate(activeJobId, appId);
       setPipelineAlertMsg(`Candidate #${appId} has been rejected.`);
     } catch (err: any) {
-      setPipelineAlertMsg(`⚠️ Could not process reject action: ${err?.data?.detail || "Error"}`);
+      setPipelineAlertMsg(`⚠️ Could not process reject action: ${formatApiError(err, "Error")}`);
     }
   };
 

@@ -531,7 +531,7 @@ def fetch_job_application_emails_service(
         raise ValueError(f"Company #{job.company_id} not found for Job #{job_id}")
 
     sync_context = get_after_date(db, job_id)
-    service = get_gmail_service()
+    service = get_gmail_service(company_id=company.id, db=db)
 
     deduped_messages = get_deduped_mails(
         service=service,

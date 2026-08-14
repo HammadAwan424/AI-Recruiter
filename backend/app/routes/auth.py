@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session, joinedload
 from typing import Optional
 from pydantic import BaseModel
 from app.database import get_db
+from app.models.gmail_account import GmailAccount
 from app.models.user import User
 from app.models.rbac.user_job_scope import UserJobScope
 from app.schemas.user import CEOSignup, LoginSchema
@@ -67,6 +68,20 @@ def login(data: LoginSchema, db: Session = Depends(get_db)):
             detail="Your account is inactive."
         )
 
+    requires_mailbox_setup = False
+    if user.role == "ceo" and user.company_id:
+        active_mailbox = (
+            db.query(GmailAccount)
+            .filter(
+                GmailAccount.company_id == user.company_id,
+                GmailAccount.is_active.is_(True),
+                GmailAccount.token_json.isnot(None),
+            )
+            .first()
+        )
+        if not active_mailbox:
+            requires_mailbox_setup = True
+
     token = create_access_token({
         "user_id": user.id,
         "role": user.role,
@@ -78,7 +93,9 @@ def login(data: LoginSchema, db: Session = Depends(get_db)):
         "access_token": token,
         "token_type": "bearer",
         "role": user.role,
-        "full_name": user.full_name
+        "full_name": user.full_name,
+        "requires_mailbox_setup": requires_mailbox_setup,
+        "company_id": user.company_id,
     }
 
 

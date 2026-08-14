@@ -6,13 +6,16 @@ from pydantic import BaseModel
 from app.database import get_db
 from app.models.job import Job
 from app.models.rbac import UserJobScope
+from app.domain.enums import JobStatus
 from app.schemas.job import JobCreate, JobUpdate
 from app.schemas.composite import JobDetail
 from app.utils.security import (
     get_current_user,
     require_permissions,
     get_scoped_jobs_query,
-    get_job_or_403
+    get_job_or_403,
+    get_user_permissions,
+    user_has_permission,
 )
 from app.agents.job_distribution_agent import SUPPORTED_BOARDS
 from app.services.job_service import (
@@ -44,13 +47,20 @@ def create_job(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    user_permissions = current_user.get("permissions", [])
-    can_approve = ("job:approve" in user_permissions) or ("job:" in user_permissions) 
+    user_role = current_user.get("role")
+    company_id = current_user.get("company_id")
+    user_permissions = get_user_permissions(db, user_role, company_id)
+    user_perm_set = set(user_permissions)
+
+    can_approve = (
+        user_has_permission("job:approve", user_perm_set)
+        or user_has_permission("job:*", user_perm_set)
+    )
 
     if can_approve:
-        new_job = publish_job_service(db, data, creator_id=current_user["user_id"], company_id=current_user["company_id"])
+        new_job = publish_job_service(db, data, creator_id=current_user["user_id"], company_id=company_id)
     else:
-        new_job = submit_pending_job_service(db, data, creator_id=current_user["user_id"], company_id=current_user["company_id"])
+        new_job = submit_pending_job_service(db, data, creator_id=current_user["user_id"], company_id=company_id)
 
     return new_job
 
@@ -116,6 +126,22 @@ def update_job(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
+    user_role = current_user.get("role")
+    company_id = current_user.get("company_id")
+    user_permissions = get_user_permissions(db, user_role, company_id)
+    user_perm_set = set(user_permissions)
+
+    if payload.status in ("published", JobStatus.PUBLISHED):
+        can_approve = (
+            user_has_permission("job:approve", user_perm_set)
+            or user_has_permission("job:*", user_perm_set)
+        )
+        if not can_approve:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Permission denied. You do not have authority to approve and publish job requisitions."
+            )
+
     return update_job_service(
         db=db,
         job=job,
@@ -123,6 +149,25 @@ def update_job(
         user_id=current_user["user_id"],
         company_id=current_user["company_id"]
     )
+
+
+# ──── Scoped Job Approve & Publish ────
+@router.post(
+    "/{job_id}/approve",
+    response_model=JobDetail,
+    dependencies=[Depends(require_permissions(["job:approve"]))]
+)
+def approve_job(
+    job_id: int,
+    job: Job = Depends(get_job_or_403),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    job.status = "published"
+    job.updated_by = current_user["user_id"]
+    db.commit()
+    db.refresh(job)
+    return job
 
 
 # ──── Scoped Job Delete ────

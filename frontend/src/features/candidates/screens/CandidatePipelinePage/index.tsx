@@ -1,4 +1,4 @@
-import React from "react";
+import { useState } from "react";
 import { Alert, CircularProgress } from "@mui/material";
 import { PipelineHeader } from "../../components/PipelineHeader";
 import { PipelineStatsSummary } from "../../components/PipelineStatsSummary";
@@ -6,6 +6,8 @@ import { KanbanBoard } from "../../components/KanbanBoard";
 import { CandidateProfile } from "../../components/CandidateProfile";
 import { RequestOfferApprovalModal } from "../../../../shared/components/RequestOfferApprovalModal";
 import { STAGES, useCandidatePipeline } from "../../hooks/useCandidatePipeline";
+import { useGetMailboxStatusQuery } from "../../../auth/api";
+import { MailboxOnboardingModal } from "../../../auth/components/MailboxOnboardingModal";
 
 export const CandidatePipelinePage: React.FC = () => {
   const {
@@ -46,6 +48,8 @@ export const CandidatePipelinePage: React.FC = () => {
   } = useCandidatePipeline();
 
   const allCandidates = applications && applications.length > 0 ? applications : candidates;
+  const { data: mailboxStatus } = useGetMailboxStatusQuery();
+  const [showMailboxModal, setShowMailboxModal] = useState(false);
 
   return (
     <div className="flex flex-col gap-5 p-4 sm:p-6 w-full max-w-[1700px] mx-auto min-h-screen">
@@ -64,6 +68,27 @@ export const CandidatePipelinePage: React.FC = () => {
         onToggleStageVisibility={toggleStageVisibility}
         allStages={STAGES}
       />
+
+      {mailboxStatus && !mailboxStatus.is_connected && (
+        <Alert
+          severity="warning"
+          action={
+            <button
+              onClick={() => setShowMailboxModal(true)}
+              className="px-3 py-1 bg-[#05DC7F] hover:bg-[#04B367] text-black font-bold rounded-lg text-xs transition"
+            >
+              Connect Gmail
+            </button>
+          }
+          sx={{
+            backgroundColor: "rgba(234, 179, 8, 0.1)",
+            border: "1px solid rgba(234, 179, 8, 0.3)",
+            color: "#FACC15",
+          }}
+        >
+          <strong>Company Mailbox Not Linked:</strong> Connect your company recruitment Gmail inbox to fetch and screen candidate emails automatically.
+        </Alert>
+      )}
 
       <PipelineStatsSummary
         applications={allCandidates}
@@ -116,6 +141,13 @@ export const CandidatePipelinePage: React.FC = () => {
           setOfferModalCandidate(null);
           setPipelineAlertMsg("✅ Offer approval request submitted! Candidate moved to Offer Approval stage.");
         }}
+      />
+
+      {/* Mailbox Onboarding Modal */}
+      <MailboxOnboardingModal
+        open={showMailboxModal}
+        onClose={() => setShowMailboxModal(false)}
+        allowDismiss={true}
       />
     </div>
   );
