@@ -88,6 +88,7 @@ def seed_offers(db, users_context, applications, jobs):
         ),
         secure_token=token,
         token_expires_at=datetime.utcnow() + timedelta(days=7),
+        status="SENT",
         created_by=ceo_user.id,
     )
     db.add(offer1)
@@ -110,6 +111,7 @@ def seed_offers(db, users_context, applications, jobs):
             "Target start date: " + str(date.today() + timedelta(days=21)) + ".\n\n"
             "Sincerely,\nExecutive Committee"
         ),
+        status="PENDING_APPROVAL",
         created_by=ceo_user.id,
     )
     db.add(offer2)

@@ -1,5 +1,6 @@
 from app.database import Base
 from app.models.company import Company
+from app.models.gmail_account import GmailAccount
 from app.models.user import User
 from app.models.job import Job
 from app.models.candidate import Candidate
@@ -12,6 +13,7 @@ from app.models.rbac import Role, RolePermission, UserJobScope
 __all__ = [
     "Base",
     "Company",
+    "GmailAccount",
     "User",
     "Job",
     "Candidate",

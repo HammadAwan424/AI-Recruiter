@@ -39,9 +39,14 @@ def create_offer_approval_db(
     return approval
 
 
-def list_active_templates_db(db: Session) -> List[OfferTemplate]:
-    """Lists all active OfferTemplates."""
-    return db.query(OfferTemplate).filter(OfferTemplate.is_active).all()
+def list_active_templates_db(db: Session, company_id: Optional[int] = None) -> List[OfferTemplate]:
+    """Lists active company templates plus intentionally global templates."""
+    query = db.query(OfferTemplate).filter(OfferTemplate.is_active.is_(True))
+    if company_id is not None:
+        query = query.filter(
+            (OfferTemplate.company_id == company_id) | OfferTemplate.company_id.is_(None)
+        )
+    return query.all()
 
 
 def create_offer_template_db(
@@ -50,6 +55,7 @@ def create_offer_template_db(
     title: str,
     department: str,
     content: str,
+    is_active: bool,
     created_by: int
 ) -> OfferTemplate:
     """Inserts a new OfferTemplate record into database."""
@@ -58,6 +64,7 @@ def create_offer_template_db(
         title=title,
         department=department or "GLOBAL",
         content=content,
+        is_active=is_active,
         created_by=created_by
     )
     db.add(template)
@@ -72,16 +79,22 @@ def update_offer_template_db(
     title: str,
     department: str,
     content: str,
+    is_active: bool,
+    company_id: Optional[int],
     updated_by: int
 ) -> Optional[OfferTemplate]:
     """Updates an existing OfferTemplate in database."""
-    template = db.query(OfferTemplate).filter(OfferTemplate.id == template_id).first()
+    template = db.query(OfferTemplate).filter(
+        OfferTemplate.id == template_id,
+        OfferTemplate.company_id == company_id,
+    ).first()
     if not template:
         return None
 
     template.title = title
     template.department = department or "GLOBAL"
     template.content = content
+    template.is_active = is_active
     template.updated_by = updated_by
 
     db.commit()

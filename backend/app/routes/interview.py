@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Response, status
+from sqlalchemy import or_
 from sqlalchemy.orm import Session, Query, joinedload
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
@@ -66,6 +67,14 @@ def create_interview_slot(
     db: Session = Depends(get_db),
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
+    if payload.job_id is not None:
+        job = db.query(Job).filter(
+            Job.id == payload.job_id,
+            Job.company_id == current_user.get("company_id"),
+        ).first()
+        if not job:
+            raise HTTPException(status_code=404, detail="Job not found in your company")
+
     slot = InterviewSlot(
         interviewer_id=current_user["user_id"],
         job_id=payload.job_id,
@@ -122,11 +131,22 @@ def update_interview_slot(
     db: Session = Depends(get_db),
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
-    slot = db.query(InterviewSlot).filter(InterviewSlot.id == slot_id).first()
+    slot = db.query(InterviewSlot).filter(
+        InterviewSlot.id == slot_id,
+        InterviewSlot.interviewer_id == current_user["user_id"],
+    ).first()
     if not slot:
         raise HTTPException(status_code=404, detail="Slot not found")
     if slot.is_booked:
         raise HTTPException(status_code=400, detail="Cannot edit a slot that is already booked.")
+
+    if payload.job_id is not None:
+        job = db.query(Job).filter(
+            Job.id == payload.job_id,
+            Job.company_id == current_user.get("company_id"),
+        ).first()
+        if not job:
+            raise HTTPException(status_code=404, detail="Job not found in your company")
 
     slot.job_id = payload.job_id
     slot.schedule_start = payload.schedule_start
@@ -147,7 +167,10 @@ def delete_interview_slot(
     db: Session = Depends(get_db),
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
-    slot = db.query(InterviewSlot).filter(InterviewSlot.id == slot_id).first()
+    slot = db.query(InterviewSlot).filter(
+        InterviewSlot.id == slot_id,
+        InterviewSlot.interviewer_id == current_user["user_id"],
+    ).first()
     if not slot:
         raise HTTPException(status_code=404, detail="Slot not found")
     if slot.is_booked:
@@ -185,6 +208,10 @@ def get_public_schedule_slots(token: str, db: Session = Depends(get_db)):
         db.query(InterviewSlot)
         .filter(
             InterviewSlot.interviewer_id == interviewer_id,
+            or_(
+                InterviewSlot.job_id == interview.application.job_id,
+                InterviewSlot.job_id.is_(None),
+            ),
             InterviewSlot.is_booked.is_(False)
         )
         .order_by(InterviewSlot.schedule_start.asc())
@@ -219,13 +246,37 @@ def candidate_confirm_schedule(
         raise HTTPException(status_code=400, detail="This interview has already been scheduled.")
 
     slot_ids = [a.slot_id for a in payload.assignments]
-    slots = db.query(InterviewSlot).filter(InterviewSlot.id.in_(slot_ids)).all() if slot_ids else []
+    slots = (
+        db.query(InterviewSlot)
+        .filter(InterviewSlot.id.in_(slot_ids))
+        .with_for_update()
+        .all()
+        if slot_ids
+        else []
+    )
 
     if not slots or any(s.is_booked for s in slots):
         raise HTTPException(status_code=400, detail="One or more selected slots are no longer available.")
 
+    if len(slots) != len(payload.assignments):
+        raise HTTPException(status_code=400, detail="One or more selected slots do not exist.")
+
+    assigned_interviewers = {
+        assignment.interviewer_id
+        for assignment in interview.interviewer_assignments
+    }
+    slots_by_id = {slot.id: slot for slot in slots}
+    for assignment in payload.assignments:
+        slot = slots_by_id[assignment.slot_id]
+        if assignment.interviewer_id not in assigned_interviewers:
+            raise HTTPException(status_code=400, detail="Interviewer is not assigned to this interview.")
+        if slot.interviewer_id != assignment.interviewer_id:
+            raise HTTPException(status_code=400, detail="Selected slot does not belong to the assigned interviewer.")
+        if slot.job_id is not None and slot.job_id != interview.application.job_id:
+            raise HTTPException(status_code=400, detail="Selected slot is not available for this job.")
+
     interview.schedule_start = min(s.schedule_start for s in slots)
-    interview.schedule_end = min(s.schedule_end for s in slots)
+    interview.schedule_end = max(s.schedule_end for s in slots)
     interview.status = "SCHEDULED"
 
     for slot in slots:
@@ -276,7 +327,12 @@ def schedule_interview(
         title=f"{app.job.title} — {app.candidate.full_name}"
     )
 
-    interview = create_interview(db, request, meeting_link=meeting_link, created_by=current_user["user_id"])
+    try:
+        interview = create_interview(
+            db, request, meeting_link=meeting_link, created_by=current_user["user_id"]
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     # Auto-grant UserJobScope to assigned interviewers
     interviewer_ids = []
@@ -370,6 +426,9 @@ def submit_interview_feedback(
     db: Session = Depends(get_db),
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
+    if payload.interview_id is not None and payload.interview_id != interview.id:
+        raise HTTPException(status_code=400, detail="Payload interview_id does not match the URL")
+
     interviewer_id = payload.interviewer_id or current_user["user_id"]
 
     assignment = (
@@ -378,9 +437,7 @@ def submit_interview_feedback(
         .first()
     )
     if not assignment:
-        assignment = InterviewInterviewers(interview_id=interview.id, interviewer_id=interviewer_id)
-        db.add(assignment)
-        db.flush()
+        raise HTTPException(status_code=403, detail="Interviewer is not assigned to this interview")
 
     feedback = db.query(InterviewFeedback).filter_by(interview_interviewer_id=assignment.id).first()
 
@@ -417,7 +474,7 @@ def submit_interview_feedback(
 
     db.commit()
     db.refresh(feedback)
-    return feedback
+    return InterviewFeedbackResponse.model_validate(feedback)
 
 
 # ─────────────────────────────────────────────────────────────

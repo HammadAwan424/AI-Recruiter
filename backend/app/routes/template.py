@@ -20,7 +20,7 @@ def get_offer_templates(
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
     """Lists all active offer templates."""
-    return list_active_templates_db(db)
+    return list_active_templates_db(db, company_id=current_user.get("company_id"))
 
 
 @router.post(
@@ -40,6 +40,7 @@ def create_offer_template(
         title=payload.title,
         department=payload.department,
         content=payload.content,
+        is_active=payload.is_active,
         created_by=current_user["user_id"]
     )
 
@@ -62,6 +63,8 @@ def update_offer_template(
         title=payload.title,
         department=payload.department,
         content=payload.content,
+        is_active=payload.is_active,
+        company_id=current_user.get("company_id"),
         updated_by=current_user["user_id"]
     )
     if not template:

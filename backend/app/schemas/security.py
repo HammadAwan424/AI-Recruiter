@@ -1,21 +1,24 @@
-from pydantic import BaseModel, ConfigDict
-from typing import Optional, List
 from datetime import datetime
+from typing import Optional
+
+from pydantic import BaseModel, ConfigDict, Field
+
+from app.domain.enums import RoleJobScope, RoleName
 
 
-# ──── Role Schemas ────
 class RoleBase(BaseModel):
-    name: str
-    company_id: Optional[int] = None
+    name: RoleName
     description: Optional[str] = None
+    job_scope: RoleJobScope = RoleJobScope.OWN
 
 
 class RoleCreate(RoleBase):
-    pass
+    """company_id is assigned from the authenticated tenant context."""
 
 
 class RoleResponse(RoleBase):
     id: int
+    company_id: Optional[int] = None
     created_by: Optional[int] = None
     updated_by: Optional[int] = None
     created_at: datetime
@@ -24,10 +27,9 @@ class RoleResponse(RoleBase):
     model_config = ConfigDict(from_attributes=True)
 
 
-# ──── RolePermission Schemas ────
 class RolePermissionBase(BaseModel):
     role_id: int
-    permission_key: str
+    permission_key: str = Field(min_length=1)
 
 
 class RolePermissionCreate(RolePermissionBase):

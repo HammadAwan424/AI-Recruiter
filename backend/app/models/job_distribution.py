@@ -1,13 +1,17 @@
 from datetime import datetime
 from typing import Optional
-from sqlalchemy import String, Text, ForeignKey, DateTime
+from sqlalchemy import String, Text, ForeignKey, DateTime, UniqueConstraint
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from sqlalchemy.sql import func
 from app.database import Base, BaseModelMixin
+from app.domain.enums import JobDistributionStatus, db_enum
 
 
 class JobDistribution(Base, BaseModelMixin):
     __tablename__ = "job_distributions"
+    __table_args__ = (
+        UniqueConstraint("job_id", "board", name="uq_job_distributions_job_board"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     job_id: Mapped[int] = mapped_column(
@@ -16,7 +20,12 @@ class JobDistribution(Base, BaseModelMixin):
         index=True,
     )
     board: Mapped[str] = mapped_column(String, nullable=False, index=True)
-    status: Mapped[str] = mapped_column(String, default="pending", nullable=False, index=True)
+    status: Mapped[JobDistributionStatus] = mapped_column(
+        db_enum(JobDistributionStatus, "job_distribution_status"),
+        default=JobDistributionStatus.PENDING,
+        nullable=False,
+        index=True,
+    )
     external_ref: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 

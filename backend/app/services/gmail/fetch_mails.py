@@ -11,6 +11,7 @@ from sqlalchemy import func
 
 from app.agents.job_classification import classify_application_emails
 from app.models.company import Company
+from app.models.gmail_account import GmailAccount
 from app.models.job import Job
 from app.models.candidate import Candidate
 from app.models.application import Application
@@ -66,14 +67,30 @@ def extract_pdf_text_and_bytes(
 # ─────────────────────────────────────────────────────────────
 def get_after_date(db: Session, job_id: int) -> GmailSyncContext:
     """
-    Derives the Gmail 'after' query from the selected job's company-wide cursor.
-    The job_id selects the company scope, but the cursor belongs to Company
-    rather than Job.
-    Returns the typed company-scoped Gmail context consumed by deduplication.
+    Derives the Gmail 'after' query from the selected job's company mailbox cursor.
+    The job_id selects the company scope; the cursor belongs to GmailAccount.
     """
     job = db.query(Job).filter(Job.id == job_id).first()
     company = db.query(Company).filter(Company.id == job.company_id).first() if job else None
-    last_read_ts = company.gmail_last_read if company else None
+    gmail_account = None
+    if company:
+        gmail_account = (
+            db.query(GmailAccount)
+            .filter(GmailAccount.company_id == company.id, GmailAccount.is_active.is_(True))
+            .order_by(GmailAccount.id.asc())
+            .first()
+        )
+        if not gmail_account:
+            gmail_account = GmailAccount(
+                company_id=company.id,
+                email=os.getenv("GMAIL_ACCOUNT_EMAIL", f"company-{company.id}@gmail.local"),
+                provider="gmail",
+                is_active=True,
+            )
+            db.add(gmail_account)
+            db.flush()
+
+    last_read_ts = gmail_account.last_read if gmail_account else None
 
     if last_read_ts:
         after_dt = last_read_ts.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -92,6 +109,8 @@ def get_after_date(db: Session, job_id: int) -> GmailSyncContext:
     return GmailSyncContext(
         schema_version="gmail.sync_context.v1",
         company_id=company.id if company else 0,
+        gmail_account_id=gmail_account.id if gmail_account else 0,
+        gmail_account_email=gmail_account.email if gmail_account else "",
         anchor_job_id=job_id,
         anchor_job_title=job.title if job else "",
         gmail_last_read=last_read_ts,
@@ -146,7 +165,8 @@ def get_deduped_mails(
         header = GmailMessageHeader.model_validate(msg)
         msg_id = header.id
         existing_app = db.query(Application).filter(
-            Application.gmail_message_id == msg_id
+            Application.gmail_account_id == sync_context.gmail_account_id,
+            Application.gmail_message_id == msg_id,
         ).first()
 
         if existing_app:
@@ -158,6 +178,7 @@ def get_deduped_mails(
         schema_version="gmail.deduped_messages.v1",
         company_id=sync_context.company_id,
         anchor_job_id=sync_context.anchor_job_id,
+        gmail_account_id=sync_context.gmail_account_id,
         after_date_query=sync_context.after_date_query,
         deduped_mails=deduped_mails,
         duplicated_mails=duplicated_mails,
@@ -319,6 +340,7 @@ def process_mails(
         schema_version="gmail.processed_messages.v1",
         company_id=deduped_messages.company_id,
         anchor_job_id=deduped_messages.anchor_job_id,
+        gmail_account_id=deduped_messages.gmail_account_id,
         messages=fetched_messages,
     )
 
@@ -350,11 +372,23 @@ def persist_application_with_candidate(
         file_path = app_data.cv_pdf_path
         msg_id = app_data.gmail_message_id
 
-        candidate = db.query(Candidate).filter(func.lower(Candidate.email) == candidate_email).first()
+        job = db.query(Job).filter(Job.id == application_batch.job_id).first()
+        if not job or (
+            application_batch.company_id is not None
+            and job.company_id != application_batch.company_id
+        ):
+            raise ValueError(f"Job #{application_batch.job_id} is outside the Gmail company scope")
+
+        candidate = db.query(Candidate).filter(
+            Candidate.company_id == job.company_id,
+            Candidate.normalized_email == candidate_email,
+        ).first()
         if not candidate:
             candidate = Candidate(
+                company_id=job.company_id,
                 full_name=candidate_name,
                 email=candidate_email,
+                normalized_email=candidate_email,
             )
             db.add(candidate)
             db.commit()
@@ -373,6 +407,7 @@ def persist_application_with_candidate(
             existing_app.disposition = "active"
             existing_app.cv_text = app_data.cv_text
             existing_app.gmail_message_id = msg_id
+            existing_app.gmail_account_id = application_batch.gmail_account_id
             existing_app.received_at = received_at
             if file_path:
                 existing_app.cv_pdf_path = file_path
@@ -387,6 +422,7 @@ def persist_application_with_candidate(
                 cv_text=app_data.cv_text,
                 cv_pdf_path=file_path,
                 gmail_message_id=msg_id,
+                gmail_account_id=application_batch.gmail_account_id,
                 received_at=received_at,
                 created_by=created_by
             )
@@ -452,10 +488,13 @@ def group_latest_applications(
         schema_version="gmail.application_plan.v1",
         company_id=messages.company_id,
         anchor_job_id=messages.anchor_job_id,
+        gmail_account_id=messages.gmail_account_id,
         batches=[
             GmailApplicationBatch(
                 schema_version="gmail.application_batch.v1",
                 job_id=job_id,
+                company_id=messages.company_id,
+                gmail_account_id=messages.gmail_account_id,
                 applications=list(candidate_applications.values()),
             )
             for job_id, candidate_applications in sorted(grouped_applications.items())
@@ -539,18 +578,6 @@ def fetch_job_application_emails_service(
                 result.rationale,
             )
 
-    # The cursor tracks the latest fully retrieved message sent for
-    # classification, independently of the classification result or upserts.
-    latest_fetched_at = max(
-        (message.received_at for message in processed_messages.messages),
-        default=None,
-    )
-    if latest_fetched_at and (
-        not company.gmail_last_read or latest_fetched_at > company.gmail_last_read
-    ):
-        company.gmail_last_read = latest_fetched_at
-        db.commit()
-
     application_plan = group_latest_applications(
         messages=processed_messages,
         classifications=classifications,
@@ -585,6 +612,23 @@ def fetch_job_application_emails_service(
                 application_batch.job_id,
             )
         job_summaries.append(summary)
+
+    # Advance the mailbox cursor only after every classified application batch
+    # has been persisted successfully. A failed batch remains retryable on the
+    # next sync; message-ID deduplication makes the retry idempotent.
+    latest_fetched_at = max(
+        (message.received_at for message in processed_messages.messages),
+        default=None,
+    )
+    gmail_account = db.query(GmailAccount).filter(
+        GmailAccount.id == sync_context.gmail_account_id,
+        GmailAccount.company_id == company.id,
+    ).first()
+    if failed_upsert_count == 0 and latest_fetched_at and gmail_account and (
+        not gmail_account.last_read or latest_fetched_at > gmail_account.last_read
+    ):
+        gmail_account.last_read = latest_fetched_at
+        db.commit()
 
     return GmailSyncResult(
         schema_version="gmail.sync_result.v1",

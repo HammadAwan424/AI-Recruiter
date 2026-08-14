@@ -21,7 +21,7 @@ def seed_applications_and_slots(db, users_context, jobs):
         (candidates[3], job_fs, "offer_approval", "active", 96.0, 95.0, 98, 95, 95, 95, 98),
         (candidates[4], job_fs, "offer_sent", "active", 91.0, 93.0, 92, 90, 90, 92, 92),
         (candidates[5], job_fs, "hired", "active", 98.0, 97.5, 99, 98, 95, 98, 99),
-        (candidates[6], job_fs, "rejected", "rejected", 45.0, 42.0, 40, 45, 60, 45, 80),
+        (candidates[6], job_fs, "applied", "rejected", 45.0, 42.0, 40, 45, 60, 45, 80),
 
         # Job 2 Applications
         (candidates[7], job_ai, "applied", "active", 80.0, 78.0, 82, 78, 88, 72, 82),
@@ -30,15 +30,15 @@ def seed_applications_and_slots(db, users_context, jobs):
         (candidates[10], job_ai, "offer_approval", "active", 95.0, 94.0, 96, 94, 93, 94, 96),
         (candidates[11], job_ai, "offer_sent", "active", 90.0, 92.0, 91, 89, 88, 90, 91),
         (candidates[12], job_ai, "hired", "active", 97.0, 96.5, 98, 97, 94, 97, 98),
-        (candidates[13], job_ai, "rejected", "rejected", 42.0, 40.0, 38, 42, 58, 42, 78),
+        (candidates[13], job_ai, "applied", "rejected", 42.0, 40.0, 38, 42, 58, 42, 78),
     ]
 
-    default_weights = json.dumps({
+    default_weights = {
         "skills_match": 0.35,
         "experience_match": 0.35,
         "education_match": 0.15,
         "keyword_coverage": 0.15
-    })
+    }
 
     applications = []
     for idx, (cand, job, curr_status, disp, score, final_s, sm, em, ed, kw, conf) in enumerate(app_mappings):
@@ -99,8 +99,8 @@ def seed_applications_and_slots(db, users_context, jobs):
             match_score=score,
             confidence=conf,
             data_quality_flag=None,
-            evidence=json.dumps(evidence_data),
-            fit_flags=json.dumps(mock_fit_flags),
+            evidence=evidence_data,
+            fit_flags=mock_fit_flags,
             weights_used=default_weights,
             model_used="llama-3.1-8b-instant",
             prompt_version="v2.0"

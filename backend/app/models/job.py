@@ -5,6 +5,7 @@ from sqlalchemy.orm import relationship, Mapped, mapped_column
 from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 from sqlalchemy.sql import func
 from app.database import Base, BaseModelMixin
+from app.domain.enums import JobStatus, db_enum
 
 
 class Job(Base, BaseModelMixin):
@@ -25,8 +26,9 @@ class Job(Base, BaseModelMixin):
     salary_range: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     full_description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     keywords: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    status: Mapped[str] = mapped_column(String, default="published", nullable=False)
-    last_read: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    status: Mapped[JobStatus] = mapped_column(
+        db_enum(JobStatus, "job_status"), default=JobStatus.PUBLISHED, nullable=False, index=True
+    )
 
     # Audit Trail
     created_by: Mapped[Optional[int]] = mapped_column(

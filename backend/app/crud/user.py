@@ -10,6 +10,7 @@ import string
 # CEO create karna (Refactored to create/find Company and set company_id)
 def create_ceo(db: Session, data):
     hashed = hash_password(data.password)
+    normalized_email = str(data.email).strip().lower()
 
     # Find or create Company record
     company = db.query(Company).filter(Company.name == data.company_name).first()
@@ -24,7 +25,7 @@ def create_ceo(db: Session, data):
 
     new_user = User(
         full_name=data.full_name,
-        email=data.email,
+        email=normalized_email,
         password=hashed,
         role="ceo",
         company_id=company.id,
@@ -40,7 +41,8 @@ def create_ceo(db: Session, data):
 
 # email se user find karna
 def get_user_by_email(db: Session, email: str):
-    return db.query(User).filter(User.email == email).first()
+    normalized_email = str(email).strip().lower()
+    return db.query(User).filter(User.email == normalized_email).first()
 
 
 # Auto password generate karna
@@ -62,7 +64,7 @@ def create_employee(db: Session, data, ceo_id: int):
 
     new_employee = User(
         full_name=data.full_name,
-        email=data.email,
+        email=str(data.email).strip().lower(),
         password=hashed,
         phone=data.phone,
         department=data.department,

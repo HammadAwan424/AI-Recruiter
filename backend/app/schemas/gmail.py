@@ -39,6 +39,8 @@ class GmailSyncContext(StrictSchema):
     schema_version: Literal["gmail.sync_context.v1"]
     company_id: int
     anchor_job_id: int
+    gmail_account_id: int
+    gmail_account_email: str
     anchor_job_title: str
     gmail_last_read: Optional[datetime] = None
     after_date_query: str
@@ -49,6 +51,7 @@ class DedupedGmailMessages(StrictSchema):
     schema_version: Literal["gmail.deduped_messages.v1"]
     company_id: int
     anchor_job_id: int
+    gmail_account_id: Optional[int] = None
     after_date_query: str
     deduped_mails: List[GmailMessageHeader] = Field(default_factory=list)
     duplicated_mails: List[GmailMessageHeader] = Field(default_factory=list)
@@ -58,6 +61,7 @@ class ProcessedGmailMessages(StrictSchema):
     schema_version: Literal["gmail.processed_messages.v1"]
     company_id: int
     anchor_job_id: int
+    gmail_account_id: Optional[int] = None
     messages: List[FetchedGmailMessage] = Field(default_factory=list)
 
 
@@ -113,6 +117,8 @@ class JobApplicationSyncSummary(StrictSchema):
 class GmailApplicationBatch(StrictSchema):
     schema_version: Literal["gmail.application_batch.v1"]
     job_id: int
+    company_id: Optional[int] = None
+    gmail_account_id: Optional[int] = None
     applications: List[FetchedEmailApplication] = Field(default_factory=list)
 
 
@@ -120,6 +126,7 @@ class GmailApplicationPlan(StrictSchema):
     schema_version: Literal["gmail.application_plan.v1"]
     company_id: int
     anchor_job_id: int
+    gmail_account_id: Optional[int] = None
     batches: List[GmailApplicationBatch] = Field(default_factory=list)
 
 

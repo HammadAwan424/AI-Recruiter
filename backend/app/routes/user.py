@@ -44,13 +44,14 @@ def create_company_user(
     if not company_id:
         raise HTTPException(status_code=400, detail="Account has no associated company")
 
-    existing_user = db.query(User).filter(User.email == data.email).first()
+    normalized_email = str(data.email).strip().lower()
+    existing_user = db.query(User).filter(User.email == normalized_email).first()
     if existing_user:
         raise HTTPException(status_code=400, detail="This email is already registered.")
 
     new_user = User(
         full_name=data.full_name,
-        email=data.email,
+        email=normalized_email,
         password=hash_password(data.password),
         role=data.role,
         company_id=company_id,

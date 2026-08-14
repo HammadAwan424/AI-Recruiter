@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from typing import Optional, List
 from datetime import datetime
 from app.models.interview import InterviewModel, InterviewFeedback, InterviewSlot, InterviewInterviewers
+from app.models.application import Application
 from app.schemas.interview import InterviewCreate, FixedScheduleInterview, InterviewCreateRequest, SelfScheduleInterview, InterviewFeedbackCreate
 from app.utils.interview_crypto import generate_interview_token
 
@@ -13,6 +14,9 @@ def create_interview(
     created_by: Optional[int] = None
 ) -> InterviewModel:
     payload = interview.payload
+    application = db.query(Application).filter(Application.id == payload.application_id).first()
+    if not application:
+        raise ValueError("Application not found for interview")
 
     schedule_start: Optional[datetime] = None
     schedule_end: Optional[datetime] = None
@@ -26,9 +30,20 @@ def create_interview(
         slot_ids = [a.slot_id for a in payload.assignments]
         slots = db.query(InterviewSlot).filter(InterviewSlot.id.in_(slot_ids)).all() if slot_ids else []
 
+        if len(slots) != len(payload.assignments) or any(slot.is_booked for slot in slots):
+            raise ValueError("One or more selected interview slots are unavailable")
+
+        slots_by_id = {slot.id: slot for slot in slots}
+        for assignment in payload.assignments:
+            slot = slots_by_id[assignment.slot_id]
+            if slot.interviewer_id != assignment.interviewer_id:
+                raise ValueError("Selected slot does not belong to the assigned interviewer")
+            if slot.job_id is not None and slot.job_id != application.job_id:
+                raise ValueError("Selected slot is not available for this job")
+
         if slots:
             schedule_start = min(s.schedule_start for s in slots)
-            schedule_end = min(s.schedule_end for s in slots)
+            schedule_end = max(s.schedule_end for s in slots)
             for slot in slots:
                 slot.is_booked = True
 
@@ -76,12 +91,7 @@ def create_interview_feedback(db: Session, feedback_in: InterviewFeedbackCreate,
         .first()
     )
     if not assignment:
-        assignment = InterviewInterviewers(
-            interview_id=feedback_in.interview_id,
-            interviewer_id=feedback_in.interviewer_id
-        )
-        db.add(assignment)
-        db.flush()
+        raise ValueError("Feedback can only be submitted by an assigned interviewer")
 
     feedback = InterviewFeedback(
         interview_interviewer_id=assignment.id,

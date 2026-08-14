@@ -1,9 +1,10 @@
 from datetime import datetime
 from typing import Optional, List
-from sqlalchemy import String, ForeignKey, DateTime, UniqueConstraint
+from sqlalchemy import String, ForeignKey, DateTime, UniqueConstraint, Index
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from sqlalchemy.sql import func
 from app.database import Base, BaseModelMixin
+from app.domain.enums import RoleJobScope, RoleName, db_enum
 
 
 class Role(Base, BaseModelMixin):
@@ -18,9 +19,13 @@ class Role(Base, BaseModelMixin):
         nullable=True,
         index=True,
     )
-    name: Mapped[str] = mapped_column(String, nullable=False, index=True)  # superadmin | ceo | recruiter | hiring_manager | interviewer
+    name: Mapped[RoleName] = mapped_column(
+        db_enum(RoleName, "role_name_registry"), nullable=False, index=True
+    )
     description: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    job_scope: Mapped[str] = mapped_column(String, default="own", nullable=False)  # "own" | "all"
+    job_scope: Mapped[RoleJobScope] = mapped_column(
+        db_enum(RoleJobScope, "role_job_scope"), default=RoleJobScope.OWN, nullable=False
+    )
 
     # Audit Trail
     created_by: Mapped[Optional[int]] = mapped_column(
@@ -41,3 +46,12 @@ class Role(Base, BaseModelMixin):
     role_permissions = relationship("RolePermission", back_populates="role", cascade="all, delete-orphan")
     creator = relationship("User", foreign_keys=[created_by])
     updater = relationship("User", foreign_keys=[updated_by])
+
+
+Index(
+    "uq_roles_global_name",
+    Role.name,
+    unique=True,
+    sqlite_where=Role.company_id.is_(None),
+    postgresql_where=Role.company_id.is_(None),
+)

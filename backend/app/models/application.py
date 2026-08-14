@@ -1,13 +1,30 @@
 from datetime import datetime
 from typing import Optional, List
-from sqlalchemy import String, Float, Text, Integer, ForeignKey, DateTime
+from sqlalchemy import (
+    String,
+    Float,
+    Text,
+    Integer,
+    ForeignKey,
+    DateTime,
+    JSON,
+    UniqueConstraint,
+    CheckConstraint,
+)
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from sqlalchemy.sql import func
 from app.database import Base, BaseModelMixin
+from app.domain.enums import ApplicationDisposition, ApplicationStatus, db_enum
 
 
 class Application(Base, BaseModelMixin):
     __tablename__ = "applications"
+    __table_args__ = (
+        UniqueConstraint("candidate_id", "job_id", name="uq_applications_candidate_job"),
+        UniqueConstraint("gmail_account_id", "gmail_message_id", name="uq_applications_mailbox_message"),
+        CheckConstraint("match_score IS NULL OR (match_score >= 0 AND match_score <= 100)", name="ck_applications_match_score"),
+        CheckConstraint("final_score IS NULL OR (final_score >= 0 AND final_score <= 100)", name="ck_applications_final_score"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     candidate_id: Mapped[int] = mapped_column(
@@ -20,17 +37,30 @@ class Application(Base, BaseModelMixin):
         nullable=False,
         index=True,
     )
+    gmail_account_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("gmail_accounts.id", ondelete="SET NULL"), nullable=True, index=True
+    )
 
     # ──── CV Data ────
     cv_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     cv_pdf_path: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    gmail_message_id: Mapped[Optional[str]] = mapped_column(String, unique=True, index=True, nullable=True)
+    gmail_message_id: Mapped[Optional[str]] = mapped_column(String, index=True, nullable=True)
     received_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, index=True)
-    parsed_profile: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    parsed_profile: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
 
     # ──── Status Tracking ────
-    current_status: Mapped[str] = mapped_column(String, default="applied", nullable=False, index=True)  # applied | screening | interview | offer_approval | offer_sent | hired
-    disposition: Mapped[str] = mapped_column(String, default="active", nullable=False, index=True)      # active | rejected
+    current_status: Mapped[ApplicationStatus] = mapped_column(
+        db_enum(ApplicationStatus, "application_status"),
+        default=ApplicationStatus.APPLIED,
+        nullable=False,
+        index=True,
+    )
+    disposition: Mapped[ApplicationDisposition] = mapped_column(
+        db_enum(ApplicationDisposition, "application_disposition"),
+        default=ApplicationDisposition.ACTIVE,
+        nullable=False,
+        index=True,
+    )
 
     # ──── AI CV Screening Evaluation (Denormalized Cache / Rollup) ────
     match_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
@@ -55,6 +85,7 @@ class Application(Base, BaseModelMixin):
     # ORM Relationships
     candidate = relationship("Candidate", back_populates="applications")
     job = relationship("Job", back_populates="applications")
+    gmail_account = relationship("GmailAccount", back_populates="applications")
     creator = relationship("User", foreign_keys=[created_by])
     updater = relationship("User", foreign_keys=[updated_by])
     interviews = relationship("InterviewModel", back_populates="application", cascade="all, delete-orphan")
@@ -85,10 +116,19 @@ class ApplicationScreening(Base, BaseModelMixin):
     confidence: Mapped[int] = mapped_column(Integer, nullable=False)
     data_quality_flag: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
-    # ──── Structured Evidence, Fit Flags & Weights (JSON text) ────
-    evidence: Mapped[str] = mapped_column(Text, nullable=False)
-    fit_flags: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    weights_used: Mapped[str] = mapped_column(Text, nullable=False)
+    __table_args__ = (
+        CheckConstraint("skills_match BETWEEN 0 AND 100", name="ck_screening_skills_match"),
+        CheckConstraint("experience_match BETWEEN 0 AND 100", name="ck_screening_experience_match"),
+        CheckConstraint("education_match BETWEEN 0 AND 100", name="ck_screening_education_match"),
+        CheckConstraint("keyword_coverage BETWEEN 0 AND 100", name="ck_screening_keyword_coverage"),
+        CheckConstraint("confidence BETWEEN 0 AND 100", name="ck_screening_confidence"),
+        CheckConstraint("match_score BETWEEN 0 AND 100", name="ck_screening_match_score"),
+    )
+
+    # ──── Structured Evidence, Fit Flags & Weights ────
+    evidence: Mapped[dict] = mapped_column(JSON, nullable=False)
+    fit_flags: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    weights_used: Mapped[dict] = mapped_column(JSON, nullable=False)
 
     # ──── Audit & Model Provenance Metadata ────
     model_used: Mapped[str] = mapped_column(String, default="llama-3.1-8b-instant", nullable=False)

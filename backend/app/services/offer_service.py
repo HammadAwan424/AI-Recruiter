@@ -5,15 +5,18 @@ from sqlalchemy.orm import Session, Query
 
 from app.models.offer import Offer, OfferApproval
 from app.models.user import User
+from app.domain.enums import ApplicationDisposition, ApplicationStatus, OfferStatus
 from app.schemas.offer import (
     OfferCreate,
     OfferUpdate,
     OfferResponse,
-    OfferPublicResponse,
-    ExecutiveOfferDecision,
+)
+from app.schemas.offer_approval import ExecutiveOfferDecision
+from app.schemas.offer_public import (
     CandidateOfferDecision,
-    SignedCandidateOfferDecision,
     DeclinedCandidateOfferDecision,
+    OfferPublicResponse,
+    SignedCandidateOfferDecision,
 )
 from app.crud.offer import (
     get_offer_by_token_db,
@@ -34,7 +37,7 @@ def create_offer_service(
     db: Session,
     payload: OfferCreate,
     current_user: Dict[str, Any]
-) -> Offer:
+) -> OfferResponse:
     """Creates an offer, initializes pending approval via ORM relationships, and updates application stage."""
     app = get_application_or_403(payload.application_id, db=db, current_user=current_user)
 
@@ -42,11 +45,13 @@ def create_offer_service(
     if app.offer:
         offer = app.offer.update_from_dict(payload.model_dump(exclude_unset=True))
         offer.updated_by = current_user["user_id"]
+        offer.status = OfferStatus.PENDING_APPROVAL
     else:
         offer = create_offer_db(db, payload, created_by=current_user["user_id"])
+        offer.status = OfferStatus.PENDING_APPROVAL
 
-    app.current_status = "offer_approval"
-    app.disposition = "active"
+    app.current_status = ApplicationStatus.OFFER_APPROVAL
+    app.disposition = ApplicationDisposition.ACTIVE
     app.updated_by = current_user["user_id"]
 
     # Use ORM relationship offer.approval directly (1-to-1 relationship)
@@ -74,35 +79,26 @@ def create_offer_service(
 
     db.commit()
     db.refresh(offer)
-    return offer
+    return offer_to_response(offer)
+
+
+def offer_to_response(offer: Offer) -> OfferResponse:
+    """Maps an Offer plus its application relationships to the HR response DTO."""
+    response = OfferResponse.model_validate(offer)
+    app = offer.application
+    if app:
+        response.candidate_id = app.candidate_id
+        response.job_id = app.job_id
+        response.job_title = app.job.title if app.job else None
+        response.department = app.job.department if app.job else None
+        response.candidate_name = app.candidate.full_name if app.candidate else None
+    return response
 
 
 def list_offers_service(db: Session, offers_query: Query) -> List[OfferResponse]:
-    """Lists offers and formats status metadata."""
+    """Lists offers using the persisted offer lifecycle status."""
     offers = offers_query.order_by(Offer.created_at.desc()).all()
-    results = []
-    for offer in offers:
-        resp = OfferResponse.model_validate(offer)
-        app = offer.application
-
-        resp.job_id = app.job_id
-        resp.candidate_id = app.candidate_id
-        resp.job_title = app.job.title if app.job else "Position"
-        resp.department = app.job.department if app.job else "GLOBAL"
-        resp.candidate_name = app.candidate.full_name if app.candidate else "Candidate"
-
-        if offer.signed_at:
-            resp.status = "SIGNED"
-        elif offer.decline_reason:
-            resp.status = "DECLINED"
-        elif offer.secure_token or app.current_status == "offer_sent":
-            resp.status = "SENT"
-        elif app.current_status == "offer_approval":
-            resp.status = "PENDING_APPROVAL"
-        else:
-            resp.status = "DRAFT"
-        results.append(resp)
-    return results
+    return [offer_to_response(offer) for offer in offers]
 
 
 def record_executive_decision_service(
@@ -110,20 +106,23 @@ def record_executive_decision_service(
     offer_id: int,
     decision_payload: ExecutiveOfferDecision,
     current_user: Dict[str, Any]
-) -> Offer:
+) -> OfferResponse:
     """Processes executive sign-off (approved vs rejected) using ORM offer.approval relationship."""
     offer = get_offer_or_403(offer_id, db=db, current_user=current_user)
+    if offer.status not in {OfferStatus.DRAFT, OfferStatus.PENDING_APPROVAL}:
+        raise HTTPException(status_code=400, detail="This offer is no longer awaiting approval")
     comments = getattr(decision_payload, "comments", None)
 
     # Directly use ORM relationship offer.approval
     if not offer.approval:
-        create_offer_approval_db(
+        approval = create_offer_approval_db(
             db,
             offer_id=offer.id,
             approver_id=current_user["user_id"],
             comments=comments,
             created_by=current_user["user_id"]
         )
+        approval.decided_at = datetime.utcnow()
     else:
         offer.approval.comments = comments
         offer.approval.approver_id = current_user["user_id"]
@@ -137,7 +136,9 @@ def record_executive_decision_service(
     company_name = app.job.company.name if (app.job and app.job.company) else "AI Recruiter"
 
     if decision_payload.decision == "rejected":
-        offer.application.disposition = "rejected"
+        offer.status = OfferStatus.APPROVAL_REJECTED
+        offer.application.disposition = ApplicationDisposition.REJECTED
+        offer.application.current_status = ApplicationStatus.OFFER_APPROVAL
         offer.application.updated_by = current_user["user_id"]
 
         creator = db.query(User).filter(User.id == offer.created_by).first()
@@ -151,12 +152,13 @@ def record_executive_decision_service(
             )
     else:
         token = generate_secure_offer_token()
+        offer.status = OfferStatus.SENT
         offer.secure_token = token
         offer.token_expires_at = datetime.utcnow() + timedelta(days=7)
         offer.updated_by = current_user["user_id"]
 
-        offer.application.current_status = "offer_sent"
-        offer.application.disposition = "active"
+        offer.application.current_status = ApplicationStatus.OFFER_SENT
+        offer.application.disposition = ApplicationDisposition.ACTIVE
         offer.application.updated_by = current_user["user_id"]
 
         if candidate_email:
@@ -172,7 +174,7 @@ def record_executive_decision_service(
 
     db.commit()
     db.refresh(offer)
-    return offer
+    return offer_to_response(offer)
 
 
 def get_public_offer_service(db: Session, token: str) -> OfferPublicResponse:
@@ -180,6 +182,16 @@ def get_public_offer_service(db: Session, token: str) -> OfferPublicResponse:
     offer = get_offer_by_token_db(db, token)
     if not offer:
         raise HTTPException(status_code=404, detail="Invalid or expired offer link")
+    if offer.token_expires_at and datetime.utcnow() > offer.token_expires_at:
+        offer.status = OfferStatus.EXPIRED
+        db.commit()
+        raise HTTPException(status_code=404, detail="Invalid or expired offer link")
+    if offer.status not in {
+        OfferStatus.SENT,
+        OfferStatus.SIGNED,
+        OfferStatus.DECLINED,
+    }:
+        raise HTTPException(status_code=404, detail="Offer is not available to the candidate")
 
     app = offer.application
 
@@ -195,6 +207,7 @@ def get_public_offer_service(db: Session, token: str) -> OfferPublicResponse:
         candidate_email=app.candidate.email if app.candidate else "",
         job_title=app.job.title if app.job else "Position",
         company_name=app.job.company.name if (app.job and app.job.company) else "AI Recruiter",
+        status=offer.status,
         signed_at=offer.signed_at,
         decline_reason=offer.decline_reason
     )
@@ -212,8 +225,13 @@ def record_candidate_decision_service(
     if not offer:
         raise HTTPException(status_code=404, detail="Invalid offer link")
 
+    if offer.status != OfferStatus.SENT:
+        raise HTTPException(status_code=400, detail="This offer is not awaiting a candidate decision")
+
     now = datetime.utcnow()
     if offer.token_expires_at and now > offer.token_expires_at:
+        offer.status = OfferStatus.EXPIRED
+        db.commit()
         raise HTTPException(status_code=400, detail="This offer link has expired")
 
     app = offer.application
@@ -243,9 +261,10 @@ def record_candidate_decision_service(
         offer.signer_user_agent = user_agent
         offer.signed_at = now
         offer.audit_hash = audit_hash
+        offer.status = OfferStatus.SIGNED
 
-        app.current_status = "hired"
-        app.disposition = "active"
+        app.current_status = ApplicationStatus.HIRED
+        app.disposition = ApplicationDisposition.ACTIVE
 
         candidate_name = app.candidate.full_name if app.candidate else "Candidate"
         candidate_email = app.candidate.email if app.candidate else ""
@@ -265,7 +284,8 @@ def record_candidate_decision_service(
     elif decision_payload.decision == "declined":
         declined_data: DeclinedCandidateOfferDecision = decision_payload
         offer.decline_reason = declined_data.decline_reason
-        app.disposition = "rejected"
+        offer.status = OfferStatus.DECLINED
+        app.disposition = ApplicationDisposition.REJECTED
 
         creator = db.query(User).filter(User.id == offer.created_by).first()
         if creator and creator.email:
@@ -294,6 +314,7 @@ def record_candidate_decision_service(
         candidate_email=app.candidate.email if app.candidate else "",
         job_title=app.job.title if app.job else "Position",
         company_name=app.job.company.name if (app.job and app.job.company) else "AI Recruiter",
+        status=offer.status,
         signed_at=offer.signed_at,
         decline_reason=offer.decline_reason
     )
@@ -304,7 +325,7 @@ def delete_offer_service(db: Session, offer_id: int, current_user: Dict[str, Any
     offer = get_offer_or_403(offer_id, db=db, current_user=current_user)
     app = offer.application
 
-    app.current_status = "interview"
+    app.current_status = ApplicationStatus.INTERVIEW
     app.updated_by = current_user["user_id"]
 
     db.delete(offer)

@@ -11,10 +11,12 @@ from sqlalchemy import (
     DateTime,
     Boolean,
     UniqueConstraint,
+    CheckConstraint,
 )
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from sqlalchemy.sql import func
 from app.database import Base, BaseModelMixin
+from app.domain.enums import InterviewStatus, MeetingType, db_enum
 
 
 class InterviewSlot(Base, BaseModelMixin):
@@ -26,7 +28,7 @@ class InterviewSlot(Base, BaseModelMixin):
         nullable=False,
         index=True,
     )
-    job_id: Mapped[int] = mapped_column(
+    job_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("jobs.id", ondelete="CASCADE"),
         nullable=True,
         index=True,
@@ -56,6 +58,9 @@ class InterviewSlot(Base, BaseModelMixin):
 
 class InterviewModel(Base, BaseModelMixin):
     __tablename__ = "interviews_v2"
+    __table_args__ = (
+        CheckConstraint("round_number >= 1", name="ck_interviews_round_number"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     application_id: Mapped[int] = mapped_column(
@@ -70,7 +75,9 @@ class InterviewModel(Base, BaseModelMixin):
     schedule_start: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, index=True)
     schedule_end: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
-    meeting_type: Mapped[str] = mapped_column(String, default="GOOGLE_MEET")  # GOOGLE_MEET | JITSI | IN_PERSON
+    meeting_type: Mapped[MeetingType] = mapped_column(
+        db_enum(MeetingType, "meeting_type"), default=MeetingType.GOOGLE_MEET, nullable=False
+    )
     meeting_link: Mapped[str] = mapped_column(String, nullable=False)
 
 
@@ -79,7 +86,12 @@ class InterviewModel(Base, BaseModelMixin):
     token_expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     # Restored Interview Status
-    status: Mapped[str] = mapped_column(String, default="SCHEDULED", nullable=False, index=True)  # AWAITING_SELECTION | SCHEDULED | COMPLETED | CANCELLED | RESCHEDULED
+    status: Mapped[InterviewStatus] = mapped_column(
+        db_enum(InterviewStatus, "interview_status"),
+        default=InterviewStatus.SCHEDULED,
+        nullable=False,
+        index=True,
+    )
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # Audit Trail
@@ -135,6 +147,10 @@ class InterviewFeedback(Base, BaseModelMixin):
     )
     technical_score: Mapped[float] = mapped_column(Float, nullable=False)
     communication_score: Mapped[float] = mapped_column(Float, nullable=False)
+    __table_args__ = (
+        CheckConstraint("technical_score BETWEEN 0 AND 10", name="ck_feedback_technical_score"),
+        CheckConstraint("communication_score BETWEEN 0 AND 10", name="ck_feedback_communication_score"),
+    )
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_by: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     updated_by: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
@@ -142,3 +158,11 @@ class InterviewFeedback(Base, BaseModelMixin):
     updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
 
     interview_interviewer = relationship("InterviewInterviewers", back_populates="feedback")
+
+    @property
+    def interview_id(self) -> Optional[int]:
+        return self.interview_interviewer.interview_id if self.interview_interviewer else None
+
+    @property
+    def interviewer_id(self) -> Optional[int]:
+        return self.interview_interviewer.interviewer_id if self.interview_interviewer else None

@@ -8,8 +8,8 @@ from app.schemas.offer import (
     OfferCreate,
     OfferUpdate,
     OfferResponse,
-    ExecutiveOfferDecision
 )
+from app.schemas.offer_approval import ExecutiveOfferDecision
 from app.utils.security import (
     get_current_user,
     require_permissions,
@@ -21,6 +21,7 @@ from app.services.offer_service import (
     list_offers_service,
     record_executive_decision_service,
     delete_offer_service,
+    offer_to_response,
 )
 
 router = APIRouter(tags=["Offers CRUD"])
@@ -58,7 +59,7 @@ def get_offer_detail(
     offer: Offer = Depends(get_offer_or_403)
 ):
     """Gets details for a single offer."""
-    return offer
+    return offer_to_response(offer)
 
 
 @router.put(
@@ -73,11 +74,20 @@ def update_offer(
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
     """Updates draft offer terms."""
-    offer.update_from_dict(payload.model_dump(exclude_unset=True))
+    update_data = payload.model_dump(exclude_unset=True)
+    next_start = update_data.get("start_date", offer.start_date)
+    next_expiry = update_data.get("expiry_date", offer.expiry_date)
+    if next_expiry and next_expiry <= next_start:
+        from fastapi import HTTPException, status
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="expiry_date must be after start_date",
+        )
+    offer.update_from_dict(update_data)
     offer.updated_by = current_user["user_id"]
     db.commit()
     db.refresh(offer)
-    return offer
+    return offer_to_response(offer)
 
 
 @router.post(

@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional
 from sqlalchemy import String, Integer, DateTime
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from sqlalchemy.sql import func
@@ -11,8 +11,6 @@ class Company(Base, BaseModelMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String, unique=True, nullable=False, index=True)
-    gmail_last_read: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, index=True)
-
     # Audit Trail (Integer IDs to prevent circular DDL FK dependency with User during drop_all)
     created_by: Mapped[Optional[int]] = mapped_column(
         Integer,
@@ -30,4 +28,8 @@ class Company(Base, BaseModelMixin):
     # ORM Relationships
     users = relationship("User", back_populates="company", foreign_keys="User.company_id")
     jobs = relationship("Job", back_populates="company")
+    candidates = relationship("Candidate", back_populates="company", cascade="all, delete-orphan")
     offer_templates = relationship("OfferTemplate", back_populates="company")
+    gmail_accounts = relationship(
+        "GmailAccount", back_populates="company", cascade="all, delete-orphan"
+    )

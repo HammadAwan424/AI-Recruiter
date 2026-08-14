@@ -1,52 +1,55 @@
-from pydantic import BaseModel, EmailStr, ConfigDict
 from datetime import date
-from typing import Optional, List
+from typing import Optional
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
+
+from app.domain.enums import RoleJobScope, RoleName, UserStatus
 
 
-# CEO Signup Schema
 class CEOSignup(BaseModel):
-    full_name: str
+    full_name: str = Field(min_length=1)
     email: EmailStr
-    company_name: str
-    password: str
-    confirm_password: str
+    company_name: str = Field(min_length=1)
+    password: str = Field(min_length=8)
+    confirm_password: str = Field(min_length=8)
+
+    @model_validator(mode="after")
+    def passwords_match(self):
+        if self.password != self.confirm_password:
+            raise ValueError("password and confirm_password must match")
+        return self
 
 
-# Login Schema
 class LoginSchema(BaseModel):
     email: EmailStr
     password: str
 
 
-# Employee Create Schema
 class EmployeeCreate(BaseModel):
-    full_name: str
+    full_name: str = Field(min_length=1)
     email: EmailStr
     phone: str
     department: str
     joining_date: date
-    password: str
+    password: str = Field(min_length=8)
 
 
-# Company User Create Schema
 class UserCreateByCEO(BaseModel):
-    full_name: str
+    full_name: str = Field(min_length=1)
     email: EmailStr
-    password: str
-    role: str  # recruiter | hiring_manager | interviewer | employee
+    password: str = Field(min_length=8)
+    role: RoleName
     department: Optional[str] = None
     phone: Optional[str] = None
 
 
-# Role Update Schema
 class UserRoleUpdate(BaseModel):
-    role: str
+    role: RoleName
 
 
-# Role Permission Update Schema
 class RolePermissionUpdate(BaseModel):
-    permission_keys: List[str]
-    job_scope: Optional[str] = None  # "own" | "all"
+    permission_keys: list[str] = Field(default_factory=list)
+    job_scope: Optional[RoleJobScope] = None
 
 
 class CompanyMinimalResponse(BaseModel):
@@ -56,16 +59,15 @@ class CompanyMinimalResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-# User Response Schema
 class UserResponse(BaseModel):
     id: int
     full_name: str
     email: EmailStr
-    role: str
+    role: RoleName
     company_id: Optional[int] = None
     phone: Optional[str] = None
     department: Optional[str] = None
     joining_date: Optional[date] = None
-    status: str
+    status: UserStatus
 
     model_config = ConfigDict(from_attributes=True)

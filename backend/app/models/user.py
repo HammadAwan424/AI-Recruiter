@@ -5,6 +5,7 @@ from sqlalchemy.orm import relationship, Mapped, mapped_column
 from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
 from sqlalchemy.sql import func
 from app.database import Base, BaseModelMixin
+from app.domain.enums import RoleName, UserStatus, db_enum
 
 
 class User(Base, BaseModelMixin):
@@ -14,7 +15,7 @@ class User(Base, BaseModelMixin):
     full_name: Mapped[str] = mapped_column(String, nullable=False)
     email: Mapped[str] = mapped_column(String, unique=True, nullable=False, index=True)
     password: Mapped[str] = mapped_column(String, nullable=False)
-    role: Mapped[str] = mapped_column(String, nullable=False)  # superadmin / ceo / employee
+    role: Mapped[RoleName] = mapped_column(db_enum(RoleName, "role_name"), nullable=False)
 
     company_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("companies.id", ondelete="SET NULL"),
@@ -25,7 +26,9 @@ class User(Base, BaseModelMixin):
     phone: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     department: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     joining_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
-    status: Mapped[str] = mapped_column(String, default="active", nullable=False)  # pending / active / inactive
+    status: Mapped[UserStatus] = mapped_column(
+        db_enum(UserStatus, "user_status"), default=UserStatus.ACTIVE, nullable=False
+    )
 
     approved_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)

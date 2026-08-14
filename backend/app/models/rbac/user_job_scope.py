@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional
-from sqlalchemy import ForeignKey, DateTime
+from sqlalchemy import ForeignKey, DateTime, UniqueConstraint
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from sqlalchemy.sql import func
 from app.database import Base, BaseModelMixin
@@ -8,6 +8,9 @@ from app.database import Base, BaseModelMixin
 
 class UserJobScope(Base, BaseModelMixin):
     __tablename__ = "user_job_scopes"
+    __table_args__ = (
+        UniqueConstraint("user_id", "job_id", name="uq_user_job_scopes_user_job"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(

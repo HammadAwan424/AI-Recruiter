@@ -6,12 +6,12 @@ BACKEND_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(BACKEND_ROOT))
 
 from app.database import SessionLocal
-from app.models import Company, Job
+from app.models import Company, GmailAccount, Job
 from app.services.gmail.fetch_mails import get_after_date
 from tests.util.fixture_io import write_stage_artifact
 
 # ─────────────────────────────────────────────────────────────
-# CONFIGURABLE TEST TIMESTAMP FOR COMPANY.GMAIL_LAST_READ
+# CONFIGURABLE TEST TIMESTAMP FOR MAILBOX LAST_READ
 # Change this timestamp to test different 'after' date query bounds:
 # ─────────────────────────────────────────────────────────────
 CONFIGURABLE_LAST_READ = datetime(2026, 8, 5, 14, 30, 0)
@@ -30,7 +30,18 @@ def test_prepare_sync_context():
             db.add(test_company)
             db.commit()
             db.refresh(test_company)
-        test_company.gmail_last_read = CONFIGURABLE_LAST_READ
+        gmail_account = (
+            db.query(GmailAccount)
+            .filter(GmailAccount.company_id == test_company.id)
+            .first()
+        )
+        if not gmail_account:
+            gmail_account = GmailAccount(
+                company_id=test_company.id,
+                email=f"test-company-{test_company.id}@gmail.local",
+            )
+            db.add(gmail_account)
+        gmail_account.last_read = CONFIGURABLE_LAST_READ
 
         # 2. Create or retrieve test Job
         test_job = (
@@ -44,12 +55,8 @@ def test_prepare_sync_context():
                 title="Test AI Engineer",
                 full_description="Test Job Description for Stage 4",
                 keywords="Python, AI, FastAPI",
-                last_read=CONFIGURABLE_LAST_READ
             )
             db.add(test_job)
-        else:
-            test_job.last_read = CONFIGURABLE_LAST_READ
-
         db.commit()
         db.refresh(test_job)
 
@@ -62,7 +69,7 @@ def test_prepare_sync_context():
             context,
         )
 
-        print(f"✓ Configured company.gmail_last_read: {CONFIGURABLE_LAST_READ.isoformat()}")
+        print(f"✓ Configured mailbox.last_read: {CONFIGURABLE_LAST_READ.isoformat()}")
         print(f"✓ Job #{test_job.id} '{test_job.title}': after_date_query='{context.after_date_query}'")
         print(f"✓ wrote {output_path}")
 

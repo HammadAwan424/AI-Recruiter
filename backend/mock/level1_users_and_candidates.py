@@ -103,7 +103,13 @@ def seed_users_and_candidates(db):
 
     candidates = []
     for name, email, phone in candidate_data:
-        cand = Candidate(full_name=name, email=email, phone=phone)
+        cand = Candidate(
+            company_id=company.id,
+            full_name=name,
+            email=email,
+            normalized_email=email.strip().lower(),
+            phone=phone,
+        )
         db.add(cand)
         candidates.append(cand)
 

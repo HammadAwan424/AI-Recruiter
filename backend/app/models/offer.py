@@ -8,10 +8,12 @@ from sqlalchemy import (
     ForeignKey,
     DateTime,
     Boolean,
+    CheckConstraint,
 )
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from sqlalchemy.sql import func
 from app.database import Base, BaseModelMixin
+from app.domain.enums import OfferStatus, SignatureType, db_enum
 
 
 class OfferTemplate(Base, BaseModelMixin):
@@ -48,6 +50,9 @@ class OfferTemplate(Base, BaseModelMixin):
 
 class Offer(Base, BaseModelMixin):
     __tablename__ = "offers"
+    __table_args__ = (
+        CheckConstraint("base_salary >= 0", name="ck_offers_base_salary_nonnegative"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
 
@@ -70,13 +75,21 @@ class Offer(Base, BaseModelMixin):
 
     expiry_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     offer_letter_text: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[OfferStatus] = mapped_column(
+        db_enum(OfferStatus, "offer_status"),
+        default=OfferStatus.PENDING_APPROVAL,
+        nullable=False,
+        index=True,
+    )
 
     # Security Token for candidate access link
     secure_token: Mapped[Optional[str]] = mapped_column(String, unique=True, index=True, nullable=True)
     token_expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     # E-Signature Data
-    signature_type: Mapped[Optional[str]] = mapped_column(String, nullable=True)  # DRAWN | TYPED
+    signature_type: Mapped[Optional[SignatureType]] = mapped_column(
+        db_enum(SignatureType, "signature_type"), nullable=True
+    )
     signature_data: Mapped[Optional[str]] = mapped_column(Text, nullable=True)   # Base64 image data or typed text
     signer_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     signer_ip: Mapped[Optional[str]] = mapped_column(String, nullable=True)

@@ -91,17 +91,24 @@ def public_apply_candidate(
         )
 
     # 4. Resolve / Create Candidate Record
-    candidate = db.query(Candidate).filter(Candidate.email == email).first()
+    normalized_email = email.strip().lower()
+    candidate = db.query(Candidate).filter(
+        Candidate.company_id == job.company_id,
+        Candidate.normalized_email == normalized_email,
+    ).first()
     if not candidate:
         candidate = Candidate(
+            company_id=job.company_id,
             full_name=full_name,
-            email=email,
+            email=normalized_email,
+            normalized_email=normalized_email,
             phone=phone
         )
         db.add(candidate)
         db.flush()
     else:
         candidate.full_name = full_name
+        candidate.email = normalized_email
         candidate.phone = phone
 
     # 5. Save PDF File to Disk

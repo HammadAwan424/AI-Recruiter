@@ -11,12 +11,12 @@ BACKEND_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(BACKEND_ROOT))
 
 from app.database import Base
-from app.models import Company, Job
-from app.schemas.application import FetchedEmailApplication
+from app.models import Company, GmailAccount, Job
 from app.schemas.gmail import (
     ClassifiedGmailMessages,
     DedupedGmailMessages,
     FetchedGmailMessage,
+    FetchedEmailApplication,
     GmailApplicationBatch,
     JobClassificationBatchResult,
     JobClassificationResult,
@@ -48,6 +48,12 @@ class GmailSyncTests(unittest.TestCase):
         self.company = Company(name=f"Sync Test Company {id(self)}")
         self.db.add(self.company)
         self.db.flush()
+        self.gmail_account = GmailAccount(
+            company_id=self.company.id,
+            email=f"sync-{id(self)}@example.com",
+        )
+        self.db.add(self.gmail_account)
+        self.db.flush()
         self.job_one = Job(company_id=self.company.id, title="AI Engineer")
         self.job_two = Job(company_id=self.company.id, title="Frontend Engineer")
         self.db.add_all([self.job_one, self.job_two])
@@ -56,14 +62,15 @@ class GmailSyncTests(unittest.TestCase):
     def tearDown(self):
         self.db.close()
 
-    def test_after_date_uses_company_cursor(self):
-        self.company.gmail_last_read = datetime(2026, 8, 10, 17, 45)
+    def test_after_date_uses_mailbox_cursor(self):
+        self.gmail_account.last_read = datetime(2026, 8, 10, 17, 45)
         self.db.commit()
 
         context = get_after_date(self.db, self.job_one.id)
 
         self.assertEqual(context.after_date_query, "2026/08/10")
         self.assertEqual(context.gmail_last_read, datetime(2026, 8, 10, 17, 45))
+        self.assertEqual(context.gmail_account_id, self.gmail_account.id)
 
     def test_latest_message_is_selected_per_candidate_and_job(self):
         older = datetime(2026, 8, 10, 10, 0)
@@ -191,7 +198,8 @@ class GmailSyncTests(unittest.TestCase):
 
         self.assertEqual(result.total_saved, 1)
         self.assertEqual(result.unmatched_count, 1)
-        self.assertEqual(self.company.gmail_last_read, latest_time)
+        self.db.refresh(self.gmail_account)
+        self.assertEqual(self.gmail_account.last_read, latest_time)
         self.assertEqual(self.job_two.applications[0].job_id, self.job_two.id)
 
 

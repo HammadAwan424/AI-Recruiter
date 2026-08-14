@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Request, Body
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.schemas.offer import OfferPublicResponse, CandidateOfferDecision
+from app.schemas.offer_public import OfferPublicResponse, CandidateOfferDecision
 from app.services.offer_service import (
     get_public_offer_service,
     record_candidate_decision_service,

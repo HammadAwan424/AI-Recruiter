@@ -1,4 +1,3 @@
-import json
 import asyncio
 import os
 from datetime import datetime
@@ -25,6 +24,7 @@ from app.services.gmail import (
     fetch_job_application_emails_service,
     notify_candidate_rejection,
 )
+from app.services.offer_service import offer_to_response
 
 router = APIRouter(tags=["Applications CRUD"])
 
@@ -128,7 +128,18 @@ def get_application_detail(
     if not app_detail:
         raise HTTPException(status_code=404, detail="Application record not found")
 
-    return app_detail
+    # Populate relationship-derived response fields explicitly. They are not
+    # columns on InterviewModel/Offer and must not be hidden by optional schema
+    # defaults.
+    for interview in app_detail.interviews:
+        interview.candidate_name = app_detail.candidate.full_name if app_detail.candidate else None
+        interview.candidate_email = app_detail.candidate.email if app_detail.candidate else None
+        interview.job_title = app_detail.job.title if app_detail.job else None
+
+    response = ApplicationDetail.model_validate(app_detail)
+    if app_detail.offer:
+        response.offer = offer_to_response(app_detail.offer)
+    return response
 
 
 # ─────────────────────────────────────────────────────────────
@@ -240,7 +251,7 @@ def _run_parse_for_application(db: Session, app_id: int) -> Optional[ParsingLLMO
             cv_text=app.cv_text,
         )
     )
-    app.parsed_profile = json.dumps(parsed_result.profile.model_dump())
+    app.parsed_profile = parsed_result.model_dump(mode="json")
     db.commit()
     db.refresh(app)
     return parsed_result.profile

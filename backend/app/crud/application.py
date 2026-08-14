@@ -26,6 +26,7 @@ def create_application_db(
     cv_text: Optional[str] = None,
     cv_pdf_path: Optional[str] = None,
     gmail_message_id: Optional[str] = None,
+    gmail_account_id: Optional[int] = None,
     received_at: Optional[datetime] = None,
     created_by: Optional[int] = None,
 ) -> Application:
@@ -39,6 +40,7 @@ def create_application_db(
         cv_text=cv_text,
         cv_pdf_path=cv_pdf_path,
         gmail_message_id=gmail_message_id,
+        gmail_account_id=gmail_account_id,
         received_at=received_at,
         created_by=created_by,
     )

@@ -1,5 +1,5 @@
-from pydantic import BaseModel, Field, ConfigDict
-from typing import List, Optional, Dict, Any, Literal
+from pydantic import BaseModel, Field, model_validator
+from typing import List, Optional, Literal
 from datetime import datetime
 
 
@@ -44,10 +44,22 @@ class ScreeningLLMOutput(BaseModel):
 
 
 class ScreeningDimensionWeights(BaseModel):
-    skills_match: float = 0.35
-    experience_match: float = 0.35
-    education_match: float = 0.15
-    keyword_coverage: float = 0.15
+    skills_match: float = Field(default=0.35, ge=0)
+    experience_match: float = Field(default=0.35, ge=0)
+    education_match: float = Field(default=0.15, ge=0)
+    keyword_coverage: float = Field(default=0.15, ge=0)
+
+    @model_validator(mode="after")
+    def validate_total(self):
+        total = (
+            self.skills_match
+            + self.experience_match
+            + self.education_match
+            + self.keyword_coverage
+        )
+        if abs(total - 1.0) > 1e-6:
+            raise ValueError("screening dimension weights must sum to 1.0")
+        return self
 
 
 class ScreeningEvaluationDetail(BaseModel):

@@ -1,22 +1,13 @@
-from pydantic import BaseModel, ConfigDict, Field
-from typing import Optional
 from datetime import datetime
+import json
+from typing import Optional
 
-from app.schemas.gmail import FetchedEmailApplication, JobApplicationSyncSummary
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-
-class ScreeningTaskPayload(BaseModel):
-    application_id: Optional[int] = None
-    candidate_id: int
-    job_id: int
-    candidate_name: str
-    candidate_email: str
-    cv_text: str
-    job_title: str
-    job_description: str
-    job_keywords: str
-    job_experience: str
-    job_skills: str
+from app.domain.enums import ApplicationDisposition, ApplicationStatus
+from app.schemas.extraction import ParsedResumeProfile
+from app.schemas.gmail import JobApplicationSyncSummary
+from app.schemas.screening import EvidenceSet, FitFlag, ScreeningDimensionWeights
 
 
 class ApplicationCreate(BaseModel):
@@ -27,29 +18,35 @@ class ApplicationCreate(BaseModel):
 
 
 class ApplicationUpdate(BaseModel):
-    current_status: Optional[str] = None
-    disposition: Optional[str] = None
-    match_score: Optional[float] = None
-    final_score: Optional[float] = None
-    updated_by: Optional[int] = None
+    """Only workflow-owned stage/disposition fields are client-editable here."""
+
+    current_status: Optional[ApplicationStatus] = None
+    disposition: Optional[ApplicationDisposition] = None
 
 
 class ApplicationScreeningResponse(BaseModel):
     id: int
     application_id: int
-    skills_match: int
-    experience_match: int
-    education_match: int
-    keyword_coverage: int
-    match_score: float
-    confidence: int
+    skills_match: int = Field(ge=0, le=100)
+    experience_match: int = Field(ge=0, le=100)
+    education_match: int = Field(ge=0, le=100)
+    keyword_coverage: int = Field(ge=0, le=100)
+    match_score: float = Field(ge=0, le=100)
+    confidence: int = Field(ge=0, le=100)
     data_quality_flag: Optional[str] = None
-    evidence: str
-    fit_flags: Optional[str] = None
-    weights_used: str
+    evidence: EvidenceSet
+    fit_flags: list[FitFlag] = Field(default_factory=list)
+    weights_used: ScreeningDimensionWeights
     model_used: str
     prompt_version: str
     evaluated_at: datetime
+
+    @field_validator("evidence", "fit_flags", "weights_used", mode="before")
+    @classmethod
+    def decode_legacy_json(cls, value):
+        if isinstance(value, str):
+            return json.loads(value)
+        return value
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -59,6 +56,7 @@ class CandidateMinimalResponse(BaseModel):
     full_name: str
     email: str
     phone: Optional[str] = None
+
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -66,6 +64,7 @@ class JobMinimalResponse(BaseModel):
     id: int
     title: str
     department: Optional[str] = None
+
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -75,13 +74,14 @@ class ApplicationResponse(BaseModel):
     job_id: int
     cv_text: Optional[str] = None
     cv_pdf_path: Optional[str] = None
+    gmail_account_id: Optional[int] = None
     gmail_message_id: Optional[str] = None
     received_at: Optional[datetime] = None
-    parsed_profile: Optional[str] = None
-    current_status: str
-    disposition: str
-    match_score: Optional[float] = None
-    final_score: Optional[float] = None
+    parsed_profile: Optional[ParsedResumeProfile] = None
+    current_status: ApplicationStatus
+    disposition: ApplicationDisposition
+    match_score: Optional[float] = Field(default=None, ge=0, le=100)
+    final_score: Optional[float] = Field(default=None, ge=0, le=100)
     screening: Optional[ApplicationScreeningResponse] = None
     candidate: Optional[CandidateMinimalResponse] = None
     job: Optional[JobMinimalResponse] = None
@@ -90,11 +90,24 @@ class ApplicationResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+    @field_validator("parsed_profile", mode="before")
+    @classmethod
+    def decode_legacy_profile_json(cls, value):
+        if isinstance(value, str):
+            value = json.loads(value)
+        if isinstance(value, dict) and "profile" not in value and "skills" in value:
+            return {
+                "schema_version": "extraction.parsed_resume_profile.v1",
+                "source_name": "legacy-application-profile",
+                "profile": value,
+            }
+        return value
+
     model_config = ConfigDict(from_attributes=True)
 
 
 class CommentCreate(BaseModel):
-    content: str
+    content: str = Field(min_length=1)
 
 
 class CommentResponse(BaseModel):
@@ -112,9 +125,9 @@ class ScreeningResultResponse(BaseModel):
     application_id: int
     candidate_id: int
     candidate_name: str
-    match_score: float
-    status: str
-    disposition: str
+    match_score: float = Field(ge=0, le=100)
+    status: ApplicationStatus
+    disposition: ApplicationDisposition
 
 
 class FetchApplicationsResponse(BaseModel):

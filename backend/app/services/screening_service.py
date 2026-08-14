@@ -26,10 +26,14 @@ def resolve_dimension_weights(job: Job) -> ScreeningDimensionWeights:
     """Resolves custom job screening weights or defaults to 35% skills, 35% experience, 15% education, 15% keywords."""
     if hasattr(job, "screening_weights") and job.screening_weights:
         try:
-            data = json.loads(job.screening_weights)
+            data = (
+                json.loads(job.screening_weights)
+                if isinstance(job.screening_weights, str)
+                else job.screening_weights
+            )
             return ScreeningDimensionWeights(**data)
-        except Exception:
-            pass
+        except Exception as exc:
+            raise ValueError(f"Invalid screening weights for job #{job.id}") from exc
     return ScreeningDimensionWeights()  # Default: skills=0.35, experience=0.35, education=0.15, keyword_coverage=0.15
 
 
@@ -103,9 +107,9 @@ def run_screening_for_application(
             disposition = "rejected"
 
     # 4. Serialize JSON Evidence, Fit Flags & Weights
-    evidence_json = llm_output.evidence.model_dump_json()
-    fit_flags_json = json.dumps([f.model_dump() for f in llm_output.fit_flags]) if llm_output.fit_flags else "[]"
-    weights_json = weights.model_dump_json()
+    evidence_json = llm_output.evidence.model_dump(mode="json")
+    fit_flags_json = [f.model_dump(mode="json") for f in llm_output.fit_flags]
+    weights_json = weights.model_dump(mode="json")
 
     # 5. Database Persistence (ApplicationScreening 1-to-1 entity)
     existing_screening = db.query(ApplicationScreening).filter(
