@@ -319,7 +319,6 @@ def log_token_usage(
             "cache_write=%d output=%d completion=%d visible_output=%d "
             "reasoning=%d audio_input=%d audio_output=%d "
             "accepted_prediction=%d rejected_prediction=%d total=%d "
-            "usage_available=%s input_details=%s output_details=%s"
         ),
         stage,
         usage["input_tokens"],
@@ -335,10 +334,7 @@ def log_token_usage(
         usage["audio_output_tokens"],
         usage["accepted_prediction_tokens"],
         usage["rejected_prediction_tokens"],
-        usage["total_tokens"],
-        usage["usage_available"],
-        usage["input_details"],
-        usage["output_details"],
+        usage["total_tokens"]
     )
     return usage
 

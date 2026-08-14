@@ -5,6 +5,7 @@ from app.utils.llm_factory import get_llm
 from langchain_core.messages import SystemMessage, HumanMessage
 from langchain_core.output_parsers import JsonOutputParser
 
+from app.schemas.extraction import ExtractedResumeText, ParsedResumeProfile
 from app.schemas.parsing import ParsingLLMOutput
 from app.agents.parsing.prompts import PARSING_SYSTEM_PROMPT
 from app.utility.token_usage import log_token_usage
@@ -13,21 +14,27 @@ load_dotenv()
 logger = get_logger(__name__, "parser.log")
 
 
-def parse_resume_structured(cv_text: str) -> ParsingLLMOutput:
+def parse_resume_structured(
+    resume: ExtractedResumeText,
+) -> ParsedResumeProfile:
     """
-    Direct structured LLM invocation to parse raw resume CV text into structured skills,
-    work history, education, certifications, and review flag.
+    Parse a validated extracted-resume schema into a structured profile.
     """
-    sanitized_cv = (cv_text or "").strip()[:4000]
+    validated_resume = ExtractedResumeText.model_validate(resume)
+    sanitized_cv = validated_resume.cv_text.strip()[:4000]
     if not sanitized_cv:
         logger.warning("Empty or missing CV text provided for resume parsing.")
-        return ParsingLLMOutput(
-            skills=[],
-            work_history=[],
-            education=[],
-            certifications=[],
-            needs_review=True,
-            review_reason="Empty or missing resume text"
+        return ParsedResumeProfile(
+            schema_version="extraction.parsed_resume_profile.v1",
+            source_name=validated_resume.source_name,
+            profile=ParsingLLMOutput(
+                skills=[],
+                work_history=[],
+                education=[],
+                certifications=[],
+                needs_review=True,
+                review_reason="Empty or missing resume text",
+            ),
         )
 
     logger.info("Starting structured resume parsing (CV length: %d chars)...", len(sanitized_cv))
@@ -58,7 +65,11 @@ def parse_resume_structured(cv_text: str) -> ParsingLLMOutput:
             len(structured_res.work_history),
             len(structured_res.education),
         )
-        return structured_res
+        return ParsedResumeProfile(
+            schema_version="extraction.parsed_resume_profile.v1",
+            source_name=validated_resume.source_name,
+            profile=structured_res,
+        )
     except Exception as primary_err:
         logger.warning("Primary structured LLM parsing failed: %s. Attempting fallback parser...", primary_err)
         try:
@@ -81,18 +92,26 @@ def parse_resume_structured(cv_text: str) -> ParsingLLMOutput:
                 len(result.skills),
                 len(result.work_history),
             )
-            return result
+            return ParsedResumeProfile(
+                schema_version="extraction.parsed_resume_profile.v1",
+                source_name=validated_resume.source_name,
+                profile=result,
+            )
         except Exception as fallback_err:
             logger.error(
                 "Both primary and fallback resume parsing failed. Primary error: %s | Fallback error: %s",
                 primary_err,
                 fallback_err,
             )
-            return ParsingLLMOutput(
-                skills=[],
-                work_history=[],
-                education=[],
-                certifications=[],
-                needs_review=True,
-                review_reason=f"LLM parsing failed: {primary_err} | Fallback failed: {fallback_err}"
+            return ParsedResumeProfile(
+                schema_version="extraction.parsed_resume_profile.v1",
+                source_name=validated_resume.source_name,
+                profile=ParsingLLMOutput(
+                    skills=[],
+                    work_history=[],
+                    education=[],
+                    certifications=[],
+                    needs_review=True,
+                    review_reason=f"LLM parsing failed: {primary_err} | Fallback failed: {fallback_err}",
+                ),
             )

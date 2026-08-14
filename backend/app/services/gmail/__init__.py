@@ -1,4 +1,5 @@
 from app.services.gmail.fetch_mails import (
+    GmailSyncResult,
     fetch_job_application_emails_service,
     get_after_date,
     get_deduped_mails,
@@ -19,6 +20,7 @@ from app.services.gmail.notifications import (
 
 __all__ = [
     "fetch_job_application_emails_service",
+    "GmailSyncResult",
     "get_after_date",
     "get_deduped_mails",
     "process_mails",

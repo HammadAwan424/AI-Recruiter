@@ -1,6 +1,8 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional
 from datetime import datetime
+
+from app.schemas.gmail import FetchedEmailApplication, JobApplicationSyncSummary
 
 
 class ScreeningTaskPayload(BaseModel):
@@ -115,20 +117,15 @@ class ScreeningResultResponse(BaseModel):
     disposition: str
 
 
-class FetchedEmailApplication(BaseModel):
-    full_name: str
-    email: str
-    cv_text: str
-    cv_pdf_path: Optional[str] = None
-    cv_filename: Optional[str] = None
-    gmail_message_id: str
-    received_at: datetime
-
-
 class FetchApplicationsResponse(BaseModel):
     message: str
     job_id: int
+    company_id: int
     total_fetched: int
     total_saved: int
     new_applications: int
     renewed_applications: int
+    classified_count: int
+    unmatched_count: int
+    failed_upsert_count: int
+    job_summaries: list[JobApplicationSyncSummary] = Field(default_factory=list)

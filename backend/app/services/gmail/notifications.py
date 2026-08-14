@@ -1,6 +1,7 @@
 import logging
-from typing import Optional, Dict, Any
+from typing import Optional
 from app.services.gmail.send_mails import send_email_service
+from app.schemas.gmail import OutboundEmailResult
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +54,7 @@ def notify_executive_offer_approval(
     base_salary: float,
     bonus_equity: Optional[str] = None,
     start_date: Optional[str] = None
-) -> Optional[Dict[str, Any]]:
+) -> Optional[OutboundEmailResult]:
     """One-liner to notify CEO/Executive of a pending offer approval request."""
     if not approver_email:
         return None
@@ -93,7 +94,7 @@ def notify_candidate_offer_letter(
     base_salary: float,
     start_date: Optional[str] = None,
     frontend_base_url: str = "http://localhost:5173"
-) -> Optional[Dict[str, Any]]:
+) -> Optional[OutboundEmailResult]:
     """One-liner to send official offer letter with secure signing link to candidate."""
     if not candidate_email:
         return None
@@ -131,7 +132,7 @@ def notify_recruiter_offer_decision(
     job_title: str,
     decision: str,
     comments: Optional[str] = None
-) -> Optional[Dict[str, Any]]:
+) -> Optional[OutboundEmailResult]:
     """One-liner to notify recruiter/creator of executive offer sign-off or revision request."""
     if not recruiter_email:
         return None
@@ -166,7 +167,7 @@ def notify_candidate_welcome_onboarding(
     company_name: str,
     start_date: Optional[str] = None,
     audit_hash: Optional[str] = None
-) -> Optional[Dict[str, Any]]:
+) -> Optional[OutboundEmailResult]:
     """One-liner to send welcome & onboarding confirmation email to hired candidate."""
     if not candidate_email:
         return None
@@ -202,7 +203,7 @@ def notify_candidate_interview_invite(
     meeting_link: str,
     scheduled_date: str,
     scheduled_time: str
-) -> Optional[Dict[str, Any]]:
+) -> Optional[OutboundEmailResult]:
     """One-liner to send interview confirmation & meeting link to candidate."""
     if not candidate_email:
         return None
@@ -237,7 +238,7 @@ def notify_candidate_self_schedule(
     job_title: str,
     schedule_token: str,
     frontend_base_url: str = "http://localhost:5173"
-) -> Optional[Dict[str, Any]]:
+) -> Optional[OutboundEmailResult]:
     """One-liner to send self-schedule link to candidate."""
     if not candidate_email:
         return None
@@ -272,7 +273,7 @@ def notify_interviewer_assignment(
     scheduled_date: str,
     scheduled_time: str,
     meeting_link: str
-) -> Optional[Dict[str, Any]]:
+) -> Optional[OutboundEmailResult]:
     """One-liner to notify an interviewer of an assigned candidate round."""
     if not interviewer_email:
         return None
@@ -308,7 +309,7 @@ def notify_candidate_rejection(
     candidate_name: str,
     job_title: str,
     company_name: str = "AI Recruiter"
-) -> Optional[Dict[str, Any]]:
+) -> Optional[OutboundEmailResult]:
     """One-liner to send professional rejection email to candidate."""
     if not candidate_email:
         return None

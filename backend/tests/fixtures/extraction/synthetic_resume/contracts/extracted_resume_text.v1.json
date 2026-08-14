@@ -1,0 +1,5 @@
+{
+  "schema_version": "extraction.extracted_resume_text.v1",
+  "source_name": "synthetic_resume.pdf",
+  "cv_text": "Synthetic Candidate\nPython developer with FastAPI experience.\n"
+}

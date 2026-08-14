@@ -3,3 +3,4 @@ venv
 token.json
 credentials.json
 *.log
+tests/.artifacts/

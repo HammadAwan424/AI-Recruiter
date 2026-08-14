@@ -1,0 +1,29 @@
+{
+  "schema_version": "gmail.processed_messages.v1",
+  "company_id": 1,
+  "anchor_job_id": 10,
+  "messages": [
+    {
+      "gmail_message_id": "synthetic-message-1",
+      "full_name": "Synthetic Candidate",
+      "email": "candidate.one@example.test",
+      "subject": "Application for AI Engineer",
+      "text_content": "Please consider my application for the AI Engineer position.",
+      "cv_text": "Synthetic Candidate\nPython and FastAPI developer.",
+      "cv_pdf_path": null,
+      "cv_filename": "synthetic_resume.pdf",
+      "received_at": "2026-08-11T13:27:59"
+    },
+    {
+      "gmail_message_id": "synthetic-message-2",
+      "full_name": "Another Synthetic Candidate",
+      "email": "candidate.two@example.test",
+      "subject": "Hello from a candidate",
+      "text_content": "I would like to learn more about opportunities at your company.",
+      "cv_text": null,
+      "cv_pdf_path": null,
+      "cv_filename": null,
+      "received_at": "2026-08-11T13:28:00"
+    }
+  ]
+}

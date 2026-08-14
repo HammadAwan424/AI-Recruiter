@@ -1,0 +1,19 @@
+{
+  "schema_version": "gmail.classified_messages.v1",
+  "company_id": 1,
+  "anchor_job_id": 10,
+  "results": [
+    {
+      "gmail_message_id": "synthetic-message-1",
+      "job_id": 10,
+      "confidence": 98,
+      "rationale": "The subject and body explicitly identify the AI Engineer position."
+    },
+    {
+      "gmail_message_id": "synthetic-message-2",
+      "job_id": null,
+      "confidence": 0,
+      "rationale": "The message does not identify an application or a job."
+    }
+  ]
+}

@@ -11,6 +11,7 @@ from app.schemas.screening import (
     EvidenceSet,
     EvidenceBlock,
 )
+from app.schemas.extraction import ResumeScreeningInput, ScreeningResult
 from app.agents.screening.prompts import (
     SCREENING_SYSTEM_PROMPT,
     build_screening_user_prompt
@@ -149,22 +150,23 @@ def _build_evaluation_graph():
 _evaluation_pipeline = _build_evaluation_graph()
 
 
-def evaluate_cv_structured(
-    cv_text: str,
-    job_title: str,
-    job_description: str,
-    job_skills: str
-) -> ScreeningLLMOutput:
-    """Public entry point: Evaluates candidate CV text against job requirements using pure LLM pipeline."""
+def evaluate_cv_structured(screening_input: ResumeScreeningInput) -> ScreeningResult:
+    """Evaluate a validated resume/job input and return a typed screening result."""
+    validated_input = ResumeScreeningInput.model_validate(screening_input)
     initial_state: EvaluationState = {
-        "cv_text": cv_text,
-        "job_title": job_title,
-        "job_description": job_description,
-        "job_skills": job_skills,
+        "cv_text": validated_input.resume.cv_text,
+        "job_title": validated_input.job.title,
+        "job_description": validated_input.job.description,
+        "job_skills": validated_input.job.skills,
         "sanitized_cv": "",
         "llm_output": None,
         "error": ""
     }
 
     final_state = _evaluation_pipeline.invoke(initial_state)
-    return final_state["llm_output"]
+    return ScreeningResult(
+        schema_version="extraction.screening_result.v1",
+        source_name=validated_input.source_name,
+        job_title=validated_input.job.title,
+        result=final_state["llm_output"],
+    )

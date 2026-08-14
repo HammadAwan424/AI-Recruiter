@@ -1,0 +1,6 @@
+{
+  "schema_version": "extraction.job_spec.v1",
+  "title": "AI Engineer",
+  "description": "Build reliable AI services and APIs for the recruiting platform.",
+  "skills": "Python, FastAPI, machine learning"
+}

@@ -11,6 +11,7 @@ class Company(Base, BaseModelMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String, unique=True, nullable=False, index=True)
+    gmail_last_read: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, index=True)
 
     # Audit Trail (Integer IDs to prevent circular DDL FK dependency with User during drop_all)
     created_by: Mapped[Optional[int]] = mapped_column(

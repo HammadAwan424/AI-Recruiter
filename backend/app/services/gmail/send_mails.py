@@ -1,8 +1,9 @@
 import base64
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from typing import Optional, Dict, Any
+from typing import Optional
 
+from app.schemas.gmail import OutboundEmailResult
 from app.utils.gmail import get_gmail_service
 
 
@@ -11,7 +12,7 @@ def send_email_service(
     subject: str,
     body_text: str,
     html_content: Optional[str] = None
-) -> Dict[str, Any]:
+) -> OutboundEmailResult:
     """
     Sends an email to recipient_email via Gmail API.
     - recipient_email: Destination email address.
@@ -45,10 +46,11 @@ def send_email_service(
         body=send_payload
     ).execute()
 
-    return {
-        "message_id": sent_message.get("id"),
-        "thread_id": sent_message.get("threadId"),
-        "recipient": recipient_email,
-        "subject": subject,
-        "status": "sent"
-    }
+    return OutboundEmailResult(
+        schema_version="gmail.outbound_email_result.v1",
+        message_id=sent_message.get("id"),
+        thread_id=sent_message.get("threadId"),
+        recipient=recipient_email,
+        subject=subject,
+        status="sent",
+    )

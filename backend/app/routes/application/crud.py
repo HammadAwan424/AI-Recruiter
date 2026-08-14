@@ -1,5 +1,6 @@
 import json
 import asyncio
+import os
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
@@ -12,6 +13,7 @@ from app.models.interview import InterviewModel, InterviewInterviewers
 from app.schemas.application import ApplicationUpdate, FetchApplicationsResponse
 from app.schemas.composite import ApplicationDetail, ApplicationListItem
 from app.schemas.parsing import ParsingLLMOutput
+from app.schemas.extraction import ExtractedResumeText
 from app.agents.parsing import parse_resume_structured
 from app.utils.security import get_current_user, get_job_or_403, get_application_or_403
 from app.models.candidate import Candidate
@@ -40,14 +42,11 @@ def fetch_new_cvs(
     job: Job = Depends(get_job_or_403)
 ):
     """
-    Fetches new email applications for a job using the Gmail service layer.
-    - Encapsulates 4 subcomponents:
-      1. get_after_date
-      2. get_deduped_mails
-      3. process_mails
-      4. persist_application_with_candidate
+    Fetches and classifies new company-wide email applications using the Gmail
+    service layer. The selected job provides authorization and the company
+    scope; matching messages may be persisted into any job in that company.
     """
-    email_applications, total_saved, new_applications, renewed_applications = fetch_job_application_emails_service(
+    sync_result = fetch_job_application_emails_service(
         db=db,
         job_id=job.id,
         before=before,
@@ -56,12 +55,22 @@ def fetch_new_cvs(
     )
 
     return FetchApplicationsResponse(
-        message=f"Successfully processed {total_saved} applications ({new_applications} new, {renewed_applications} renewed).",
+        message=(
+            f"Successfully processed {sync_result.total_saved} applications "
+            f"({sync_result.new_applications} new, "
+            f"{sync_result.renewed_applications} renewed, "
+            f"{sync_result.unmatched_count} unmatched)."
+        ),
         job_id=job.id,
-        total_fetched=len(email_applications),
-        total_saved=total_saved,
-        new_applications=new_applications,
-        renewed_applications=renewed_applications
+        company_id=job.company_id,
+        total_fetched=len(sync_result.fetched_messages),
+        total_saved=sync_result.total_saved,
+        new_applications=sync_result.new_applications,
+        renewed_applications=sync_result.renewed_applications,
+        classified_count=sync_result.classified_count,
+        unmatched_count=sync_result.unmatched_count,
+        failed_upsert_count=sync_result.failed_upsert_count,
+        job_summaries=sync_result.job_summaries,
     )
 
 
@@ -224,11 +233,17 @@ def _run_parse_for_application(db: Session, app_id: int) -> Optional[ParsingLLMO
     if not app or not app.cv_text or not app.cv_text.strip():
         return None
 
-    parsed_result = parse_resume_structured(app.cv_text)
-    app.parsed_profile = json.dumps(parsed_result.model_dump())
+    parsed_result = parse_resume_structured(
+        ExtractedResumeText(
+            schema_version="extraction.extracted_resume_text.v1",
+            source_name=app.cv_pdf_path or f"application-{app.id}.resume",
+            cv_text=app.cv_text,
+        )
+    )
+    app.parsed_profile = json.dumps(parsed_result.profile.model_dump())
     db.commit()
     db.refresh(app)
-    return parsed_result
+    return parsed_result.profile
 
 
 async def _parse_app_task(app_id: int, semaphore: asyncio.Semaphore, db: Session) -> Optional[ParsingLLMOutput]:

@@ -1,0 +1,26 @@
+{
+  "schema_version": "gmail.sync_context.v1",
+  "company_id": 1,
+  "anchor_job_id": 10,
+  "anchor_job_title": "AI Engineer",
+  "gmail_last_read": "2026-08-05T14:30:00",
+  "after_date_query": "2026/08/05",
+  "jobs": [
+    {
+      "id": 10,
+      "title": "AI Engineer",
+      "department": "Engineering",
+      "experience": "3+ years",
+      "skills": "Python, FastAPI, LLMs",
+      "keywords": "AI, machine learning"
+    },
+    {
+      "id": 11,
+      "title": "Backend Engineer",
+      "department": "Engineering",
+      "experience": "2+ years",
+      "skills": "Python, PostgreSQL",
+      "keywords": "API, backend"
+    }
+  ]
+}

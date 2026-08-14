@@ -99,10 +99,21 @@ export type CandidateApplication = ApplicationItem;
 export interface FetchApplicationsResponse {
   message: string;
   job_id: number;
+  company_id: number;
   total_fetched: number;
   total_saved: number;
   new_applications: number;
   renewed_applications: number;
+  classified_count: number;
+  unmatched_count: number;
+  failed_upsert_count: number;
+  job_summaries: Array<{
+    job_id: number;
+    total_saved: number;
+    new_applications: number;
+    renewed_applications: number;
+    failed_upserts: number;
+  }>;
 }
 
 export interface ApplicationDetail {

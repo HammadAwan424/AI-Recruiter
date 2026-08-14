@@ -11,6 +11,11 @@ from app.schemas.screening import (
     ScreeningEvaluationDetail,
     EvidenceSet
 )
+from app.schemas.extraction import (
+    ExtractedResumeText,
+    JobSpec,
+    ResumeScreeningInput,
+)
 from app.agents.screening import evaluate_cv_structured
 
 CONFIDENCE_HUMAN_REVIEW_THRESHOLD = 60  # Confidence < 60 routes to human review
@@ -62,12 +67,24 @@ def run_screening_for_application(
 
     # 1. Resolve Weights & Invoke Evaluator Agent
     weights = resolve_dimension_weights(job)
-    llm_output: ScreeningLLMOutput = evaluate_cv_structured(
-        cv_text=cv_text,
-        job_title=job_title,
-        job_description=job_description,
-        job_skills=job_skills
+    screening_result = evaluate_cv_structured(
+        ResumeScreeningInput(
+            schema_version="extraction.resume_screening_input.v1",
+            source_name=app.cv_pdf_path or f"application-{app.id}.resume",
+            resume=ExtractedResumeText(
+                schema_version="extraction.extracted_resume_text.v1",
+                source_name=app.cv_pdf_path or f"application-{app.id}.resume",
+                cv_text=cv_text,
+            ),
+            job=JobSpec(
+                schema_version="extraction.job_spec.v1",
+                title=job_title,
+                description=job_description,
+                skills=job_skills,
+            ),
+        )
     )
+    llm_output: ScreeningLLMOutput = screening_result.result
 
     # 2. Compute Weighted Rollup Score
     match_score = compute_weighted_match_score(llm_output, weights)
