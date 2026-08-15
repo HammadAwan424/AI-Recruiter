@@ -19,8 +19,16 @@ import {
 } from "../../interviews/api";
 import { useApproveOfferActionMutation } from "../../../shared/api/approvalApi";
 import { useDeleteOfferMutation } from "../../offers/api";
-import { ApplicationStatus, ApplicationListItem } from "../../../shared/types/candidate.types";
+import {
+  ApplicationStatus,
+  ApplicationListItem,
+  FetchApplicationsResponse,
+} from "../../../shared/types/candidate.types";
 import { formatApiError } from "../../../shared/utils/errorUtils";
+import type {
+  PipelineEvaluationStatus,
+  PipelineSyncMode,
+} from "../components/PipelineSyncReport";
 
 import {
   getCandidateEvaluationStatus,
@@ -78,6 +86,9 @@ export const useCandidatePipeline = () => {
   const [pipelineAlertMsg, setPipelineAlertMsg] = useState<string | null>(null);
   const [pipelineStep, setPipelineStep] = useState<"idle" | "fetching" | "parsing" | "screening">("idle");
   const [newlyImportedIds, setNewlyImportedIds] = useState<number[]>([]);
+  const [lastFetchReport, setLastFetchReport] = useState<FetchApplicationsResponse | null>(null);
+  const [syncMode, setSyncMode] = useState<PipelineSyncMode>("fetch");
+  const [evaluationStatus, setEvaluationStatus] = useState<PipelineEvaluationStatus>("not_run");
 
   const { applications, candidates, isLoading, isError } = useCandidates(selectedJobId);
   const { hireCandidate, rejectCandidate } = useCandidateMutations();
@@ -127,13 +138,15 @@ export const useCandidatePipeline = () => {
    * Connects to Gmail, fetches unread candidate emails, extracts PDFs,
    * runs the AI Job Classifier to route candidates to requisitions.
    */
-  const handleFetch = async (jobId: number) => {
+  const handleFetch = async (jobId: number, mode: PipelineSyncMode = "fetch") => {
     setPipelineAlertMsg(null);
+    setLastFetchReport(null);
+    setSyncMode(mode);
+    setEvaluationStatus(mode === "fetch_and_evaluate" ? "running" : "not_run");
     setPipelineStep("fetching");
     try {
       const fetchRes = await fetchNewApplications(jobId).unwrap();
-      const fetchedMsg = `Fetched ${fetchRes.total_saved} application(s) (${fetchRes.new_applications} new, ${fetchRes.renewed_applications} renewed).`;
-      setPipelineAlertMsg(fetchedMsg);
+      setLastFetchReport(fetchRes);
       if (fetchRes.new_application_ids && fetchRes.new_application_ids.length > 0) {
         setNewlyImportedIds((prev) => Array.from(new Set([...prev, ...fetchRes.new_application_ids!])));
       }
@@ -151,8 +164,12 @@ export const useCandidatePipeline = () => {
    * Step 1: Client passes unparsed application IDs to POST /jobs/{jobId}/applications/parse
    * Step 2: Client triggers POST /jobs/{jobId}/applications/screen to score all parsed applications
    */
-  const handleEvaluate = async (jobId: number, targetAppIds?: number[]) => {
-    setPipelineAlertMsg(null);
+  const handleEvaluate = async (jobId: number, targetAppIds?: number[], silent = false) => {
+    if (!silent) setPipelineAlertMsg(null);
+    // Only the combined Fetch & Evaluate action owns the evaluation state shown
+    // inside the Gmail sync report. Standalone evaluation should not rewrite the
+    // status of an older mailbox report.
+    if (silent) setEvaluationStatus("running");
 
     try {
       // 1. Resolve application IDs that require parsing via centralized helper
@@ -171,9 +188,15 @@ export const useCandidatePipeline = () => {
       // Step B: Screen all applications for the active requisition
       setPipelineStep("screening");
       await screenJobApplications(jobId).unwrap();
-      setPipelineAlertMsg(`✅ Candidate evaluation completed for requisition #${jobId}.`);
+      if (!silent) {
+        setPipelineAlertMsg(`✅ AI evaluation completed for requisition #${jobId}.`);
+      }
+      if (silent) setEvaluationStatus("completed");
+      return true;
     } catch (err: any) {
+      if (silent) setEvaluationStatus("failed");
       setPipelineAlertMsg(`⚠️ Evaluation error: ${formatApiError(err, "Error during evaluation")}`);
+      return false;
     } finally {
       setPipelineStep("idle");
     }
@@ -186,8 +209,16 @@ export const useCandidatePipeline = () => {
   const handleFetchAndEvaluate = async () => {
     if (!selectedJobId) return;
     try {
-      await handleFetch(selectedJobId);
-      await handleEvaluate(selectedJobId);
+      const fetchRes = await handleFetch(selectedJobId, "fetch_and_evaluate");
+      
+      // If new applications were imported, run evaluation on the new batch and produce a unified confirmation
+      if (fetchRes && fetchRes.total_saved > 0) {
+        await handleEvaluate(selectedJobId, fetchRes.new_application_ids, true);
+      }
+      // If 0 were imported, handleFetch already set the clear informational message and we do NOT overwrite or flicker.
+      else {
+        setEvaluationStatus("not_run");
+      }
     } catch {
       // Error messages handled within individual action steps
     }
@@ -399,6 +430,10 @@ export const useCandidatePipeline = () => {
     isError,
     pipelineAlertMsg,
     setPipelineAlertMsg,
+    lastFetchReport,
+    syncMode,
+    evaluationStatus,
+    clearFetchReport: () => setLastFetchReport(null),
 
     visibleStageKeys,
     toggleStageVisibility,

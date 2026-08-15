@@ -8,10 +8,6 @@ from langgraph.graph import StateGraph, END
 
 load_dotenv()
 
-# ──── LLM Setup ────
-llm = get_llm(temperature=0.9, max_tokens=2000)
-
-
 # ──── State Schema ────
 class JDState(TypedDict):
     title: str
@@ -134,8 +130,12 @@ Return ONLY the JSON. No text outside the JSON.
         HumanMessage(content=prompt)
     ]
 
-    response = llm.invoke(messages)
-    raw = response.content.strip()
+    try:
+        llm = get_llm(temperature=0.9, max_tokens=2000)
+        response = llm.invoke(messages)
+        raw = response.content.strip()
+    except Exception as e:
+        raw = ""
 
     # ──── Clean response ────
     if "```json" in raw:

@@ -391,6 +391,25 @@ export const PipelineHeader: React.FC<PipelineHeaderProps> = ({
                 </div>
               </Popover>
             </div>
+          ) : !selectedJobId ? (
+            /* Disabled Primary Button when no job is selected / exists */
+            <div className="inline-flex items-center rounded-xl bg-zinc-900 border border-zinc-700/80 shadow-md h-10 px-3 py-2 text-zinc-400 font-semibold text-xs select-none cursor-not-allowed">
+              <DownloadCloud size={15} className="text-zinc-500 mr-1.5" />
+              <span>Fetch & Evaluate</span>
+              <Tooltip
+                title={
+                  jobs.length === 0
+                    ? "There are no jobs created yet. You have to first create a hiring requisition."
+                    : "No job is currently selected. Select a job requisition first."
+                }
+                arrow
+                placement="top"
+              >
+                <span className="inline-flex items-center text-amber-400 hover:text-amber-300 ml-1.5 cursor-help">
+                  <HelpCircle size={14} />
+                </span>
+              </Tooltip>
+            </div>
           ) : (
             /* Standard Enabled Primary Button when no pending cards exist */
             <Button

@@ -25,6 +25,16 @@ for _uv_name in ("uvicorn", "uvicorn.access", "uvicorn.error"):
         _h.setFormatter(_FORMATTER)
 
 
+# Environment variable support to disable file writes (for serverless/Vercel/AWS Lambda)
+_DISABLE_FILE_WRITES = (
+    os.getenv("DISABLE_FILE_SYSTEM_WRITES", "").lower() in ("true", "1", "yes")
+    or os.getenv("DISABLE_FILE_LOGGING", "").lower() in ("true", "1", "yes")
+    or os.getenv("SERVERLESS", "").lower() in ("true", "1", "yes")
+    or bool(os.getenv("VERCEL"))
+    or bool(os.getenv("AWS_LAMBDA_FUNCTION_NAME"))
+)
+
+
 def get_logger(name: str = "root", log_file: Optional[str] = None) -> logging.Logger:
     """
     Unified Logger Factory.
@@ -32,21 +42,29 @@ def get_logger(name: str = "root", log_file: Optional[str] = None) -> logging.Lo
       If `log_file` is provided, binds a FileHandler to the root logger.
     - Otherwise, returns a module-specific (narrow) Logger instance.
       If `log_file` is provided, binds a dedicated FileHandler to that specific logger.
+    - Automatically disables file handler on serverless/read-only environments or when
+      DISABLE_FILE_SYSTEM_WRITES=true is set.
     """
     if name.lower() in ("root", "", "webserver"):
         target_logger = logging.getLogger()
     else:
         target_logger = logging.getLogger(name)
 
-    if log_file:
+    if log_file and not _DISABLE_FILE_WRITES:
         # Prevent attaching duplicate FileHandlers for the same file path
         handler_exists = any(
             isinstance(h, logging.FileHandler) and getattr(h, "baseFilename", "").endswith(os.path.basename(log_file))
             for h in target_logger.handlers
         )
         if not handler_exists:
-            file_handler = logging.FileHandler(log_file, mode="a")
-            file_handler.setFormatter(_FORMATTER)
-            target_logger.addHandler(file_handler)
+            try:
+                file_handler = logging.FileHandler(log_file, mode="a")
+                file_handler.setFormatter(_FORMATTER)
+                target_logger.addHandler(file_handler)
+            except (OSError, PermissionError) as e:
+                # Graceful fallback to console/stream logging on read-only filesystems
+                logging.getLogger("logger").warning(
+                    f"Could not bind FileHandler for '{log_file}' (read-only filesystem or permissions): {e}. Fallback to stream logging."
+                )
 
     return target_logger

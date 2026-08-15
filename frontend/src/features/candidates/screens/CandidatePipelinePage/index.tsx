@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Alert, CircularProgress } from "@mui/material";
 import { PipelineHeader } from "../../components/PipelineHeader";
 import { PipelineStatsSummary } from "../../components/PipelineStatsSummary";
+import { PipelineSyncReport } from "../../components/PipelineSyncReport";
 import { KanbanBoard } from "../../components/KanbanBoard";
 import { CandidateProfile } from "../../components/CandidateProfile";
 import { RequestOfferApprovalModal } from "../../../../shared/components/RequestOfferApprovalModal";
@@ -20,6 +21,10 @@ export const CandidatePipelinePage: React.FC = () => {
     isError,
     pipelineAlertMsg,
     setPipelineAlertMsg,
+    lastFetchReport,
+    syncMode,
+    evaluationStatus,
+    clearFetchReport,
 
     visibleStageKeys,
     toggleStageVisibility,
@@ -68,6 +73,16 @@ export const CandidatePipelinePage: React.FC = () => {
         onToggleStageVisibility={toggleStageVisibility}
         allStages={STAGES}
       />
+
+      {lastFetchReport && (
+        <PipelineSyncReport
+          report={lastFetchReport}
+          jobs={jobs}
+          mode={syncMode}
+          evaluationStatus={evaluationStatus}
+          onDismiss={clearFetchReport}
+        />
+      )}
 
       {mailboxStatus && !mailboxStatus.is_connected && (
         <Alert

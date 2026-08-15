@@ -29,7 +29,7 @@ def seed_users_and_candidates(db):
 
     gmail_account = GmailAccount(
         company_id=company.id,
-        email="recruitment@airecruiter.com",
+        email=os.getenv("GMAIL_ACCOUNT_EMAIL", "recruitment@airecruiter.com"),
         provider="gmail",
         token_json=token_json_data,
         is_active=True,
@@ -148,3 +148,28 @@ def seed_users_and_candidates(db):
         "company": company,
         "gmail_account": gmail_account,
     }
+
+
+def print_and_reset_mailbox_pointers(db: Session):
+    """Prints all company mailbox pointers (last_read) and resets them to NULL."""
+    accounts = db.query(GmailAccount).all()
+    print("\n" + "=" * 50)
+    print("MAILBOX POINTERS BEFORE RESET:")
+    for acc in accounts:
+        print(f"  • Company #{acc.company_id} ({acc.email}) -> last_read: {acc.last_read}")
+        acc.last_read = None
+    db.commit()
+    print("MAILBOX POINTERS AFTER RESET (Set to NULL):")
+    for acc in accounts:
+        db.refresh(acc)
+        print(f"  • Company #{acc.company_id} ({acc.email}) -> last_read: {acc.last_read}")
+    print("=" * 50 + "\n")
+
+
+if __name__ == "__main__":
+    from app.database import SessionLocal
+    _db = SessionLocal()
+    try:
+        print_and_reset_mailbox_pointers(_db)
+    finally:
+        _db.close()

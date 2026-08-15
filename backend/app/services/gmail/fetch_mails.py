@@ -93,11 +93,13 @@ def get_after_date(db: Session, job_id: int) -> GmailSyncContext:
     last_read_ts = gmail_account.last_read if gmail_account else None
 
     if last_read_ts:
-        after_dt = last_read_ts.replace(hour=0, minute=0, second=0, microsecond=0)
+        # Explicitly attach UTC timezone to naive DB timestamp before calculating epoch seconds.
+        # Adding +1 second ensures Gmail 'after:' (which is inclusive) queries strictly AFTER the last processed message.
+        utc_ts = last_read_ts if last_read_ts.tzinfo else last_read_ts.replace(tzinfo=timezone.utc)
+        after_date_query = str(int(utc_ts.timestamp()) + 1)
     else:
-        after_dt = datetime.now(timezone.utc).replace(tzinfo=None, hour=0, minute=0, second=0, microsecond=0) - timedelta(days=10)
-
-    after_date_query = after_dt.strftime('%Y/%m/%d')
+        after_dt = datetime.now(timezone.utc) - timedelta(days=10)
+        after_date_query = str(int(after_dt.timestamp()))
     company_jobs = (
         db.query(Job)
         .filter(Job.company_id == company.id)
@@ -634,10 +636,15 @@ def fetch_job_application_emails_service(
         GmailAccount.id == sync_context.gmail_account_id,
         GmailAccount.company_id == company.id,
     ).first()
-    if failed_upsert_count == 0 and latest_fetched_at and gmail_account and (
-        not gmail_account.last_read or latest_fetched_at > gmail_account.last_read
+
+    # Advance pointer to the latest message received timestamp or current time if empty
+    current_now = datetime.now(timezone.utc).replace(tzinfo=None)
+    new_last_read = max(latest_fetched_at, current_now) if latest_fetched_at else current_now
+
+    if failed_upsert_count == 0 and gmail_account and (
+        not gmail_account.last_read or new_last_read >= gmail_account.last_read
     ):
-        gmail_account.last_read = latest_fetched_at
+        gmail_account.last_read = new_last_read
         db.commit()
 
     return GmailSyncResult(

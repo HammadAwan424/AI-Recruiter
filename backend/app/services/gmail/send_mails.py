@@ -1,7 +1,7 @@
 import base64
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from typing import Optional
+from typing import Optional, Any
 
 from app.schemas.gmail import OutboundEmailResult
 from app.utils.gmail import get_gmail_service
@@ -11,7 +11,9 @@ def send_email_service(
     recipient_email: str,
     subject: str,
     body_text: str,
-    html_content: Optional[str] = None
+    html_content: Optional[str] = None,
+    company_id: Optional[int] = None,
+    db: Optional[Any] = None,
 ) -> OutboundEmailResult:
     """
     Sends an email to recipient_email via Gmail API.
@@ -19,11 +21,13 @@ def send_email_service(
     - subject: Email subject line.
     - body_text: Plain text body.
     - html_content: Optional HTML body alternative.
+    - company_id: Optional company ID for multi-tenant mailbox isolation.
+    - db: Optional DB session for loading company credentials.
     """
     if not recipient_email:
         raise ValueError("recipient_email must be provided")
 
-    service = get_gmail_service()
+    service = get_gmail_service(company_id=company_id, db=db)
 
     if html_content:
         message = MIMEMultipart("alternative")

@@ -122,7 +122,7 @@ def get_gmail_service(company_id: Optional[int] = None, db: Optional[Any] = None
             )
             if gmail_acc and gmail_acc.token_json:
                 token_info = json.loads(gmail_acc.token_json)
-                creds = Credentials.from_authorized_user_info(token_info, SCOPES)
+                creds = Credentials.from_authorized_user_info(token_info, scopes=token_info.get("scopes") or SCOPES)
                 if not creds.valid and creds.expired and creds.refresh_token:
                     creds.refresh(Request())
                     gmail_acc.token_json = creds.to_json()
@@ -141,14 +141,14 @@ def get_gmail_service(company_id: Optional[int] = None, db: Optional[Any] = None
     if token_env:
         try:
             token_info = json.loads(token_env)
-            creds = Credentials.from_authorized_user_info(token_info, SCOPES)
+            creds = Credentials.from_authorized_user_info(token_info, scopes=token_info.get("scopes") or SCOPES)
         except Exception as e:
             logger.warning(f"Could not load credentials from GOOGLE_TOKEN_JSON env: {e}")
 
     # 3. Attempt token loading from local token.json file
     if not creds and os.path.exists(token_path):
         try:
-            creds = Credentials.from_authorized_user_file(token_path, SCOPES)
+            creds = Credentials.from_authorized_user_file(token_path)
         except Exception as e:
             logger.warning(f"Could not load credentials from {token_path}: {e}")
 

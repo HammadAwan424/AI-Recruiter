@@ -116,8 +116,10 @@ export const BaseCandidateCard: React.FC<BaseCandidateCardProps> = ({
           ? "bg-[#0b0808] border-gray-800 hover:opacity-90 shadow-sm opacity-65 grayscale-[30%]"
           : descriptor.isHired
           ? "bg-[#05DC7F]/10 border-[#05DC7F]/50 shadow-[0_0_12px_rgba(5,220,127,0.25)]"
+          : isNewlyImported
+          ? "bg-[#0e1713] border-[#05DC7F]/60 shadow-[0_0_12px_rgba(5,220,127,0.18)]"
           : isActivelyEvaluating
-          ? "bg-[#0e1713] border-[#05DC7F]/40 shadow-[0_0_18px_rgba(5,220,127,0.2)] ring-1 ring-[#05DC7F]/30"
+          ? "bg-[#0e1713] border-[#05DC7F]/40 shadow-[0_0_14px_rgba(5,220,127,0.18)]"
           : "bg-[#0d0d0d] border-gray-800 hover:border-[#05DC7F]/40 shadow-sm"
       }`}
     >
