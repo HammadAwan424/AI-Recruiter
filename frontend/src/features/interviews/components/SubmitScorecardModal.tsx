@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { useSubmitInterviewFeedbackMutation } from "../api";
 import { formatApiError } from "../../../shared/utils/errorUtils";
+import { calculateCandidateScore, InterviewScoreInput } from "../../../shared/utils/candidateScore";
 
 interface SubmitScorecardModalProps {
   open: boolean;
@@ -37,6 +38,8 @@ interface SubmitScorecardModalProps {
   initialTechScore?: number;
   initialCommScore?: number;
   initialNotes?: string;
+  aiMatchScore?: number | null;
+  otherFeedbacks?: InterviewScoreInput[];
   onSuccess?: () => void;
 }
 
@@ -50,6 +53,8 @@ export const SubmitScorecardModal: React.FC<SubmitScorecardModalProps> = ({
   initialTechScore = 8.0,
   initialCommScore = 8.0,
   initialNotes = "",
+  aiMatchScore = 0,
+  otherFeedbacks = [],
   onSuccess,
 }) => {
   const [techScore, setTechScore] = useState<number>(initialTechScore);
@@ -68,23 +73,25 @@ export const SubmitScorecardModal: React.FC<SubmitScorecardModalProps> = ({
     }
   }, [open, initialTechScore, initialCommScore, initialNotes]);
 
-  // Weighted round rating calculation: 60% Technical, 40% Communication
-  const compositeScore = Number((techScore * 0.6 + commScore * 0.4).toFixed(1));
+  const scoreBreakdown = calculateCandidateScore(aiMatchScore, [
+    ...otherFeedbacks,
+    { technical_score: techScore, communication_score: commScore },
+  ]);
 
   const getScoreVerdict = (score: number) => {
-    if (score >= 8.5) {
+    if (score >= 80) {
       return { label: "Strong Hire", color: "#05DC7F", bg: "rgba(5, 220, 127, 0.15)", border: "rgba(5, 220, 127, 0.3)" };
     }
-    if (score >= 7.0) {
+    if (score >= 65) {
       return { label: "Qualified / Hire", color: "#38bdf8", bg: "rgba(56, 189, 248, 0.15)", border: "rgba(56, 189, 248, 0.3)" };
     }
-    if (score >= 5.0) {
+    if (score >= 50) {
       return { label: "Borderline / Hold", color: "#fbbf24", bg: "rgba(251, 191, 36, 0.15)", border: "rgba(251, 191, 36, 0.3)" };
     }
     return { label: "Does Not Meet Bar", color: "#f87171", bg: "rgba(248, 113, 113, 0.15)", border: "rgba(248, 113, 113, 0.3)" };
   };
 
-  const verdict = getScoreVerdict(compositeScore);
+  const verdict = getScoreVerdict(scoreBreakdown.finalScore);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -352,7 +359,7 @@ export const SubmitScorecardModal: React.FC<SubmitScorecardModalProps> = ({
               />
             </Box>
 
-            {/* Calculated Composite Verdict Summary */}
+            {/* Canonical final-score preview */}
             <Box
               sx={{
                 p: 2,
@@ -368,7 +375,7 @@ export const SubmitScorecardModal: React.FC<SubmitScorecardModalProps> = ({
                 <Sparkles size={18} style={{ color: verdict.color }} />
                 <div>
                   <Typography variant="caption" sx={{ color: "rgba(255, 255, 255, 0.6)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                    Weighted Composite Score
+                    Estimated Final Score
                   </Typography>
                   <Typography variant="body2" sx={{ color: "#ffffff", fontWeight: 700 }}>
                     {verdict.label}
@@ -383,9 +390,12 @@ export const SubmitScorecardModal: React.FC<SubmitScorecardModalProps> = ({
                   fontFamily: "monospace",
                 }}
               >
-                {compositeScore} / 10
+                {scoreBreakdown.finalScore.toFixed(1)}%
               </Typography>
             </Box>
+            <Typography variant="caption" sx={{ color: "rgba(255, 255, 255, 0.45)", display: "block", mt: -1.5 }}>
+              40% AI match ({scoreBreakdown.aiMatchScore.toFixed(1)}%) · 40% technical ({scoreBreakdown.averageTechnicalScore.toFixed(1)}%) · 20% communication ({scoreBreakdown.averageCommunicationScore.toFixed(1)}%)
+            </Typography>
 
             {/* Detailed Evaluation Notes */}
             <div>

@@ -2,6 +2,7 @@ import logging
 from typing import Optional
 from app.services.gmail.send_mails import send_email_service
 from app.schemas.gmail import OutboundEmailResult
+from app.config import FRONTEND_BASE_URL
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +94,7 @@ def notify_candidate_offer_letter(
     secure_token: str,
     base_salary: float,
     start_date: Optional[str] = None,
-    frontend_base_url: str = "http://localhost:5173"
+    frontend_base_url: str = FRONTEND_BASE_URL
 ) -> Optional[OutboundEmailResult]:
     """One-liner to send official offer letter with secure signing link to candidate."""
     if not candidate_email:

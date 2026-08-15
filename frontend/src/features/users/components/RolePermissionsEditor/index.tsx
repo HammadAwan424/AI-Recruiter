@@ -20,6 +20,7 @@ import {
 } from "@mui/material";
 import { PermissionMatrixCard } from "../../styles";
 import { Role, PermissionKey, JobScope } from "../../../../shared/types/role.types";
+import { formatApiError } from "../../../../shared/utils/errorUtils";
 
 interface RolePermissionsEditorProps {
   roles: Role[];
@@ -122,7 +123,7 @@ export const RolePermissionsEditor: React.FC<RolePermissionsEditorProps> = ({
       await onSavePermissions(activeRole.id, activePermissions, activeJobScope);
       setSaveSuccessMsg(`Permissions and Job Scope for role '${activeRole.name}' updated successfully!`);
     } catch (err: any) {
-      setErrorMsg(err?.data?.detail || "Failed to update role permissions.");
+      setErrorMsg(formatApiError(err, "Failed to update role permissions."));
     }
   };
 

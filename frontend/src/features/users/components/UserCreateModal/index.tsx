@@ -13,6 +13,7 @@ import { ModalSurface } from "../../styles";
 import { UserCreatePayload } from "../../../../shared/types/user.types";
 import { UserRole } from "../../../../shared/types/auth.types";
 import { PasswordInput } from "../../../../shared/components/PasswordInput";
+import { formatApiError } from "../../../../shared/utils/errorUtils";
 
 interface UserCreateModalProps {
   open: boolean;
@@ -51,14 +52,19 @@ export const UserCreateModal: React.FC<UserCreateModalProps> = ({
       return;
     }
 
+    if (password.trim().length < 8) {
+      setErrorMsg("Password must be at least 8 characters long.");
+      return;
+    }
+
     try {
       await onSubmit({
-        full_name: fullName,
-        email,
-        password,
+        full_name: fullName.trim(),
+        email: email.trim(),
+        password: password.trim(),
         role,
-        department: department || undefined,
-        phone: phone || undefined,
+        department: department.trim() || undefined,
+        phone: phone.trim() || undefined,
       });
 
       // Reset form
@@ -70,7 +76,7 @@ export const UserCreateModal: React.FC<UserCreateModalProps> = ({
       setPhone("");
       onClose();
     } catch (err: any) {
-      setErrorMsg(err?.data?.detail || "Failed to create user");
+      setErrorMsg(formatApiError(err, "Failed to create user."));
     }
   };
 

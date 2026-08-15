@@ -28,6 +28,7 @@ class InterviewResponse(BaseModel):
     candidate_name: Optional[str] = None
     candidate_email: Optional[str] = None
     job_title: Optional[str] = None
+    application_match_score: Optional[float] = Field(default=None, ge=0, le=100)
 
     model_config = ConfigDict(from_attributes=True)
 

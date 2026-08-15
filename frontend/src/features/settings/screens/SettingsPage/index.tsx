@@ -67,7 +67,7 @@ export const SettingsPage: React.FC = () => {
       localStorage.setItem("full_name", updated.full_name);
       setSuccessMsg("Profile information updated successfully!");
     } catch (err: any) {
-      setErrorMsg(err?.data?.detail || "Could not save profile settings.");
+      setErrorMsg(formatApiError(err, "Could not save profile settings."));
     }
   };
 
@@ -96,8 +96,8 @@ export const SettingsPage: React.FC = () => {
       return;
     }
 
-    if (!newPassword || newPassword.length < 6) {
-      setPasswordModalError("New password must be at least 6 characters long.");
+    if (!newPassword || newPassword.length < 8) {
+      setPasswordModalError("New password must be at least 8 characters long.");
       return;
     }
 
@@ -116,7 +116,7 @@ export const SettingsPage: React.FC = () => {
       setSuccessMsg("Password changed successfully!");
       handleClosePasswordModal();
     } catch (err: any) {
-      setPasswordModalError(err?.data?.detail || "Failed to update password. Verify your current password.");
+      setPasswordModalError(formatApiError(err, "Failed to update password. Verify your current password."));
     } finally {
       setIsChangingPassword(false);
     }

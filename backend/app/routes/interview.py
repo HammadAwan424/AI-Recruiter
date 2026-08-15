@@ -305,6 +305,7 @@ def candidate_confirm_schedule(
     interview.candidate_name = app.candidate.full_name
     interview.candidate_email = app.candidate.email
     interview.job_title = app.job.title
+    interview.application_match_score = app.match_score
 
     return interview
 
@@ -354,6 +355,7 @@ def schedule_interview(
     interview.candidate_name = app.candidate.full_name
     interview.candidate_email = app.candidate.email
     interview.job_title = app.job.title
+    interview.application_match_score = app.match_score
 
     # 1-liner Notifications Dispatch
     if interview_in.schedule_type == "self_schedule":
@@ -411,6 +413,7 @@ def list_interviews(
         item.candidate_name = app.candidate.full_name
         item.candidate_email = app.candidate.email
         item.job_title = app.job.title
+        item.application_match_score = app.match_score
 
     return interviews
 
@@ -468,7 +471,10 @@ def submit_interview_feedback(
             .all()
         )
 
-        eval_result = evaluate_candidate(all_feedbacks)
+        eval_result = evaluate_candidate(
+            all_feedbacks,
+            ai_match_score=app.match_score or 0.0,
+        )
         app.final_score = eval_result["final_score"]
         app.updated_by = current_user["user_id"]
 
@@ -492,6 +498,7 @@ def get_interview_detail(
     interview.candidate_name = app.candidate.full_name
     interview.candidate_email = app.candidate.email
     interview.job_title = app.job.title
+    interview.application_match_score = app.match_score
 
     return interview
 
@@ -518,6 +525,7 @@ def create_candidate_self_schedule_link(
     interview.candidate_name = app.candidate.full_name
     interview.candidate_email = app.candidate.email
     interview.job_title = app.job.title
+    interview.application_match_score = app.match_score
 
     return interview
 

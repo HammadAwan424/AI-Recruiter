@@ -66,6 +66,7 @@ export interface InterviewResponse {
   candidate_name?: string | null;
   candidate_email?: string | null;
   job_title?: string | null;
+  application_match_score?: number | null;
 }
 
 export interface InterviewDetail extends InterviewResponse {

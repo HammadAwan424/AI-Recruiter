@@ -813,6 +813,21 @@ export const InterviewManagementPage: React.FC = () => {
           initialTechScore={scoringInterview.initialFeedback?.technical_score}
           initialCommScore={scoringInterview.initialFeedback?.communication_score}
           initialNotes={scoringInterview.initialFeedback?.notes}
+          aiMatchScore={scoringInterview.interview.application_match_score}
+          otherFeedbacks={
+            currentUserId == null
+              ? []
+              : (scoringInterview.interview.interviewer_assignments || [])
+                  .filter((assignment) => Number(assignment.interviewer_id) !== currentUserId)
+                  .flatMap((assignment) =>
+                    assignment.feedback
+                      ? [{
+                          technical_score: assignment.feedback.technical_score,
+                          communication_score: assignment.feedback.communication_score,
+                        }]
+                      : []
+                  )
+          }
           onSuccess={refetch}
         />
       )}

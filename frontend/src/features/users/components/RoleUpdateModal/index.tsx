@@ -13,6 +13,7 @@ import {
 import { ModalSurface } from "../../styles";
 import { CompanyUser } from "../../../../shared/types/user.types";
 import { UserRole } from "../../../../shared/types/auth.types";
+import { formatApiError } from "../../../../shared/utils/errorUtils";
 
 interface RoleUpdateModalProps {
   open: boolean;
@@ -56,7 +57,7 @@ export const RoleUpdateModal: React.FC<RoleUpdateModalProps> = ({
       await onSubmit(user.id, selectedRole);
       onClose();
     } catch (err: any) {
-      setErrorMsg(err?.data?.detail || "Failed to update user role.");
+      setErrorMsg(formatApiError(err, "Failed to update user role."));
     }
   };
 
