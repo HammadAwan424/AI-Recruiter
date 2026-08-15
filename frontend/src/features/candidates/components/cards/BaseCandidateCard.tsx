@@ -23,7 +23,6 @@ export interface BaseCandidateCardProps {
   showMatchScore?: boolean;
   profileButtonLabel?: string;
   isDraggable?: boolean;
-  stageKey?: string;
   pipelineStep?: "idle" | "fetching" | "parsing" | "screening" | string;
   isNewlyImported?: boolean;
 }
@@ -36,12 +35,11 @@ export const BaseCandidateCard: React.FC<BaseCandidateCardProps> = ({
   showMatchScore = true,
   profileButtonLabel = "View Profile",
   isDraggable = false,
-  stageKey,
   pipelineStep = "idle",
   isNewlyImported = false,
 }) => {
   // Centralized evaluation, score label & badge resolver
-  const descriptor = getCandidateCardDescriptor(candidate, stageKey);
+  const descriptor = getCandidateCardDescriptor(candidate);
 
   const candidateId = candidate.candidate_id || candidate.id;
   const candidateName =
@@ -226,7 +224,6 @@ export const BaseCandidateCard: React.FC<BaseCandidateCardProps> = ({
         </div>
       )}
 
-      {/* Single Action Button with Configurable Label */}
       <div className="mt-2.5 pt-2 border-t border-gray-800/40">
         <button
           onClick={() => onSelectCandidate(candidate)}

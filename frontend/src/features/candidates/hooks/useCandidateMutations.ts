@@ -26,10 +26,15 @@ export const useCandidateMutations = () => {
     return await updateStage(jobId, applicationId, undefined, "rejected");
   };
 
+  const restoreCandidate = async (jobId: number, applicationId: number) => {
+    return await updateStage(jobId, applicationId, undefined, "active");
+  };
+
   return {
     updateStage,
     hireCandidate,
     rejectCandidate,
+    restoreCandidate,
     isSubmitting: isUpdatingStage,
   };
 };

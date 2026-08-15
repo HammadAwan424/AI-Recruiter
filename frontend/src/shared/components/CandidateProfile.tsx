@@ -9,22 +9,31 @@ import {
 } from "@mui/material";
 import { X, ArrowLeft } from "lucide-react";
 import { useGetApplicationDetailQuery } from "../../features/candidates/api";
-import { CandidateProfileHeader } from "../../features/candidates/components/profile/CandidateProfileHeader";
+import {
+  CandidateProfileHeader,
+  type CandidateProfileDispositionAction,
+} from "../../features/candidates/components/profile/CandidateProfileHeader";
 import { ParsedProfileSection } from "../../features/candidates/components/profile/ParsedProfileSection";
 import { ScreeningEvaluationSection } from "../../features/candidates/components/profile/ScreeningEvaluationSection";
 import { InterviewRoundsSection } from "../../features/candidates/components/profile/InterviewRoundsSection";
 import { OfferLetterSection } from "../../features/candidates/components/profile/OfferLetterSection";
 import { ApplicationCommentsSection } from "../../features/candidates/components/profile/ApplicationCommentsSection";
 import { usePermission } from "../hooks/usePermission";
-import { CANDIDATE_PERMISSIONS } from "../../features/candidates/permissions";
+import {
+  getCurrentStatus,
+  getDispositionPermission,
+  isCandidateRejected,
+} from "../utils/candidateEvaluation";
 
 export interface CandidateProfileProps {
   open?: boolean;
   candidate: any | null;
   displayMode?: "drawer" | "fullPage";
   onClose: () => void;
-  onHire?: (candidate: any) => void;
   onReject?: (candidate: any) => void;
+  onRestore?: (candidate: any) => void;
+  onRejectOfferApproval?: (candidate: any) => void;
+  onReturnOfferToInterview?: (candidate: any) => void;
   actionButton?: React.ReactNode;
 }
 
@@ -33,8 +42,10 @@ export const CandidateProfile: React.FC<CandidateProfileProps> = ({
   candidate,
   displayMode = "drawer",
   onClose,
-  onHire,
   onReject,
+  onRestore,
+  onRejectOfferApproval,
+  onReturnOfferToInterview,
   actionButton,
 }) => {
   const jobId = candidate?.job_id;
@@ -46,7 +57,6 @@ export const CandidateProfile: React.FC<CandidateProfileProps> = ({
   );
 
   const { hasPermission } = usePermission();
-  const canDisposition = hasPermission(CANDIDATE_PERMISSIONS.DISPOSITION);
 
   if (!candidate) return null;
 
@@ -89,13 +99,50 @@ export const CandidateProfile: React.FC<CandidateProfileProps> = ({
             </div>
           )}
 
-          {/* Header with Hire / Reject Actions */}
-          <CandidateProfileHeader
-            detail={detail}
-            canDisposition={canDisposition}
-            onHire={onHire}
-            onReject={onReject}
-          />
+          {(() => {
+            const currentStatus = getCurrentStatus(detail);
+            const isRejected = isCandidateRejected(detail);
+            const dispositionPermission = currentStatus ? getDispositionPermission(currentStatus) : null;
+            let dispositionAction: CandidateProfileDispositionAction | undefined;
+
+            if (
+              dispositionPermission &&
+              hasPermission(dispositionPermission) &&
+              (isRejected ? Boolean(onRestore) : Boolean(onReject))
+            ) {
+              dispositionAction = isRejected
+                ? {
+                    label: "Restore candidate",
+                    description: "Return this candidate to the active pipeline.",
+                    tone: "restore",
+                    onClick: () => onRestore?.(detail),
+                  }
+                : {
+                    label: "Reject candidate",
+                    description: "Mark this candidate as no longer under consideration.",
+                    tone: "reject",
+                    onClick: () => onReject?.(detail),
+                  };
+            } else if (currentStatus === "offer_approval" && detail.offer?.id) {
+              if (isRejected && onReturnOfferToInterview && hasPermission("offer:generate")) {
+                dispositionAction = {
+                  label: "Return to interview",
+                  description: "Delete this rejected offer and resume the interview stage.",
+                  tone: "restore",
+                  onClick: () => onReturnOfferToInterview?.(detail),
+                };
+              } else if (!isRejected && onRejectOfferApproval && hasPermission("offer:approve")) {
+                dispositionAction = {
+                  label: "Reject offer",
+                  description: "Stop this offer before it is sent to the candidate.",
+                  tone: "reject",
+                  onClick: () => onRejectOfferApproval?.(detail),
+                };
+              }
+            }
+
+            return <CandidateProfileHeader detail={detail} dispositionAction={dispositionAction} />;
+          })()}
 
           {/* AI Parsed Structured Profile Section */}
           <ParsedProfileSection parsedProfile={detail.parsed_profile} />

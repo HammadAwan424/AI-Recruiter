@@ -3,6 +3,7 @@ import {
   useUpdateSlotMutation,
   useDeleteSlotMutation,
   useGenerateSelfScheduleLinkMutation,
+  useDownloadInterviewCalendarMutation,
 } from "../api";
 import { SlotCreatePayload } from "../../../shared/types/interview.types";
 
@@ -11,6 +12,7 @@ export const useInterviewMutations = () => {
   const [updateSlotApi, { isLoading: isUpdatingSlot }] = useUpdateSlotMutation();
   const [deleteSlotApi, { isLoading: isDeletingSlot }] = useDeleteSlotMutation();
   const [generateSelfScheduleLinkApi, { isLoading: isGeneratingLink }] = useGenerateSelfScheduleLinkMutation();
+  const [downloadInterviewCalendarApi, { isLoading: isDownloadingCalendar }] = useDownloadInterviewCalendarMutation();
 
   const createSlot = async (payload: SlotCreatePayload) => {
     return await createSlotApi(payload).unwrap();
@@ -28,11 +30,17 @@ export const useInterviewMutations = () => {
     return await generateSelfScheduleLinkApi(interviewId).unwrap();
   };
 
+  const downloadCalendarInvite = async (interviewId: number) => {
+    return await downloadInterviewCalendarApi(interviewId).unwrap();
+  };
+
   return {
     createSlot,
     updateSlot,
     deleteSlot,
     generateSelfScheduleLink,
+    downloadCalendarInvite,
+    isDownloadingCalendar,
     isSubmitting: isCreatingSlot || isUpdatingSlot || isDeletingSlot || isGeneratingLink,
   };
 };

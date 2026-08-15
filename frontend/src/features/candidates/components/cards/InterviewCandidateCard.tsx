@@ -19,12 +19,11 @@ export const InterviewCandidateCard: React.FC<InterviewCandidateCardProps> = ({
   isNewlyImported = false,
   onSelectCandidate,
 }) => {
-  const descriptor = getCandidateCardDescriptor(candidate, "interview");
+  const descriptor = getCandidateCardDescriptor(candidate);
 
   return (
     <BaseCandidateCard
       candidate={candidate}
-      stageKey="interview"
       onSelectCandidate={onSelectCandidate}
       showMatchScore={true}
       profileButtonLabel="View Details"

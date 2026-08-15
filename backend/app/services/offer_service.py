@@ -33,6 +33,25 @@ from app.services.gmail import (
 )
 
 
+INTERNAL_OFFER_STATUSES = frozenset({
+    OfferStatus.DRAFT,
+    OfferStatus.PENDING_APPROVAL,
+    OfferStatus.APPROVAL_REJECTED,
+})
+
+
+def ensure_offer_is_internal(offer: Offer) -> None:
+    """Reject revisions that would alter an offer already visible to a candidate."""
+    if offer.status not in INTERNAL_OFFER_STATUSES:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "Only draft, pending approval, or approval-rejected offers can be "
+                "revised or deleted. Sent and finalized offers are immutable."
+            ),
+        )
+
+
 def create_offer_service(
     db: Session,
     payload: OfferCreate,
@@ -321,13 +340,20 @@ def record_candidate_decision_service(
 
 
 def delete_offer_service(db: Session, offer_id: int, current_user: Dict[str, Any]) -> Dict[str, str]:
-    """Deletes an offer and its associated approval record, reverting application status to 'interview'."""
+    """Remove an offer and approval together, then return the application to interview."""
     offer = get_offer_or_403(offer_id, db=db, current_user=current_user)
+    ensure_offer_is_internal(offer)
     app = offer.application
 
     app.current_status = ApplicationStatus.INTERVIEW
+    app.disposition = ApplicationDisposition.ACTIVE
     app.updated_by = current_user["user_id"]
 
+    # Do not rely solely on a database-level cascade: existing deployments may
+    # have tables created before the FK cascade was introduced. Explicitly
+    # deleting the dependent approval keeps the queue free of orphan records.
+    if offer.approval:
+        db.delete(offer.approval)
     db.delete(offer)
     db.commit()
 

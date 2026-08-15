@@ -1,5 +1,5 @@
 import type { InterviewResponse, InterviewDetail } from "./interview.types";
-import type { OfferResponse } from "./offer.types";
+import type { OfferResponse, OfferStatus } from "./offer.types";
 import type { JobMinimalResponse } from "./job.types";
 
 export type ApplicationStatus =
@@ -171,6 +171,12 @@ export interface ApplicationResponse {
 
 export interface ApplicationListItem extends ApplicationResponse {
   interviews: InterviewResponse[];
+  offer?: ApplicationOfferSummary | null;
+}
+
+export interface ApplicationOfferSummary {
+  id: number;
+  status: OfferStatus;
 }
 
 /**

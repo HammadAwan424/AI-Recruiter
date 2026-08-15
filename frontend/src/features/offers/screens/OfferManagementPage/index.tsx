@@ -77,38 +77,19 @@ export const OfferManagementPage: React.FC = () => {
 
   const [approvalComments, setApprovalComments] = useState("");
 
-  // 1. Source for Offer Creation Tab: Candidates in 'interview' column with completed interview
-  const interviewedCandidates = applications.filter((app) => getDraggableEvaluator(app, "interview", hasPermission));
-
-  // 2. Source for Offer Approvals Tab: Candidates in 'offer_approval' column (Awaiting Approval in Kanban Board)
-  const awaitingApprovalApps = applications.filter(
-    (app) => app.current_status === "offer_approval" || app.stage === "offer_approval"
+  // 1. Source for Offer Creation Tab: Candidates currently in 'interview' stage with completed interview
+  const interviewedCandidates = applications.filter(
+    (app) =>
+      app.current_status === "interview" &&
+      getDraggableEvaluator(app, "interview", hasPermission)
   );
 
-  const pendingApprovalOffers: OfferItem[] = (() => {
-    const list: OfferItem[] = [...offers.filter((o) => o.status === "PENDING_APPROVAL")];
-    for (const app of awaitingApprovalApps) {
-      if (!list.some((o) => o.application_id === app.id)) {
-        list.push({
-          id: (app as any).offer?.id || app.id,
-          application_id: app.id,
-          candidate_id: app.candidate_id,
-          candidate_name: app.candidate?.full_name || app.candidate_name || "Candidate",
-          job_id: app.job_id,
-          job_title: app.job?.title || app.job_title || "Position",
-          department: app.job?.department || "Engineering",
-          base_salary: (app as any).offer?.base_salary || 0,
-          bonus_equity: (app as any).offer?.bonus_equity || "None",
-          start_date: (app as any).offer?.start_date || "Pending",
-          offer_letter_text: (app as any).offer?.offer_letter_text || "Offer package awaiting executive review.",
-          status: "PENDING_APPROVAL",
-          created_at: app.created_at,
-          updated_at: app.updated_at,
-        });
-      }
-    }
-    return list;
-  })();
+  // The approval queue is backed only by persisted offers. Application rows
+  // intentionally contain only a non-sensitive offer summary, so they must
+  // never be used to fabricate a placeholder approval package.
+  const pendingApprovalOffers: OfferItem[] = offers.filter(
+    (offer) => offer.status === "PENDING_APPROVAL"
+  );
 
   const handleTabSelect = (tab: "CREATION" | "APPROVAL") => {
     setActiveTab(tab);

@@ -61,12 +61,12 @@ export const ScreeningEvaluationSection: React.FC<ScreeningEvaluationSectionProp
       </div>
 
       <div className="space-y-3">
-        {/* Overall Match Score Header */}
+        {/* AI Screening Score */}
         {match_score != null && !isNaN(Number(match_score)) && (
           <div className="flex justify-between items-center py-2.5 px-3.5 rounded-xl bg-white/5 border border-white/10">
             <div className="flex items-center gap-2">
               <Target size={16} className="text-[#05DC7F]" />
-              <span className="text-white/90 text-xs font-bold">Calculated Match Score</span>
+              <span className="text-white/90 text-xs font-bold">AI Score</span>
               
               {/* Question Mark Tooltip Explaining Weight Distribution */}
               <Tooltip
@@ -74,7 +74,7 @@ export const ScreeningEvaluationSection: React.FC<ScreeningEvaluationSectionProp
                   <div className="p-1 space-y-1.5 text-xs">
                     <p className="font-bold text-[#05DC7F]">Screening Weight Distribution</p>
                     <p className="text-white/80 text-[11px] leading-relaxed">
-                      The match score is a weighted rollup calculated from candidate dimensions:
+                      The AI score is a weighted rollup calculated from candidate dimensions:
                     </p>
                     <div className="space-y-1 pt-1 font-mono text-[11px]">
                       <div className="flex justify-between text-cyan-300">

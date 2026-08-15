@@ -31,6 +31,7 @@ from app.utils.security import (
     get_current_user,
     require_permissions,
     get_scoped_interviews_query,
+    get_scoped_interview_slots_query,
     get_interview_or_403,
     get_application_or_403
 )
@@ -91,15 +92,17 @@ def create_interview_slot(
     return slot
 
 
-@router.get("/slots", response_model=List[InterviewSlotDetail])
+@router.get(
+    "/slots",
+    response_model=List[InterviewSlotDetail],
+    dependencies=[Depends(require_permissions(["interview:view"]))],
+)
 def get_available_slots(
-    db: Session = Depends(get_db),
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    slots_query: Query = Depends(get_scoped_interview_slots_query),
 ):
     slots = (
-        db.query(InterviewSlot)
+        slots_query
         .options(joinedload(InterviewSlot.job))
-        .filter(InterviewSlot.is_booked.is_(False))
         .order_by(InterviewSlot.schedule_start.asc())
         .all()
     )
@@ -523,6 +526,12 @@ def create_candidate_self_schedule_link(
 def download_interview_ical(
     interview: InterviewModel = Depends(get_interview_or_403)
 ):
+    if interview.schedule_start is None or interview.schedule_end is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A calendar invite is available only after the interview has been scheduled.",
+        )
+
     app = interview.application
 
     ical_data = generate_ical_event(

@@ -72,24 +72,18 @@ export interface CandidateCardDescriptor {
  *    - Hidden for unassigned candidates.
  */
 export function getCandidateCardDescriptor(
-  candidate: CandidateApplication | ApplicationListItem | ApplicationDetail | any,
-  stageKey?: string
+  candidate: CandidateApplication | ApplicationListItem | ApplicationDetail | any
 ): CandidateCardDescriptor {
   const isRejected = Boolean(
-    candidate?.disposition === "rejected" ||
-    candidate?.rejected ||
-    candidate?.status === "rejected"
+    candidate?.disposition === "rejected"
   );
   const isHired = Boolean(
-    candidate?.current_status === "hired" ||
-    candidate?.hired ||
-    stageKey === "hired"
+    candidate?.current_status === "hired"
   );
 
   const interviewsList: any[] = candidate?.interviews || [];
   const hasCompletedInterview = Boolean(
     candidate?.interview_status === "COMPLETED" ||
-    candidate?.current_status === "interview_completed" ||
     (interviewsList.length > 0 && interviewsList.some((i) => i.status === "COMPLETED")) ||
     (candidate?.interviewer_feedback && candidate.interviewer_feedback.length > 0)
   );
@@ -148,7 +142,7 @@ export function getCandidateCardDescriptor(
       colorTheme: "emerald",
       tooltip: "Candidate successfully hired for this requisition.",
     };
-  } else if (stageKey === "interview" || candidate?.current_status === "interview") {
+  } else if (candidate?.current_status === "interview") {
     // In interview stage, only unassigned candidates receive badge emphasis
     if (!hasCompletedInterview && !hasAssignedInterviewer) {
       badge = {
@@ -181,7 +175,7 @@ export function getCandidateCardDescriptor(
   const showInterviewsCount = Boolean(
     interviewsList.length > 0 ||
     hasCompletedInterview ||
-    (hasAssignedInterviewer && (stageKey === "interview" || candidate?.current_status === "interview"))
+    (hasAssignedInterviewer && candidate?.current_status === "interview")
   );
 
   let completedInterviewsCount = 0;
@@ -190,7 +184,7 @@ export function getCandidateCardDescriptor(
   if (interviewsList.length > 0) {
     totalInterviewsCount = interviewsList.length;
     completedInterviewsCount = interviewsList.filter((i) => i.status === "COMPLETED").length;
-  } else if (candidate?.interview_status === "COMPLETED" || candidate?.current_status === "interview_completed") {
+  } else if (candidate?.interview_status === "COMPLETED") {
     totalInterviewsCount = 1;
     completedInterviewsCount = 1;
   } else if (hasAssignedInterviewer) {

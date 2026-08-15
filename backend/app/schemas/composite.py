@@ -2,6 +2,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, List
 from datetime import datetime
 
+from app.domain.enums import OfferStatus
 from app.schemas.user import UserResponse, CompanyMinimalResponse
 from app.schemas.job import JobResponse
 from app.schemas.offer import OfferResponse
@@ -50,5 +51,15 @@ class ApplicationDetail(ApplicationResponse):
     offer: Optional[OfferResponse] = None
 
 
+class ApplicationOfferSummary(BaseModel):
+    """Non-sensitive offer data required to render an application in the board."""
+
+    id: int
+    status: OfferStatus
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class ApplicationListItem(ApplicationResponse):
     interviews: List[InterviewResponse] = Field(default_factory=list)
+    offer: Optional[ApplicationOfferSummary] = None

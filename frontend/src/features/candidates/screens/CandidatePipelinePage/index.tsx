@@ -19,8 +19,8 @@ export const CandidatePipelinePage: React.FC = () => {
     candidates,
     isLoading,
     isError,
-    pipelineAlertMsg,
-    setPipelineAlertMsg,
+    pipelineNotice,
+    setPipelineNotice,
     lastFetchReport,
     syncMode,
     evaluationStatus,
@@ -35,15 +35,15 @@ export const CandidatePipelinePage: React.FC = () => {
     offerModalCandidate,
     setOfferModalCandidate,
 
-    canDisposition,
-    canOffer,
-
     handleFetchAndEvaluate,
     handleEvaluate,
     handleAdvanceStage,
     handleDropCandidate,
     handleHire,
     handleReject,
+    handleRestore,
+    handleRejectOfferApproval,
+    handleReturnOfferToInterview,
     pipelineStep,
     isFetchingNew,
     isParsingActive,
@@ -109,9 +109,31 @@ export const CandidatePipelinePage: React.FC = () => {
         applications={allCandidates}
       />
 
-      {pipelineAlertMsg && (
-        <Alert severity="info" onClose={() => setPipelineAlertMsg(null)}>
-          {pipelineAlertMsg}
+      {pipelineNotice && (
+        <Alert
+          severity={pipelineNotice.tone}
+          variant="outlined"
+          onClose={() => setPipelineNotice(null)}
+          sx={{
+            alignItems: "center",
+            borderRadius: 2.5,
+            py: 0.5,
+            backgroundColor:
+              pipelineNotice.tone === "success"
+                ? "rgba(5, 220, 127, 0.06)"
+                : pipelineNotice.tone === "error"
+                  ? "rgba(239, 68, 68, 0.07)"
+                  : pipelineNotice.tone === "warning"
+                    ? "rgba(245, 158, 11, 0.07)"
+                    : "rgba(56, 189, 248, 0.06)",
+          }}
+        >
+          <div className="flex flex-col gap-0.5 pr-2">
+            <span className="text-sm font-semibold">{pipelineNotice.title}</span>
+            {pipelineNotice.detail && (
+              <span className="text-xs opacity-80">{pipelineNotice.detail}</span>
+            )}
+          </div>
         </Alert>
       )}
 
@@ -128,14 +150,11 @@ export const CandidatePipelinePage: React.FC = () => {
           candidates={allCandidates}
           stages={STAGES}
           visibleStageKeys={visibleStageKeys}
-          canDisposition={canDisposition}
-          canOffer={canOffer}
           pipelineStep={pipelineStep}
           newlyImportedIds={newlyImportedIds}
           onSelectCandidate={setSelectedCandidate}
           onAdvanceStage={handleAdvanceStage}
           onDropCandidate={handleDropCandidate}
-          onReject={handleReject}
         />
       )}
 
@@ -143,8 +162,10 @@ export const CandidatePipelinePage: React.FC = () => {
         open={Boolean(selectedCandidate)}
         candidate={selectedCandidate}
         onClose={() => setSelectedCandidate(null)}
-        onHire={handleHire}
         onReject={handleReject}
+        onRestore={handleRestore}
+        onRejectOfferApproval={handleRejectOfferApproval}
+        onReturnOfferToInterview={handleReturnOfferToInterview}
       />
 
       {/* Shared Request Offer Approval Modal triggered on dragging candidate card to offer stage */}
@@ -154,7 +175,11 @@ export const CandidatePipelinePage: React.FC = () => {
         onClose={() => setOfferModalCandidate(null)}
         onSuccess={() => {
           setOfferModalCandidate(null);
-          setPipelineAlertMsg("✅ Offer approval request submitted! Candidate moved to Offer Approval stage.");
+          setPipelineNotice({
+            tone: "success",
+            title: "Offer approval requested",
+            detail: "The candidate is now awaiting internal approval before the offer can be sent.",
+          });
         }}
       />
 

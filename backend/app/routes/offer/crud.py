@@ -21,6 +21,7 @@ from app.services.offer_service import (
     list_offers_service,
     record_executive_decision_service,
     delete_offer_service,
+    ensure_offer_is_internal,
     offer_to_response,
 )
 
@@ -73,7 +74,8 @@ def update_offer(
     db: Session = Depends(get_db),
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
-    """Updates draft offer terms."""
+    """Updates an offer before it has been sent to the candidate."""
+    ensure_offer_is_internal(offer)
     update_data = payload.model_dump(exclude_unset=True)
     next_start = update_data.get("start_date", offer.start_date)
     next_expiry = update_data.get("expiry_date", offer.expiry_date)

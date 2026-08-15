@@ -14,7 +14,14 @@ from app.schemas.composite import ApplicationDetail, ApplicationListItem
 from app.schemas.parsing import ParsingLLMOutput
 from app.schemas.extraction import ExtractedResumeText
 from app.agents.parsing import parse_resume_structured
-from app.utils.security import get_current_user, get_job_or_403, get_application_or_403
+from app.utils.security import (
+    get_current_user,
+    get_job_or_403,
+    get_application_or_403,
+    get_disposition_permission,
+    get_user_permissions,
+    user_has_permission,
+)
 from app.models.candidate import Candidate
 from app.crud.application import (
     get_application_by_candidate_and_job_db,
@@ -91,7 +98,8 @@ def list_job_applications(
             joinedload(Application.candidate),
             joinedload(Application.job),
             joinedload(Application.interviews),
-            joinedload(Application.screening)
+            joinedload(Application.screening),
+            joinedload(Application.offer),
         )
         .filter(Application.job_id == job.id)
         .all()
@@ -195,6 +203,34 @@ def update_application_stage(
     app = db.query(Application).filter(Application.id == application_id, Application.job_id == job_id).first()
     if not app:
         raise HTTPException(status_code=404, detail="Application record not found")
+
+    # Authorize a disposition change against the candidate's persisted
+    # position. A request must not be able to lower the required permission by
+    # combining a stage update with a reject/restore action.
+    current_status_before_update = app.current_status
+    if payload.disposition:
+        required_permission = get_disposition_permission(current_status_before_update)
+        if not required_permission:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    "Disposition changes are managed by the offer workflow once "
+                    "an offer is in progress."
+                ),
+            )
+        user_permissions = set(get_user_permissions(
+            db,
+            current_user.get("role"),
+            current_user.get("company_id"),
+        ))
+        if not user_has_permission(required_permission, user_permissions):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=(
+                    f"Permission denied. Changing disposition at '{current_status_before_update}' "
+                    f"requires '{required_permission}'."
+                ),
+            )
 
     if payload.current_status:
         ALLOWED_INITIAL_STAGES = {"applied", "screening", "interview"}

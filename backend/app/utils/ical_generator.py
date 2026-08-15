@@ -1,15 +1,19 @@
 from datetime import datetime
+from typing import Optional
 
 def generate_ical_event(
     title: str,
     description: str,
-    start_time: datetime,
-    end_time: datetime,
+    start_time: Optional[datetime],
+    end_time: Optional[datetime],
     location_url: str,
     organizer_email: str = "hr@airecruiter.com",
     attendee_email: str = ""
 ) -> str:
     """Generates an RFC 5545 compliant .ics calendar invitation string."""
+    if start_time is None or end_time is None:
+        raise ValueError("An iCal event requires both a start time and an end time.")
+
     dtstart_str = start_time.strftime("%Y%m%dT%H%M%SZ")
     dtend_str = end_time.strftime("%Y%m%dT%H%M%SZ")
     dtstamp_str = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")

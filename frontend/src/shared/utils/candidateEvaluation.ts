@@ -24,14 +24,44 @@ export type PermissionChecker = (permissionKey: string) => boolean;
 
 export interface CandidateEvaluationInput {
   current_status?: ApplicationStatus | string;
-  status?: ApplicationStatus | string;
-  stage?: PipelineStageKey | string;
   disposition?: string;
-  rejected?: boolean;
   interview_status?: string;
   interviews?: Array<{ status: string }>;
   interviewer_assignments?: any[];
   interviewer_1?: any;
+}
+
+/** The backend current_status is the single source of truth for pipeline position. */
+export function getCurrentStatus(candidate: CandidateEvaluationInput): PipelineStageKey | null {
+  const currentStatus = candidate.current_status;
+  const validStatuses: PipelineStageKey[] = [
+    "applied",
+    "screening",
+    "interview",
+    "offer_approval",
+    "offer_sent",
+    "hired",
+  ];
+
+  return currentStatus && validStatuses.includes(currentStatus as PipelineStageKey)
+    ? (currentStatus as PipelineStageKey)
+    : null;
+}
+
+export function isCandidateRejected(candidate: CandidateEvaluationInput): boolean {
+  return candidate.disposition === "rejected";
+}
+
+/** Returns the permission owned by the workflow at the candidate's position. */
+export function getDispositionPermission(currentStatus: PipelineStageKey): string | null {
+  switch (currentStatus) {
+    case "applied":
+    case "screening":
+    case "interview":
+      return "candidate:disposition";
+    default:
+      return null;
+  }
 }
 
 /**
@@ -51,7 +81,7 @@ export function resolveCardVariant(
   candidate: CandidateEvaluationInput,
   stageKey: PipelineStageKey
 ): CandidateCardVariant {
-  const isRejected = candidate.disposition === "rejected" || candidate.rejected || candidate.status === "rejected";
+  const isRejected = isCandidateRejected(candidate);
 
   if (stageKey === "hired") {
     return { stage: "hired", variant: "normal" };
@@ -61,7 +91,6 @@ export function resolveCardVariant(
     const interviewsList = candidate.interviews || [];
     const isCompleted =
       candidate.interview_status === "COMPLETED" ||
-      candidate.current_status === "interview_completed" ||
       (interviewsList.length > 0 && interviewsList.every((i) => i.status === "COMPLETED"));
 
     const hasInterviewers = Boolean(
@@ -104,7 +133,7 @@ export function getDraggableEvaluator(
   stageKey: PipelineStageKey,
   hasPermission: PermissionChecker
 ): boolean {
-  const isRejected = candidate.disposition === "rejected" || candidate.rejected || candidate.status === "rejected";
+  const isRejected = isCandidateRejected(candidate);
   if (isRejected) return false;
 
   switch (stageKey) {
@@ -150,9 +179,9 @@ export function getDroppableEvaluator(
   const targetIdx = stages.findIndex((s) => s.key === targetStageKey);
   if (sourceIdx === -1 || targetIdx === -1) return false;
 
-  // Enforce sequential pipeline flow (adjacent stages)
-  const isAdjacent = Math.abs(targetIdx - sourceIdx) === 1;
-  if (!isAdjacent) return false;
+  // Enforce strictly forward sequential pipeline flow (current -> next stage only: target === source + 1)
+  const isNextSequential = targetIdx === sourceIdx + 1;
+  if (!isNextSequential) return false;
 
   // Enforce target stage RBAC permissions
   switch (targetStageKey) {

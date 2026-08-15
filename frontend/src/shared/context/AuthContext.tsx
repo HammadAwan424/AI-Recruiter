@@ -3,6 +3,25 @@ import { AuthContextType, AuthUser, UserRole } from "../types/auth.types";
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+// The API remains the authority for access control. This fallback only keeps
+// the client-side "mine vs team" labels working for sessions created before
+// the login response started returning user_id.
+const getUserIdFromToken = (storedToken: string | null): number | null => {
+  if (!storedToken) return null;
+
+  try {
+    const tokenPayload = storedToken.split(".")[1];
+    if (!tokenPayload) return null;
+
+    const normalizedPayload = tokenPayload.replace(/-/g, "+").replace(/_/g, "/");
+    const payload = JSON.parse(atob(normalizedPayload.padEnd(Math.ceil(normalizedPayload.length / 4) * 4, "=")));
+    const parsedUserId = Number(payload.user_id);
+    return Number.isInteger(parsedUserId) && parsedUserId > 0 ? parsedUserId : null;
+  } catch {
+    return null;
+  }
+};
+
 interface AuthProviderProps {
   children: ReactNode;
 }
@@ -16,7 +35,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   });
   const [userId, setUserId] = useState<number | null>(() => {
     const uid = localStorage.getItem("user_id");
-    return uid ? parseInt(uid, 10) : null;
+    const parsedUserId = uid ? parseInt(uid, 10) : NaN;
+    return Number.isInteger(parsedUserId) && parsedUserId > 0
+      ? parsedUserId
+      : getUserIdFromToken(localStorage.getItem("token"));
   });
 
   const login = (authToken: string, userPayload: AuthUser) => {

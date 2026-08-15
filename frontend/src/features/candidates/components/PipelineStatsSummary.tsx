@@ -84,16 +84,14 @@ export const PipelineStatsSummary: React.FC<PipelineStatsSummaryProps> = ({ appl
 
   applications.forEach((application: any) => {
     const isRejected = Boolean(
-      application.rejected ||
-      application.disposition === "rejected" ||
-      application.status === "rejected"
+      application.disposition === "rejected"
     );
 
     if (isRejected) {
       rejected += 1;
     } else {
-      const status = application.current_status || application.status || "applied";
-      if (countsByStage[status] !== undefined) countsByStage[status] += 1;
+      const status = application.current_status;
+      if (status && countsByStage[status] !== undefined) countsByStage[status] += 1;
     }
 
     const rawScore =

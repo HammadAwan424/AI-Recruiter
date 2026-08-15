@@ -4,13 +4,14 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy import or_
 from sqlalchemy.orm import Session, Query
 
 from app.config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 from app.database import get_db
 from app.models.job import Job
 from app.models.application import Application
-from app.models.interview import InterviewModel
+from app.models.interview import InterviewInterviewers, InterviewModel, InterviewSlot
 from app.models.offer import Offer
 from app.models.user import User
 from app.models.rbac import Role, RolePermission, UserJobScope
@@ -85,6 +86,19 @@ def user_has_permission(requested_key: str, user_permission_keys: set) -> bool:
         return True
 
     return any(requested_key.startswith(perm) for perm in user_permission_keys)
+
+
+def get_disposition_permission(current_status: Any) -> Optional[str]:
+    """Return the permission for direct disposition changes, when permitted.
+
+    Once an offer exists, its approval and candidate-response workflows own
+    rejection/revision. Those stages must not be changed through the generic
+    application stage endpoint.
+    """
+    status_value = getattr(current_status, "value", current_status)
+    if status_value in {"offer_approval", "offer_sent", "hired"}:
+        return None
+    return "candidate:disposition"
 
 
 def get_user_permissions(db: Session, user_role_name: str, company_id: Optional[int] = None) -> List[str]:
@@ -212,7 +226,55 @@ def get_scoped_interviews_query(
     q = db.query(InterviewModel).join(Application, InterviewModel.application_id == Application.id).join(Job, Application.job_id == Job.id)
     q = q.filter(Job.company_id == company_id)
     if get_job_scope(db, user_role, company_id) != "all":
-        q = q.join(UserJobScope, UserJobScope.job_id == Job.id).filter(UserJobScope.user_id == user_id)
+        # Assigned-only users can see interviews that belong to them, not every
+        # interview created for a job they happen to be scoped to. Company-wide
+        # users receive the complete company query above and the UI can split it
+        # into personal and team sections.
+        q = (
+            q.outerjoin(
+                InterviewInterviewers,
+                InterviewInterviewers.interview_id == InterviewModel.id,
+            )
+            .filter(
+                or_(
+                    InterviewModel.created_by == user_id,
+                    InterviewInterviewers.interviewer_id == user_id,
+                )
+            )
+            .distinct()
+        )
+    return q
+
+
+def get_scoped_interview_slots_query(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+) -> Query:
+    """Return unbooked availability slots visible in the user's interview view.
+
+    Slot visibility follows the same role job scope as the interview agenda:
+    company-wide roles can see their team's slots, while assigned-only users
+    can see only slots owned by the current user. Slots are also constrained to
+    the current company, including universal slots with no job_id.
+    """
+    company_id = current_user.get("company_id")
+    user_role = current_user.get("role")
+    user_id = current_user.get("user_id")
+
+    q = (
+        db.query(InterviewSlot)
+        .join(User, InterviewSlot.interviewer_id == User.id)
+        .outerjoin(Job, InterviewSlot.job_id == Job.id)
+        .filter(
+            User.company_id == company_id,
+            InterviewSlot.is_booked.is_(False),
+            or_(InterviewSlot.job_id.is_(None), Job.company_id == company_id),
+        )
+    )
+
+    if get_job_scope(db, user_role, company_id) != "all":
+        q = q.filter(InterviewSlot.interviewer_id == user_id)
+
     return q
 
 
@@ -273,7 +335,19 @@ def get_interview_or_403(
     q = db.query(InterviewModel).join(Application, InterviewModel.application_id == Application.id).join(Job, Application.job_id == Job.id)
     q = q.filter(InterviewModel.id == interview_id, Job.company_id == company_id)
     if get_job_scope(db, user_role, company_id) != "all":
-        q = q.join(UserJobScope, UserJobScope.job_id == Job.id).filter(UserJobScope.user_id == user_id)
+        q = (
+            q.outerjoin(
+                InterviewInterviewers,
+                InterviewInterviewers.interview_id == InterviewModel.id,
+            )
+            .filter(
+                or_(
+                    InterviewModel.created_by == user_id,
+                    InterviewInterviewers.interviewer_id == user_id,
+                )
+            )
+            .distinct()
+        )
 
     interview = q.first()
     if not interview:

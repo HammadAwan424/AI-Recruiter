@@ -3,21 +3,23 @@ import { CandidateApplication, ApplicationListItem } from "../../../shared/types
 import { PipelineStageConfig } from "../hooks/useCandidatePipeline";
 import { ScreenCandidateCard } from "./cards/ScreenCandidateCard";
 import { InterviewCandidateCard } from "./cards/InterviewCandidateCard";
-import { resolveCardVariant, getDraggableEvaluator, getDroppableEvaluator, PipelineStageKey } from "./cards/variants";
+import {
+  resolveCardVariant,
+  getDraggableEvaluator,
+  getDroppableEvaluator,
+  PipelineStageKey,
+} from "./cards/variants";
 import { usePermission } from "../../../shared/hooks/usePermission";
 
 interface KanbanBoardProps {
   candidates: (CandidateApplication | ApplicationListItem | any)[];
   stages: PipelineStageConfig[];
   visibleStageKeys: string[];
-  canDisposition: boolean;
-  canOffer: boolean;
   pipelineStep?: "idle" | "fetching" | "parsing" | "screening" | string;
   newlyImportedIds?: number[];
   onSelectCandidate: (candidate: any) => void;
   onAdvanceStage: (candidate: any, currentStageKey: string) => void;
   onDropCandidate: (candidateId: number, targetStageKey: string) => void;
-  onReject: (candidate: any) => void;
 }
 
 export const KanbanBoard: React.FC<KanbanBoardProps> = ({
@@ -156,7 +158,6 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
         candidate={candidate}
         variant={resolved.variant as "normal" | "rejected"}
         screening={stage.key !== "applied"}
-        stageKey={stage.key}
         isDraggable={isDraggable}
         pipelineStep={pipelineStep}
         isNewlyImported={isNewlyImported}
@@ -169,9 +170,8 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
     <div className={`grid ${getGridColsClass(activeStages.length)} gap-4 w-full pb-4 transition-all duration-300`}>
       {activeStages.map((stage) => {
         const stageCandidates = candidates.filter((c: any) => {
-          const status = c.current_status || c.status || "applied";
+          const status = c.current_status;
           if (status === stage.key) return true;
-          if (status === "rejected" && stage.key === "applied") return true;
           return false;
         });
 

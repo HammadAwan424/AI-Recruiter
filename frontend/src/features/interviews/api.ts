@@ -26,6 +26,12 @@ export const interviewsApi = baseApi.injectEndpoints({
       query: (jobId) => (jobId ? `/interviews/interviewers?job_id=${jobId}` : "/interviews/interviewers"),
       providesTags: ["Interviews"],
     }),
+    downloadInterviewCalendar: builder.mutation<string, number>({
+      query: (interviewId) => ({
+        url: `/interviews/${interviewId}/ical`,
+        responseHandler: "text",
+      }),
+    }),
     createSlot: builder.mutation<InterviewSlotDetail, SlotCreatePayload>({
       query: (payload) => ({
         url: "/interviews/slots",
@@ -95,6 +101,7 @@ export const {
   useGetInterviewSlotsQuery,
   useGetInterviewersWithSlotsQuery,
   useLazyGetInterviewersWithSlotsQuery,
+  useDownloadInterviewCalendarMutation,
   useCreateSlotMutation,
   useUpdateSlotMutation,
   useDeleteSlotMutation,

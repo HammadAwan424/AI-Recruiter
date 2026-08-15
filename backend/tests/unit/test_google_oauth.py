@@ -74,6 +74,7 @@ class GoogleOAuthRoutesTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         data = response.json()
         self.assertTrue(data.get("requires_mailbox_setup"))
+        self.assertEqual(data.get("user_id"), self.ceo.id)
 
     def test_mailbox_status_disconnected_initially(self):
         """Mailbox status should report is_connected=False before OAuth linking."""
